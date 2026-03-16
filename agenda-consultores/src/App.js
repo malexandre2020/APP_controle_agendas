@@ -71,6 +71,12 @@ function getClientColor(client) {
   return key ? CLIENT_COLORS[key] : CLIENT_COLORS.default;
 }
 function getInitials(name) { return name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase(); }
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  try { return new Date(iso).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }); }
+  catch(e) { return iso; }
+}
+
 function normalizeClient(client) {
   if (!client) return "";
   return client.split("\n")[0].trim().toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
@@ -621,10 +627,28 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
       </div>
       <p style={{ fontSize:"11px",color:"#475569",marginTop:"8px" }}>💡 Clique em célula colorida para editar/excluir · Clique em célula vazia para adicionar agenda · Colunas escuras = fim de semana</p>
       {popup && (
-        <div onClick={e=>e.stopPropagation()} style={{ position:"fixed",left:Math.min(popup.x,window.innerWidth-230)+"px",top:Math.min(popup.y+8,window.innerHeight-180)+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"10px",padding:"14px",zIndex:9000,width:"220px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)" }}>
+        <div onClick={e=>e.stopPropagation()} style={{ position:"fixed",left:Math.min(popup.x,window.innerWidth-260)+"px",top:Math.min(popup.y+8,window.innerHeight-220)+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",padding:"16px",zIndex:9000,width:"252px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)" }}>
           <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9",marginBottom:"2px" }}>{popup.name.trim().split(" ")[0]}</div>
-          <div style={{ fontSize:"11px",color:"#64748b",marginBottom:"4px" }}>Dia {popup.day} · {calMes} ({WEEKDAY_LABELS[getDayOfWeek(popup.day)]})</div>
-          <div style={{ fontSize:"12px",color:getColor(popup.entry),fontWeight:600,marginBottom:"12px" }}>{popup.entry.client}</div>
+          <div style={{ fontSize:"11px",color:"#64748b",marginBottom:"6px" }}>Dia {popup.day} · {calMes} ({WEEKDAY_LABELS[getDayOfWeek(popup.day)]})</div>
+          <div style={{ fontSize:"12px",color:getColor(popup.entry),fontWeight:600,marginBottom:"10px" }}>{popup.entry.client || popup.entry.type}</div>
+          {/* Histórico inline */}
+          <div style={{ borderTop:"1px solid #334155",paddingTop:"8px",marginBottom:"12px",display:"flex",flexDirection:"column",gap:"4px" }}>
+            {popup.entry.criadoPor && (
+              <div style={{ fontSize:"10px",color:"#64748b",display:"flex",gap:"4px",alignItems:"flex-start" }}>
+                <span style={{ color:"#22c55e",flexShrink:0 }}>＋</span>
+                <span><span style={{ color:"#94a3b8",fontWeight:600 }}>{popup.entry.criadoPor}</span><br/>{formatDateTime(popup.entry.criadoEm)}</span>
+              </div>
+            )}
+            {popup.entry.alteradoPor && (
+              <div style={{ fontSize:"10px",color:"#64748b",display:"flex",gap:"4px",alignItems:"flex-start",marginTop:"2px" }}>
+                <span style={{ color:"#f59e0b",flexShrink:0 }}>✎</span>
+                <span><span style={{ color:"#94a3b8",fontWeight:600 }}>{popup.entry.alteradoPor}</span><br/>{formatDateTime(popup.entry.alteradoEm)}</span>
+              </div>
+            )}
+            {!popup.entry.criadoPor && !popup.entry.alteradoPor && (
+              <div style={{ fontSize:"10px",color:"#475569",fontStyle:"italic" }}>Sem histórico registrado</div>
+            )}
+          </div>
           {readonly ? (
             <div style={{ padding:"6px 10px",borderRadius:"6px",background:"#1f1a0e",border:"1px solid #f59e0b33",color:"#f59e0b",fontSize:"11px",fontWeight:500,textAlign:"center" }}>🔒 Somente visualização</div>
           ) : (
@@ -1235,13 +1259,15 @@ function Dashboard({ currentUser, onLogout }) {
 
   const handleSaveEntry = (entry) => {
     const {consultor,month,year,days,client,type} = entry;
+    const agora = new Date().toISOString();
+    const nomeUsuario = currentUser.nome || currentUser.email;
     setScheduleData(prev=>{
       const updated={...prev};
       let list=[...(updated[consultor]||[])];
       days.forEach(day=>{
         const idx=list.findIndex(e=>e.month===month&&e.day===day);
-        if (idx>=0) list[idx]={...list[idx],client,type};
-        else list.push({month,year,day,weekday:"-",client,type});
+        if (idx>=0) list[idx]={...list[idx],client,type,alteradoPor:nomeUsuario,alteradoEm:agora};
+        else list.push({month,year,day,weekday:"-",client,type,criadoPor:nomeUsuario,criadoEm:agora});
       });
       list.sort((a,b)=>{
         const mi=MONTHS_ORDER.findIndex(m=>m.toUpperCase()===a.month.toUpperCase());
