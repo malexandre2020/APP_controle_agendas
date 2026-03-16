@@ -82,6 +82,16 @@ function normalizeClient(client) {
   return client.split("\n")[0].trim().toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
 }
 
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+function ensureIds(scheduleData) {
+  const result = {};
+  for (const [c, entries] of Object.entries(scheduleData||{})) {
+    result[c] = (entries||[]).map(e => e.id ? e : {...e, id:genId()});
+  }
+  return result;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MODAL DE AGENDA (incluir/editar agendamentos)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,6 +104,9 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
   const [year, setYear] = useState(editEntry?.year || new Date().getFullYear());
   const [client, setClient] = useState(editEntry?.client || "");
   const [type, setType] = useState(editEntry?.type || "client");
+  const [horaInicio, setHoraInicio] = useState(editEntry?.horaInicio || "08:00");
+  const [horaFim, setHoraFim] = useState(editEntry?.horaFim || "17:00");
+  const [intervalo, setIntervalo] = useState(editEntry?.intervalo || "");
   const [dayMode, setDayMode] = useState("range");
   const [dayFrom, setDayFrom] = useState(editEntry?.day || 1);
   const [dayTo, setDayTo] = useState(editEntry?.day || 1);
@@ -110,7 +123,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
     else if (dayMode === "range") { for (let d=Number(dayFrom);d<=Number(dayTo);d++) days.push(d); }
     else { days = selectedDays; }
     if (days.length === 0) { setError("Selecione ao menos um dia."); return; }
-    onSave({ consultor, month, year: Number(year), days, client: client.trim(), type });
+    onSave({ id: editEntry?.id, consultor, month, year: Number(year), days, client: client.trim(), type, horaInicio, horaFim, intervalo });
   };
 
   const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #334155", background:"#0f172a", color:"#e2e8f0", fontSize:"13px", width:"100%", boxSizing:"border-box" };
@@ -159,6 +172,35 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
           <input list="clients-datalist" value={client} onChange={e=>setClient(e.target.value)}
             placeholder={type==="client"?"Selecione ou digite o cliente...":type==="vacation"?"Ex: FÉRIAS":type==="holiday"?"Nome do feriado":"Descrição..."} style={inp} autoFocus={isPrefill} />
           <datalist id="clients-datalist">{clients.map(c=><option key={c} value={c}/>)}</datalist>
+        </div>
+        {/* Horários */}
+        <div style={{ marginBottom:"16px" }}>
+          <label style={lbl}>⏰ Horário</label>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"10px" }}>
+            <div>
+              <label style={{...lbl, fontSize:"11px"}}>Início</label>
+              <input type="time" value={horaInicio} onChange={e=>setHoraInicio(e.target.value)} style={inp}/>
+            </div>
+            <div>
+              <label style={{...lbl, fontSize:"11px"}}>Fim</label>
+              <input type="time" value={horaFim} onChange={e=>setHoraFim(e.target.value)} style={inp}/>
+            </div>
+            <div>
+              <label style={{...lbl, fontSize:"11px"}}>Intervalo (min)</label>
+              <input type="number" min="0" max="240" step="15" value={intervalo} onChange={e=>setIntervalo(e.target.value)} placeholder="Ex: 60" style={inp}/>
+            </div>
+          </div>
+          {horaInicio && horaFim && horaInicio < horaFim && (
+            <div style={{ fontSize:"11px", color:"#64748b", marginTop:"6px" }}>
+              {(() => {
+                const [hi,mi] = horaInicio.split(":").map(Number);
+                const [hf,mf] = horaFim.split(":").map(Number);
+                const total = (hf*60+mf) - (hi*60+mi) - (Number(intervalo)||0);
+                const h = Math.floor(total/60), m = total%60;
+                return `⏱ ${h}h${m>0?m+"min":""} úteis${intervalo?" (após intervalo de "+intervalo+"min)":""}`;
+              })()}
+            </div>
+          )}
         </div>
         {/* Day selection: hidden when editing or prefill (day already locked) */}
         {!isEdit && !isPrefill && (
@@ -368,7 +410,8 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
   const lookup = {};
   for (const [name, entries] of Object.entries(data)) {
     lookup[name] = {};
-    entries.filter(e=>e.month.toUpperCase()===calMes.toUpperCase() && (!e.year || e.year===calAno)).forEach(e=>{lookup[name][e.day]=e;});
+    entries.filter(e=>e.month.toUpperCase()===calMes.toUpperCase() && (!e.year || e.year===calAno))
+      .forEach(e=>{ if (!lookup[name][e.day]) lookup[name][e.day]=[]; lookup[name][e.day].push(e); });
   }
 
   // All unique clients present in this month
@@ -600,7 +643,8 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                   const entry = lookup[name]?.[d];
                   const colBg = isWeekend ? "#0d1a30" : "#0f172a";
 
-                  if (!entry) return (
+                  const dayEntries = lookup[name]?.[d] || [];
+                  if (dayEntries.length === 0) return (
                     <td key={d} style={{ padding:"3px",borderLeft:"1px solid #1e293b",background:colBg }}
                       onClick={e=>{ if(readonly) return; e.stopPropagation(); onNewEntry({ consultor:name, month:calMes, day:d }); }}>
                       <div style={{ width:"28px",height:"28px",borderRadius:"4px",background:"transparent",border:"1px dashed transparent",margin:"0 auto",cursor:readonly?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s" }}
@@ -610,16 +654,21 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                       </div>
                     </td>
                   );
-
-                  const color = getColor(entry);
-                  const label = entry.type==="vacation"?"FÉR":entry.type==="holiday"?"FER":entry.type==="blocked"?"BLQ":entry.type==="reserved"?"RES":normalizeClient(entry.client).slice(0,3);
-                  const clientFiltered = entry.type==="client" && clientFilterActive && !selectedClients.has(normalizeClient(entry.client));
+                  const allFiltered = dayEntries.every(e=>e.type==="client"&&clientFilterActive&&!selectedClients.has(normalizeClient(e.client)));
                   return (
-                    <td key={d} style={{ padding:"3px",borderLeft:"1px solid #1e293b",background:colBg }} onClick={e=>{e.stopPropagation();if(!clientFiltered)setPopup({name,day:d,entry,x:e.clientX,y:e.clientY});}}>
-                      <div style={{ width:"28px",height:"28px",borderRadius:"4px",background:clientFiltered?"transparent":color,border:clientFiltered?"1px solid #1e293b":"none",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",cursor:clientFiltered?"default":"pointer",opacity:clientFiltered?0.25:1,transition:"opacity 0.15s" }}
-                        onMouseEnter={e=>{ if(!clientFiltered) e.currentTarget.style.opacity="0.7"; }}
-                        onMouseLeave={e=>{ e.currentTarget.style.opacity=clientFiltered?"0.25":"1"; }}>
-                        {!clientFiltered && <span style={{ fontSize:"7px",fontWeight:800,color:"#fff",letterSpacing:"-0.5px" }}>{label}</span>}
+                    <td key={d} style={{ padding:"2px",borderLeft:"1px solid #1e293b",background:colBg,verticalAlign:"top" }} onClick={e=>{e.stopPropagation();if(!allFiltered)setPopup({name,day:d,entries:dayEntries,x:e.clientX,y:e.clientY});}}>
+                      <div style={{ width:"28px",minHeight:"28px",borderRadius:"4px",overflow:"hidden",margin:"0 auto",cursor:allFiltered?"default":"pointer",display:"flex",flexDirection:"column",gap:"1px" }}>
+                        {dayEntries.slice(0,3).map((entry,ei)=>{
+                          const color=getColor(entry);
+                          const label=entry.type==="vacation"?"FÉR":entry.type==="holiday"?"FER":entry.type==="blocked"?"BLQ":entry.type==="reserved"?"RES":normalizeClient(entry.client).slice(0,3);
+                          const filtered=entry.type==="client"&&clientFilterActive&&!selectedClients.has(normalizeClient(entry.client));
+                          return (
+                            <div key={entry.id||ei} style={{ flex:1,background:filtered?"#1e293b":color,display:"flex",alignItems:"center",justifyContent:"center",minHeight:"8px",opacity:filtered?0.2:1 }}>
+                              {!filtered&&dayEntries.length<=2&&<span style={{ fontSize:"6px",fontWeight:800,color:"#fff",letterSpacing:"-0.5px" }}>{label}</span>}
+                            </div>
+                          );
+                        })}
+                        {dayEntries.length>3&&<div style={{ background:"#0f172a",display:"flex",alignItems:"center",justifyContent:"center",minHeight:"7px" }}><span style={{ fontSize:"6px",color:"#94a3b8",fontWeight:700 }}>+{dayEntries.length-3}</span></div>}
                       </div>
                     </td>
                   );
@@ -631,36 +680,63 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
       </div>
       <p style={{ fontSize:"11px",color:"#475569",marginTop:"8px" }}>💡 Clique em célula colorida para editar/excluir · Clique em célula vazia para adicionar agenda · Colunas escuras = fim de semana</p>
       {popup && (
-        <div onClick={e=>e.stopPropagation()} style={{ position:"fixed",left:Math.min(popup.x,window.innerWidth-260)+"px",top:Math.min(popup.y+8,window.innerHeight-220)+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",padding:"16px",zIndex:9000,width:"252px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)" }}>
-          <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9",marginBottom:"2px" }}>{popup.name.trim().split(" ")[0]}</div>
-          <div style={{ fontSize:"11px",color:"#64748b",marginBottom:"6px" }}>Dia {popup.day} · {calMes} ({WEEKDAY_LABELS[getDayOfWeek(popup.day)]})</div>
-          <div style={{ fontSize:"12px",color:getColor(popup.entry),fontWeight:600,marginBottom:"10px" }}>{popup.entry.client || popup.entry.type}</div>
-          {/* Histórico inline */}
-          <div style={{ borderTop:"1px solid #334155",paddingTop:"8px",marginBottom:"12px",display:"flex",flexDirection:"column",gap:"4px" }}>
-            {popup.entry.criadoPor && (
-              <div style={{ fontSize:"10px",color:"#64748b",display:"flex",gap:"4px",alignItems:"flex-start" }}>
-                <span style={{ color:"#22c55e",flexShrink:0 }}>＋</span>
-                <span><span style={{ color:"#94a3b8",fontWeight:600 }}>{popup.entry.criadoPor}</span><br/>{formatDateTime(popup.entry.criadoEm)}</span>
-              </div>
-            )}
-            {popup.entry.alteradoPor && (
-              <div style={{ fontSize:"10px",color:"#64748b",display:"flex",gap:"4px",alignItems:"flex-start",marginTop:"2px" }}>
-                <span style={{ color:"#f59e0b",flexShrink:0 }}>✎</span>
-                <span><span style={{ color:"#94a3b8",fontWeight:600 }}>{popup.entry.alteradoPor}</span><br/>{formatDateTime(popup.entry.alteradoEm)}</span>
-              </div>
-            )}
-            {!popup.entry.criadoPor && !popup.entry.alteradoPor && (
-              <div style={{ fontSize:"10px",color:"#475569",fontStyle:"italic" }}>Sem histórico registrado</div>
-            )}
-          </div>
-          {readonly ? (
-            <div style={{ padding:"6px 10px",borderRadius:"6px",background:"#1f1a0e",border:"1px solid #f59e0b33",color:"#f59e0b",fontSize:"11px",fontWeight:500,textAlign:"center" }}>🔒 Somente visualização</div>
-          ) : (
-            <div style={{ display:"flex",gap:"8px" }}>
-              <button onClick={()=>{ onEdit({consultor:popup.name,month:calMes,day:popup.day,client:popup.entry.client,type:popup.entry.type}); setPopup(null); }} style={{ flex:1,padding:"7px",borderRadius:"6px",border:"none",background:"#3b82f6",color:"#fff",fontSize:"12px",fontWeight:700,cursor:"pointer" }}>✏️ Editar</button>
-              <button onClick={()=>{ onDelete(popup.name,calMes,popup.day); setPopup(null); }} style={{ flex:1,padding:"7px",borderRadius:"6px",border:"1px solid #ef4444",background:"transparent",color:"#ef4444",fontSize:"12px",fontWeight:700,cursor:"pointer" }}>🗑 Excluir</button>
+        <div onClick={e=>e.stopPropagation()} style={{ position:"fixed",left:Math.min(popup.x,window.innerWidth-290)+"px",top:Math.min(popup.y+8,window.innerHeight-320)+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",padding:"16px",zIndex:9000,width:"280px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",overflowY:"auto" }}>
+          {/* Header */}
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"10px" }}>
+            <div>
+              <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>{popup.name.trim().split(" ")[0]}</div>
+              <div style={{ fontSize:"11px",color:"#64748b" }}>Dia {popup.day} · {calMes} {calAno} ({WEEKDAY_LABELS[getDayOfWeek(popup.day)]})</div>
             </div>
-          )}
+            {!readonly && <button onClick={()=>{ onNewEntry({consultor:popup.name,month:calMes,day:popup.day}); setPopup(null); }} style={{ padding:"4px 8px",borderRadius:"6px",border:"1px solid #22c55e44",background:"#22c55e18",color:"#22c55e",fontSize:"11px",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap" }}>＋ Novo</button>}
+          </div>
+          {/* Entry list */}
+          <div style={{ display:"flex",flexDirection:"column",gap:"8px" }}>
+            {(popup.entries||[]).map((entry,ei)=>{
+              const color = getColor(entry);
+              const TYPE_LABEL = {client:"👤 Cliente",vacation:"🏖 Férias",holiday:"🎉 Feriado",reserved:"🔒 Reservado",blocked:"⛔ Bloqueado"};
+              return (
+                <div key={entry.id||ei} style={{ background:"#0f172a",borderRadius:"8px",border:"1px solid #334155",overflow:"hidden" }}>
+                  {/* Entry header bar */}
+                  <div style={{ background:color,padding:"4px 10px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                    <span style={{ fontSize:"11px",fontWeight:800,color:"#fff",letterSpacing:"0.3px" }}>{entry.client||TYPE_LABEL[entry.type]||entry.type}</span>
+                    {(entry.horaInicio||entry.horaFim) && <span style={{ fontSize:"10px",color:"rgba(255,255,255,0.85)",fontWeight:600 }}>{entry.horaInicio||""}{entry.horaFim?" → "+entry.horaFim:""}{entry.intervalo?" ☕"+entry.intervalo+"m":""}</span>}
+                  </div>
+                  {/* History */}
+                  <div style={{ padding:"8px 10px" }}>
+                    {(entry.historico||[]).length>0 ? (
+                      <div style={{ display:"flex",flexDirection:"column",gap:"4px" }}>
+                        {entry.historico.map((h,hi)=>(
+                          <div key={hi} style={{ fontSize:"10px",color:"#64748b" }}>
+                            <span style={{ color:h.acao==="criado"?"#22c55e":h.acao==="alterado"?"#f59e0b":"#ef4444",marginRight:"4px" }}>{h.acao==="criado"?"＋":h.acao==="alterado"?"✎":"✕"}</span>
+                            <span style={{ color:"#94a3b8",fontWeight:600 }}>{h.por}</span>
+                            <span style={{ color:"#475569" }}> · {formatDateTime(h.em)}</span>
+                            {h.alteracoes&&h.alteracoes.length>0&&(
+                              <div style={{ marginTop:"2px",paddingLeft:"14px" }}>
+                                {h.alteracoes.map((a,ai)=>(
+                                  <div key={ai} style={{ fontSize:"9px",color:"#64748b" }}>
+                                    <span style={{ color:"#94a3b8" }}>{a.campo}:</span> <span style={{ textDecoration:"line-through",color:"#ef444488" }}>{a.de}</span> → <span style={{ color:"#22c55e" }}>{a.para}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize:"10px",color:"#475569",fontStyle:"italic" }}>Sem histórico</span>
+                    )}
+                    {/* Actions */}
+                    {!readonly && (
+                      <div style={{ display:"flex",gap:"6px",marginTop:"8px" }}>
+                        <button onClick={()=>{ onEdit({...entry,consultor:popup.name,month:calMes}); setPopup(null); }} style={{ flex:1,padding:"5px",borderRadius:"5px",border:"none",background:"#3b82f6",color:"#fff",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>✏️ Editar</button>
+                        <button onClick={()=>{ onDelete(popup.name,entry.id); setPopup(null); }} style={{ padding:"5px 10px",borderRadius:"5px",border:"1px solid #ef4444",background:"transparent",color:"#ef4444",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>🗑</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -1229,7 +1305,7 @@ function Dashboard({ currentUser, onLogout }) {
         loadFromFirestore("clientList", INITIAL_CLIENTS.map(n=>({ name:n, color:CLIENT_COLORS[n]||CLIENT_COLORS.default }))),
         loadFromFirestore("projects", []),
       ]);
-      setScheduleData(sd);
+      setScheduleData(ensureIds(sd));
       setClientList(cl);
       setProjects(pj);
       setDbLoaded(true);
@@ -1262,43 +1338,49 @@ function Dashboard({ currentUser, onLogout }) {
   const showToast = (msg,color) => { setToast({msg,color:color||"#22c55e"}); setTimeout(()=>setToast(null),3000); };
 
   const handleSaveEntry = (entry) => {
-    const {consultor,month,year,days,client,type} = entry;
+    const {id, consultor, month, year, days, client, type, horaInicio, horaFim, intervalo} = entry;
     const agora = new Date().toISOString();
     const nomeUsuario = currentUser.nome || currentUser.email;
     setScheduleData(prev=>{
       const updated={...prev};
       let list=[...(updated[consultor]||[])];
       days.forEach(day=>{
-        const idx=list.findIndex(e=>e.month===month&&e.day===day);
-        if (idx>=0) list[idx]={...list[idx],client,type,alteradoPor:nomeUsuario,alteradoEm:agora};
-        else list.push({month,year,day,weekday:"-",client,type,criadoPor:nomeUsuario,criadoEm:agora});
+        if (id) {
+          // Editar entrada existente pelo id
+          const idx = list.findIndex(e=>e.id===id);
+          if (idx>=0) {
+            const old = list[idx];
+            const alteracoes = [];
+            if (old.client !== client) alteracoes.push({campo:"cliente", de:old.client||"-", para:client});
+            if (old.type !== type) alteracoes.push({campo:"tipo", de:old.type||"-", para:type});
+            if (old.horaInicio !== horaInicio) alteracoes.push({campo:"início", de:old.horaInicio||"-", para:horaInicio});
+            if (old.horaFim !== horaFim) alteracoes.push({campo:"fim", de:old.horaFim||"-", para:horaFim});
+            if ((old.intervalo||"") !== (intervalo||"")) alteracoes.push({campo:"intervalo", de:old.intervalo||"-", para:intervalo||"-"});
+            const hist = [...(old.historico||[{acao:"criado",por:old.criadoPor||"?",em:old.criadoEm||agora}]), {acao:"alterado",por:nomeUsuario,em:agora,alteracoes}];
+            list[idx]={...old,client,type,horaInicio,horaFim,intervalo,alteradoPor:nomeUsuario,alteradoEm:agora,historico:hist};
+          }
+        } else {
+          // Nova entrada
+          const newId = genId();
+          list.push({id:newId,month,year,day,weekday:"-",client,type,horaInicio,horaFim,intervalo,criadoPor:nomeUsuario,criadoEm:agora,historico:[{acao:"criado",por:nomeUsuario,em:agora}]});
+        }
       });
       list.sort((a,b)=>{
         const mi=MONTHS_ORDER.findIndex(m=>m.toUpperCase()===a.month.toUpperCase());
         const mj=MONTHS_ORDER.findIndex(m=>m.toUpperCase()===b.month.toUpperCase());
-        return mi!==mj?mi-mj:a.day-b.day;
+        if (mi!==mj) return mi-mj;
+        if (a.day!==b.day) return a.day-b.day;
+        return (a.horaInicio||"00:00").localeCompare(b.horaInicio||"00:00");
       });
       updated[consultor]=list;
       return updated;
     });
-    showToast("✅ "+days.length+" dia(s) salvo(s) para "+consultor.split(" ")[0]);
-    days.forEach(day => {
-      saveHistorico(editEntry ? "edit" : "add", {
-        consultor, month, year, day, client: client || "-", type,
-        usuario: currentUser.email, nome: currentUser.nome || currentUser.email
-      });
-    });
+    showToast("✅ "+(id?"Entrada atualizada":""+days.length+" dia(s) salvo(s)")+" para "+consultor.split(" ")[0]);
     setShowModal(false); setEditEntry(null);
   };
 
-  const handleDeleteEntry = (consultor,month,day) => {
-    const deletedEntry = (scheduleData[consultor]||[]).find(e=>e.month===month&&e.day===day);
-    setScheduleData(prev=>{ const u={...prev}; u[consultor]=(u[consultor]||[]).filter(e=>!(e.month===month&&e.day===day)); return u; });
-    saveHistorico("delete", {
-      consultor, month, year: deletedEntry?.year || null, day,
-      client: deletedEntry?.client || "-", type: deletedEntry?.type || "-",
-      usuario: currentUser.email, nome: currentUser.nome || currentUser.email
-    });
+  const handleDeleteEntry = (consultor, entryId) => {
+    setScheduleData(prev=>{ const u={...prev}; u[consultor]=(u[consultor]||[]).filter(e=>e.id!==entryId); return u; });
     showToast("🗑 Entrada removida","#ef4444");
   };
 
