@@ -119,6 +119,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
   const [horaInicio, setHoraInicio] = useState(editEntry?.horaInicio || "08:00");
   const [horaFim, setHoraFim] = useState(editEntry?.horaFim || "17:00");
   const [intervalo, setIntervalo] = useState(editEntry?.intervalo || "");
+  const [atividades, setAtividades] = useState(editEntry?.atividades || "");
   const [dayMode, setDayMode] = useState("range");
   const [dayFrom, setDayFrom] = useState(editEntry?.day || 1);
   const [dayTo, setDayTo] = useState(editEntry?.day || 1);
@@ -135,7 +136,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
     else if (dayMode === "range") { for (let d=Number(dayFrom);d<=Number(dayTo);d++) days.push(d); }
     else { days = selectedDays; }
     if (days.length === 0) { setError("Selecione ao menos um dia."); return; }
-    onSave({ id: editEntry?.id, consultor, month, year: Number(year), days, client: client.trim(), type, horaInicio, horaFim, intervalo });
+    onSave({ id: editEntry?.id, consultor, month, year: Number(year), days, client: client.trim(), type, horaInicio, horaFim, intervalo, atividades: atividades.trim() });
   };
 
   const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #334155", background:"#0f172a", color:"#e2e8f0", fontSize:"13px", width:"100%", boxSizing:"border-box" };
@@ -213,6 +214,17 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
               })()}
             </div>
           )}
+        </div>
+        {/* Atividades */}
+        <div style={{ marginBottom:"16px" }}>
+          <label style={lbl}>📝 Atividades / Observações</label>
+          <textarea
+            value={atividades}
+            onChange={e=>setAtividades(e.target.value)}
+            placeholder="Descreva as atividades previstas para este agendamento..."
+            rows={3}
+            style={{...inp, resize:"vertical", minHeight:"72px", fontFamily:"inherit", lineHeight:"1.5"}}
+          />
         </div>
         {/* Day selection: hidden when editing or prefill (day already locked) */}
         {!isEdit && !isPrefill && (
@@ -713,6 +725,9 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                     <span style={{ fontSize:"11px",fontWeight:800,color:"#fff",letterSpacing:"0.3px" }}>{entry.client||TYPE_LABEL[entry.type]||entry.type}</span>
                     {(entry.horaInicio||entry.horaFim) && <span style={{ fontSize:"10px",color:"rgba(255,255,255,0.85)",fontWeight:600 }}>{entry.horaInicio||""}{entry.horaFim?" → "+entry.horaFim:""}{entry.intervalo?" ☕"+entry.intervalo+"m":""}</span>}
                   </div>
+                  {entry.atividades && (
+                    <div style={{ padding:"6px 10px 0",fontSize:"11px",color:"#94a3b8",lineHeight:"1.5",whiteSpace:"pre-wrap",borderBottom:"1px solid #1e293b" }}>{entry.atividades}</div>
+                  )}
                   {/* History */}
                   <div style={{ padding:"8px 10px" }}>
                     {(entry.historico||[]).length>0 ? (
@@ -1350,7 +1365,7 @@ function Dashboard({ currentUser, onLogout }) {
   const showToast = (msg,color) => { setToast({msg,color:color||"#22c55e"}); setTimeout(()=>setToast(null),3000); };
 
   const handleSaveEntry = (entry) => {
-    const {id, consultor, month, year, days, client, type, horaInicio, horaFim, intervalo} = entry;
+    const {id, consultor, month, year, days, client, type, horaInicio, horaFim, intervalo, atividades} = entry;
     const agora = new Date().toISOString();
     const nomeUsuario = currentUser.nome || currentUser.email;
     setScheduleData(prev=>{
@@ -1369,12 +1384,13 @@ function Dashboard({ currentUser, onLogout }) {
             if (old.horaFim !== horaFim) alteracoes.push({campo:"fim", de:old.horaFim||"-", para:horaFim});
             if ((old.intervalo||"") !== (intervalo||"")) alteracoes.push({campo:"intervalo", de:old.intervalo||"-", para:intervalo||"-"});
             const hist = [...(old.historico||[{acao:"criado",por:old.criadoPor||"?",em:old.criadoEm||agora}]), {acao:"alterado",por:nomeUsuario,em:agora,alteracoes}];
-            list[idx]={...old,client,type,horaInicio,horaFim,intervalo,alteradoPor:nomeUsuario,alteradoEm:agora,historico:hist};
+            if ((old.atividades||'') !== (atividades||'')) alteracoes.push({campo:'atividades', de:old.atividades||'-', para:atividades||'-'});
+            list[idx]={...old,client,type,horaInicio,horaFim,intervalo,atividades,alteradoPor:nomeUsuario,alteradoEm:agora,historico:hist};
           }
         } else {
           // Nova entrada
           const newId = genId();
-          list.push({id:newId,month,year,day,weekday:"-",client,type,horaInicio,horaFim,intervalo,criadoPor:nomeUsuario,criadoEm:agora,historico:[{acao:"criado",por:nomeUsuario,em:agora}]});
+          list.push({id:newId,month,year,day,weekday:"-",client,type,horaInicio,horaFim,intervalo,atividades,criadoPor:nomeUsuario,criadoEm:agora,historico:[{acao:"criado",por:nomeUsuario,em:agora}]});
         }
       });
       list.sort((a,b)=>{
