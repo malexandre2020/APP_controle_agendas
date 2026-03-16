@@ -1329,12 +1329,12 @@ function Dashboard({ currentUser, onLogout }) {
           />
         )}
       </div>
+      {showUserMgmt && (
+        <GerenciarUsuarios
+          consultores={consultores}
+          onClose={() => setShowUserMgmt(false)}
+        />
+      )}
     </div>
-    {showUserMgmt && (
-      <GerenciarUsuarios
-        consultores={consultores}
-        onClose={() => setShowUserMgmt(false)}
-      />
-    )}
   );
 }
