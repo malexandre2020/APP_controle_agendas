@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, getDocs, deleteDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "firebase/auth";
 
@@ -15,6 +15,12 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
+
+// App secundário para criar usuários sem deslogar o admin
+function getSecondaryAuth() {
+  try { initializeApp(firebaseConfig, "admin-ops"); } catch(e) {}
+  return getAuth(getApp("admin-ops"));
+}
 
 // Helpers para salvar/carregar do Firestore
 async function loadFromFirestore(key, fallback) {
@@ -922,6 +928,9 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [editFields, setEditFields] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -933,40 +942,94 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   }, []);
 
   const handleAdd = async () => {
-    if (!novoEmail.trim() || !novaSenha.trim() || !novoNome.trim()) { setError("Preencha todos os campos obrigatórios."); return; }
-    if (novaSenha.length < 6) { setError("A senha deve ter pelo menos 6 caracteres."); return; }
+    if (!novoEmail.trim() || !novoNome.trim()) { setError("Preencha nome e e-mail."); return; }
+    if (novaSenha && novaSenha.length < 6) { setError("A senha deve ter pelo menos 6 caracteres."); return; }
     setSalvando(true); setError(""); setSuccess("");
     try {
-      // Criar no Firebase Auth
-      const cred = await createUserWithEmailAndPassword(auth, novoEmail.trim(), novaSenha);
-      // Salvar perfil no Firestore
-      const perfil = { email: novoEmail.trim(), nome: novoNome.trim(), role: novoRole, consultorName: novoRole === "consultor" ? novoConsultor : "" };
+      let uid = null;
+      let aviso = "";
+      // Verificar se já existe perfil no Firestore
+      const existeSnap = await getDocs(collection(db, "usuarios"));
+      const jaExiste = existeSnap.docs.find(d => d.data().email === novoEmail.trim());
+      if (jaExiste) {
+        setSalvando(false);
+        setError("Este e-mail já possui um perfil cadastrado.");
+        return;
+      }
+      if (novaSenha.trim()) {
+        try {
+          const secAuth = getSecondaryAuth();
+          const cred = await createUserWithEmailAndPassword(secAuth, novoEmail.trim(), novaSenha);
+          uid = cred.user.uid;
+          await signOut(secAuth);
+        } catch(authErr) {
+          if (authErr.code === "auth/email-already-in-use") {
+            // Conta Auth existe mas sem perfil Firestore — recriar apenas o perfil
+            aviso = " (conta já existia no sistema de autenticação — perfil recriado)";
+          } else {
+            const msgs = { "auth/invalid-email":"E-mail inválido.", "auth/weak-password":"Senha muito fraca (mín. 6 caracteres)." };
+            setError(msgs[authErr.code] || "Erro de autenticação: " + authErr.message);
+            setSalvando(false); return;
+          }
+        }
+      }
+      const perfil = { email: novoEmail.trim(), nome: novoNome.trim(), role: novoRole, consultorName: novoRole === "consultor" ? novoConsultor : "", ...(uid ? { uid } : {}) };
       const ref = await addDoc(collection(db, "usuarios"), perfil);
       setUsuarios(prev => [...prev, { id: ref.id, ...perfil }]);
       if (novoRole === "consultor" && novoConsultor && !consultores.includes(novoConsultor)) {
         onAddConsultor && onAddConsultor(novoConsultor);
       }
       setNovoEmail(""); setNovaSenha(""); setNovoNome(""); setNovoConsultor(""); setNovoRole("viewer");
-      setSuccess("✅ Usuário criado com sucesso! " + (novoRole === "consultor" ? "Consultor " + novoConsultor + " vinculado à agenda." : ""));
+      setSuccess("✅ Usuário criado com sucesso!" + aviso + (novoRole === "consultor" ? " Consultor " + novoConsultor + " vinculado à agenda." : ""));
     } catch(e) {
-      const msgs = { "auth/email-already-in-use":"Este e-mail já está cadastrado.", "auth/invalid-email":"E-mail inválido.", "auth/weak-password":"Senha muito fraca (mín. 6 caracteres)." };
-      setError(msgs[e.code] || "Erro ao criar usuário: " + e.message);
+      setError("Erro ao criar usuário: " + e.message);
     }
     setSalvando(false);
   };
 
   const handleDelete = async (id, email) => {
-    if (!window.confirm("Remover o usuário " + email + "?")) return;
+    if (!window.confirm("Remover o perfil de " + email + "? (A conta de login precisará ser removida manualmente no Firebase Console se necessário.)")) return;
     await deleteDoc(doc(db, "usuarios", id));
     setUsuarios(prev => prev.filter(u => u.id !== id));
-    setSuccess("🗑 Usuário removido.");
+    if (editId === id) setEditId(null);
+    setSuccess("🗑 Perfil removido. O usuário não poderá mais acessar o sistema.");
+  };
+
+  const handleEditStart = (u) => {
+    setEditId(u.id);
+    setEditFields({ nome: u.nome || "", role: u.role || "viewer", consultorName: u.consultorName || "" });
+  };
+
+  const handleEditSave = async (u) => {
+    setEditSaving(true);
+    try {
+      await setDoc(doc(db, "usuarios", u.id), { ...u, ...editFields }, { merge: true });
+      setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, ...editFields } : x));
+      if (editFields.role === "consultor" && editFields.consultorName && !consultores.includes(editFields.consultorName)) {
+        onAddConsultor && onAddConsultor(editFields.consultorName);
+      }
+      setEditId(null);
+      setSuccess("✅ Usuário atualizado com sucesso!");
+    } catch(e) {
+      setSuccess(""); setError("Erro ao salvar: " + e.message);
+    }
+    setEditSaving(false);
+  };
+
+  const handleSendReset = async (email) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccess("📧 E-mail de redefinição de senha enviado para " + email);
+    } catch(e) {
+      setError("Erro ao enviar reset: " + e.message);
+    }
   };
 
   const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #334155", background:"#0f172a", color:"#e2e8f0", fontSize:"13px", width:"100%", boxSizing:"border-box" };
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}>
-      <div style={{ background:"#1e293b", borderRadius:"16px", padding:"28px", width:"100%", maxWidth:"620px", border:"1px solid #334155", maxHeight:"90vh", overflowY:"auto", boxShadow:"0 20px 60px rgba(0,0,0,0.5)" }}>
+      <div style={{ background:"#1e293b", borderRadius:"16px", padding:"28px", width:"100%", maxWidth:"660px", border:"1px solid #334155", maxHeight:"90vh", overflowY:"auto", boxShadow:"0 20px 60px rgba(0,0,0,0.5)" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"24px" }}>
           <h2 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:"18px", fontWeight:700, color:"#f8fafc", margin:0 }}>👥 Gerenciar Usuários</h2>
           <button onClick={onClose} style={{ background:"#334155", border:"none", color:"#94a3b8", borderRadius:"8px", width:"32px", height:"32px", cursor:"pointer", fontSize:"16px" }}>✕</button>
@@ -976,19 +1039,60 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
         <div style={{ marginBottom:"24px" }}>
           <h3 style={{ fontSize:"13px", fontWeight:700, color:"#94a3b8", marginBottom:"10px", textTransform:"uppercase", letterSpacing:"0.05em" }}>Usuários cadastrados</h3>
           {loading ? <p style={{ color:"#475569", fontSize:"13px" }}>Carregando...</p> : (
-            <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
               {usuarios.map(u => {
                 const badge = ROLE_BADGES[u.role] || ROLE_BADGES.viewer;
+                const isEditing = editId === u.id;
                 return (
-                  <div key={u.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", background:"#0f172a", borderRadius:"8px", border:"1px solid #1e293b" }}>
-                    <div>
-                      <div style={{ fontSize:"13px", fontWeight:600, color:"#f1f5f9" }}>{u.nome} <span style={{ fontSize:"11px", color:"#475569" }}>· {u.email}</span></div>
-                      <div style={{ display:"flex", gap:"8px", marginTop:"3px" }}>
-                        <span style={{ fontSize:"11px", fontWeight:700, color:badge.color, background:badge.bg, padding:"1px 8px", borderRadius:"10px" }}>{badge.label}</span>
-                        {u.consultorName && <span style={{ fontSize:"11px", color:"#64748b" }}>{u.consultorName}</span>}
+                  <div key={u.id} style={{ background:"#0f172a", borderRadius:"10px", border:"1px solid " + (isEditing ? "#3b82f6" : "#1e293b"), overflow:"hidden" }}>
+                    {/* Linha principal */}
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px" }}>
+                      <div>
+                        <div style={{ fontSize:"13px", fontWeight:600, color:"#f1f5f9" }}>{u.nome} <span style={{ fontSize:"11px", color:"#475569" }}>· {u.email}</span></div>
+                        <div style={{ display:"flex", gap:"8px", marginTop:"3px" }}>
+                          <span style={{ fontSize:"11px", fontWeight:700, color:badge.color, background:badge.bg, padding:"1px 8px", borderRadius:"10px" }}>{badge.label}</span>
+                          {u.consultorName && <span style={{ fontSize:"11px", color:"#64748b" }}>{u.consultorName}</span>}
+                        </div>
+                      </div>
+                      <div style={{ display:"flex", gap:"6px" }}>
+                        <button onClick={()=>isEditing ? setEditId(null) : handleEditStart(u)} style={{ background:isEditing?"#334155":"#3b82f622", border:"1px solid "+(isEditing?"#475569":"#3b82f644"), color:isEditing?"#94a3b8":"#3b82f6", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"12px", fontWeight:600 }}>{isEditing ? "✕" : "✏️ Editar"}</button>
+                        <button onClick={()=>handleDelete(u.id, u.email)} style={{ background:"#ef444422", border:"1px solid #ef444444", color:"#ef4444", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"12px", fontWeight:600 }}>🗑</button>
                       </div>
                     </div>
-                    <button onClick={()=>handleDelete(u.id, u.email)} style={{ background:"#ef444422", border:"1px solid #ef444444", color:"#ef4444", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"12px", fontWeight:600 }}>🗑</button>
+                    {/* Painel de edição inline */}
+                    {isEditing && (
+                      <div style={{ padding:"14px", borderTop:"1px solid #1e293b", background:"#0a1628" }}>
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"10px" }}>
+                          <div>
+                            <label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"4px" }}>Nome</label>
+                            <input value={editFields.nome} onChange={e=>setEditFields(f=>({...f,nome:e.target.value}))} style={inp} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"4px" }}>Perfil</label>
+                            <select value={editFields.role} onChange={e=>setEditFields(f=>({...f,role:e.target.value}))} style={inp}>
+                              <option value="admin">Admin</option>
+                              <option value="editor">Editor</option>
+                              <option value="viewer">Visualizador</option>
+                              <option value="consultor">Consultor</option>
+                            </select>
+                          </div>
+                          {editFields.role === "consultor" && (
+                            <div style={{ gridColumn:"1/-1" }}>
+                              <label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"4px" }}>Consultor vinculado</label>
+                              <select value={editFields.consultorName} onChange={e=>setEditFields(f=>({...f,consultorName:e.target.value}))} style={inp}>
+                                <option value="">Selecione...</option>
+                                {consultores.map(c=><option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
+                          <button onClick={()=>handleEditSave(u)} disabled={editSaving} style={{ padding:"7px 16px", borderRadius:"8px", border:"none", background:"#22c55e", color:"#fff", fontWeight:700, fontSize:"12px", cursor:"pointer" }}>{editSaving ? "Salvando..." : "💾 Salvar"}</button>
+                          <button onClick={()=>handleSendReset(u.email)} style={{ padding:"7px 16px", borderRadius:"8px", border:"1px solid #3b82f644", background:"#3b82f622", color:"#3b82f6", fontWeight:600, fontSize:"12px", cursor:"pointer" }}>🔑 Reset de senha</button>
+                          <button onClick={()=>setEditId(null)} style={{ padding:"7px 16px", borderRadius:"8px", border:"1px solid #334155", background:"transparent", color:"#64748b", fontWeight:600, fontSize:"12px", cursor:"pointer" }}>Cancelar</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1002,7 +1106,7 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px", marginBottom:"12px" }}>
             <div><label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"5px" }}>Nome *</label><input value={novoNome} onChange={e=>setNovoNome(e.target.value)} placeholder="Nome completo" style={inp}/></div>
             <div><label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"5px" }}>E-mail *</label><input type="email" value={novoEmail} onChange={e=>setNovoEmail(e.target.value)} placeholder="email@exemplo.com" style={inp}/></div>
-            <div><label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"5px" }}>Senha * (mín. 6 caracteres)</label><input type="password" value={novaSenha} onChange={e=>setNovaSenha(e.target.value)} placeholder="••••••••" style={inp}/></div>
+            <div><label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"5px" }}>Senha (mín. 6 caracteres)</label><input type="password" value={novaSenha} onChange={e=>setNovaSenha(e.target.value)} placeholder="••••••••" style={inp}/></div>
             <div><label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"5px" }}>Perfil *</label>
               <select value={novoRole} onChange={e=>setNovoRole(e.target.value)} style={inp}>
                 <option value="admin">Admin</option>
@@ -1031,88 +1135,6 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   );
 }
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HISTÓRICO DE ALTERAÇÕES
-// ─────────────────────────────────────────────────────────────────────────────
-function HistoricoView() {
-  const [historico, setHistorico] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [filtroConsultor, setFiltroConsultor] = React.useState("");
-  const [filtroAcao, setFiltroAcao] = React.useState("");
-
-  React.useEffect(() => {
-    async function load() {
-      try {
-        const snap = await getDocs(collection(db, "historico"));
-        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        items.sort((a,b) => b.timestamp.localeCompare(a.timestamp));
-        setHistorico(items);
-      } catch(e) { console.warn("Histórico load error:", e); }
-      setLoading(false);
-    }
-    load();
-  }, []);
-
-  const ACTION_LABEL = { add:"➕ Adicionado", edit:"✏️ Editado", delete:"🗑 Removido" };
-  const ACTION_COLOR = { add:"#22c55e", edit:"#f59e0b", delete:"#ef4444" };
-  const ACTION_BG    = { add:"#22c55e22", edit:"#f59e0b22", delete:"#ef444422" };
-
-  const consultoresUnicos = [...new Set(historico.map(h => h.consultor).filter(Boolean))];
-
-  const filtrado = historico.filter(h =>
-    (!filtroConsultor || h.consultor === filtroConsultor) &&
-    (!filtroAcao || h.action === filtroAcao)
-  );
-
-  const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #334155", background:"#0f172a", color:"#e2e8f0", fontSize:"13px", cursor:"pointer" };
-
-  return (
-    <div>
-      <h2 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:"20px", fontWeight:700, color:"#f8fafc", marginBottom:"20px" }}>📋 Histórico de Alterações</h2>
-      <div style={{ display:"flex", gap:"12px", marginBottom:"20px", flexWrap:"wrap" }}>
-        <select value={filtroConsultor} onChange={e=>setFiltroConsultor(e.target.value)} style={inp}>
-          <option value="">Todos os consultores</option>
-          {consultoresUnicos.map(c=><option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={filtroAcao} onChange={e=>setFiltroAcao(e.target.value)} style={inp}>
-          <option value="">Todas as ações</option>
-          <option value="add">➕ Adicionado</option>
-          <option value="edit">✏️ Editado</option>
-          <option value="delete">🗑 Removido</option>
-        </select>
-        <span style={{ fontSize:"13px", color:"#64748b", alignSelf:"center" }}>{filtrado.length} registro(s)</span>
-      </div>
-      {loading ? (
-        <p style={{ color:"#64748b", fontSize:"13px" }}>Carregando histórico...</p>
-      ) : filtrado.length === 0 ? (
-        <p style={{ color:"#475569", fontSize:"13px", textAlign:"center", padding:"40px" }}>Nenhum registro encontrado.</p>
-      ) : (
-        <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-          {filtrado.map(h => (
-            <div key={h.id} style={{ background:"#1e293b", borderRadius:"10px", padding:"12px 16px", border:"1px solid #334155", display:"grid", gridTemplateColumns:"auto 1fr auto", gap:"12px", alignItems:"center" }}>
-              <div style={{ background:ACTION_BG[h.action]||"#334155", border:"1px solid "+(ACTION_COLOR[h.action]||"#64748b")+"44", borderRadius:"8px", padding:"4px 10px", fontSize:"11px", fontWeight:700, color:ACTION_COLOR[h.action]||"#94a3b8", whiteSpace:"nowrap" }}>
-                {ACTION_LABEL[h.action]||h.action}
-              </div>
-              <div>
-                <div style={{ fontSize:"13px", fontWeight:600, color:"#f1f5f9" }}>
-                  {h.consultor} · {h.month}{h.year ? " "+h.year : ""} · Dia {h.day}
-                  {h.client && h.client !== "-" && <span style={{ color:"#94a3b8", fontWeight:400 }}> — {h.client}</span>}
-                </div>
-                <div style={{ fontSize:"11px", color:"#64748b", marginTop:"2px" }}>
-                  por {h.nome || h.usuario}
-                </div>
-              </div>
-              <div style={{ fontSize:"11px", color:"#64748b", textAlign:"right", whiteSpace:"nowrap" }}>
-                {h.timestamp ? new Date(h.timestamp).toLocaleString("pt-BR") : "—"}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function ConsultorDashboard() {
   const [currentUser, setCurrentUser] = useState(null);
