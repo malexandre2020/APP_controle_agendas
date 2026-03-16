@@ -355,6 +355,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 // ─────────────────────────────────────────────────────────────────────────────
 function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientColors, onEdit, onDelete, onNewEntry, readonly }) {
   const [calMes, setCalMes] = React.useState(selectedMonth !== "Todos" ? selectedMonth : allMonths[1] || "Setembro");
+  const [calAno, setCalAno] = React.useState(new Date().getFullYear());
   const [popup, setPopup] = React.useState(null);
   const [selectedConsultores, setSelectedConsultores] = React.useState(new Set(consultores));
   const [showFilter, setShowFilter] = React.useState(false);
@@ -367,14 +368,14 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
   const lookup = {};
   for (const [name, entries] of Object.entries(data)) {
     lookup[name] = {};
-    entries.filter(e=>e.month.toUpperCase()===calMes.toUpperCase()).forEach(e=>{lookup[name][e.day]=e;});
+    entries.filter(e=>e.month.toUpperCase()===calMes.toUpperCase() && (!e.year || e.year===calAno)).forEach(e=>{lookup[name][e.day]=e;});
   }
 
   // All unique clients present in this month
   const allClientsInMonth = React.useMemo(() => {
     const set = new Set();
     consultores.forEach(name => {
-      (data[name]||[]).filter(e=>e.month.toUpperCase()===calMes.toUpperCase()&&e.type==="client")
+      (data[name]||[]).filter(e=>e.month.toUpperCase()===calMes.toUpperCase()&&(!e.year||e.year===calAno)&&e.type==="client")
         .forEach(e => set.add(normalizeClient(e.client)));
     });
     return [...set].sort();
@@ -409,15 +410,13 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
 
   const clientFilterActive = selectedClients.size < allClientsInMonth.length;
 
-  const allConsultoresWithData = consultores.filter(name=>(data[name]||[]).some(e=>e.month.toUpperCase()===calMes.toUpperCase()));
+  const allConsultoresWithData = consultores.filter(name=>(data[name]||[]).some(e=>e.month.toUpperCase()===calMes.toUpperCase()&&(!e.year||e.year===calAno)));
   const activeConsultores = allConsultoresWithData.filter(name => selectedConsultores.has(name));
 
   // Map month name → approximate year/month for Date calculations
   const MONTH_MAP = { "janeiro":1,"fevereiro":2,"março":3,"abril":4,"maio":5,"junho":6,"julho":7,"agosto":8,"setembro":9,"outubro":10,"novembro":11,"dezembro":12 };
   const monthNum = MONTH_MAP[calMes.toLowerCase()] || 1;
-  // Guess year: if month <= current month assume next year, else current year (approximate)
-  const now = new Date();
-  const guessYear = now.getFullYear();
+  const guessYear = calAno;
 
   // How many days does this month actually have?
   const daysInMonth = new Date(guessYear, monthNum, 0).getDate();
@@ -450,6 +449,11 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
           {monthsAvail.map(m=>(
             <button key={m} onClick={()=>setCalMes(m)} style={{ padding:"5px 12px",borderRadius:"16px",border:"none",cursor:"pointer",fontSize:"12px",fontWeight:600,background:calMes===m?"#3b82f6":"#1e293b",color:calMes===m?"#fff":"#64748b" }}>{m.slice(0,3)}</button>
           ))}
+        </div>
+        <div style={{ display:"flex",alignItems:"center",gap:"4px" }}>
+          <button onClick={()=>setCalAno(a=>a-1)} style={{ padding:"4px 8px",borderRadius:"8px",border:"1px solid #334155",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:"13px",fontWeight:700,lineHeight:1 }}>‹</button>
+          <span style={{ padding:"4px 14px",borderRadius:"8px",background:"#1e293b",border:"1px solid #334155",fontSize:"13px",fontWeight:700,color:"#f1f5f9",minWidth:"62px",textAlign:"center" }}>{calAno}</span>
+          <button onClick={()=>setCalAno(a=>a+1)} style={{ padding:"4px 8px",borderRadius:"8px",border:"1px solid #334155",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:"13px",fontWeight:700,lineHeight:1 }}>›</button>
         </div>
       </div>
 
