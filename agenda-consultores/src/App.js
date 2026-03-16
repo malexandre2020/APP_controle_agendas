@@ -1482,6 +1482,7 @@ function Dashboard({ currentUser, onLogout }) {
             {consultores.length} consultores · {Object.values(scheduleData).flat().filter(e=>e.type==="client").length} dias agendados
             {canManage && ` · ${clientList.length} clientes · ${projects.length} projetos`}
           </p>
+          <p style={{ margin:"4px 0 0",fontSize:"10px",color:"#334155",fontStyle:"italic" }}>Desenvolvido por Marcelo Alexandre · Todos os direitos reservados</p>
         </div>
         <div style={{ display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"center" }}>
           {/* New agenda button — only for editors/admins */}
