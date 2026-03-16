@@ -386,7 +386,7 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
   const monthNum = MONTH_MAP[calMes.toLowerCase()] || 1;
   // Guess year: if month <= current month assume next year, else current year (approximate)
   const now = new Date();
-  const guessYear = 2026;
+  const guessYear = now.getFullYear();
 
   // How many days does this month actually have?
   const daysInMonth = new Date(guessYear, monthNum, 0).getDate();
