@@ -30,6 +30,17 @@ async function saveToFirestore(key, value) {
   } catch(e) { console.warn("Firestore save error:", e); }
 }
 
+// Salvar entrada no histórico de alterações
+async function saveHistorico(action, details) {
+  try {
+    await addDoc(collection(db, "historico"), {
+      action,
+      ...details,
+      timestamp: new Date().toISOString()
+    });
+  } catch(e) { console.warn("Histórico save error:", e); }
+}
+
 // Buscar perfil do usuário no Firestore
 async function getUserProfile(email) {
   try {
@@ -68,6 +79,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
 
   const [consultor, setConsultor] = useState(editEntry?.consultor || consultores[0] || "");
   const [month, setMonth] = useState(editEntry?.month || months[0] || "");
+  const [year, setYear] = useState(editEntry?.year || new Date().getFullYear());
   const [client, setClient] = useState(editEntry?.client || "");
   const [type, setType] = useState(editEntry?.type || "client");
   const [dayMode, setDayMode] = useState("range");
@@ -86,7 +98,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
     else if (dayMode === "range") { for (let d=Number(dayFrom);d<=Number(dayTo);d++) days.push(d); }
     else { days = selectedDays; }
     if (days.length === 0) { setError("Selecione ao menos um dia."); return; }
-    onSave({ consultor, month, days, client: client.trim(), type });
+    onSave({ consultor, month, year: Number(year), days, client: client.trim(), type });
   };
 
   const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #334155", background:"#0f172a", color:"#e2e8f0", fontSize:"13px", width:"100%", boxSizing:"border-box" };
@@ -103,7 +115,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
           <button onClick={onClose} style={{ background:"#334155",border:"none",color:"#94a3b8",borderRadius:"8px",width:"32px",height:"32px",cursor:"pointer",fontSize:"16px" }}>✕</button>
         </div>
         {error && <div style={{ background:"#ef444422",border:"1px solid #ef4444",borderRadius:"8px",padding:"10px 14px",color:"#ef4444",fontSize:"13px",marginBottom:"16px" }}>⚠️ {error}</div>}
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px",marginBottom:"16px" }}>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 80px",gap:"16px",marginBottom:"16px" }}>
           <div><label style={lbl}>Consultor</label>
             <select value={consultor} onChange={e=>setConsultor(e.target.value)} style={{...inp, opacity:(isEdit||isPrefill)?0.6:1}} disabled={isEdit||isPrefill}>
               {consultores.map(c=><option key={c} value={c}>{c}</option>)}
@@ -112,6 +124,13 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
           <div><label style={lbl}>Mês</label>
             <select value={month} onChange={e=>setMonth(e.target.value)} style={{...inp, opacity:(isEdit||isPrefill)?0.6:1}} disabled={isEdit||isPrefill}>
               {months.map(m=><option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div><label style={lbl}>Ano</label>
+            <select value={year} onChange={e=>setYear(e.target.value)} style={{...inp, opacity:(isEdit||isPrefill)?0.6:1}} disabled={isEdit||isPrefill}>
+              {[new Date().getFullYear(), new Date().getFullYear()+1, new Date().getFullYear()+2].map(y=>(
+                <option key={y} value={y}>{y}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -163,7 +182,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
             <div style={{ display:"flex",alignItems:"center",gap:"10px",padding:"10px 14px",background:"#0f172a",borderRadius:"8px",border:"1px solid #334155" }}>
               <span style={{ fontSize:"20px" }}>📅</span>
               <div>
-                <div style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9" }}>Dia {editEntry.day} de {editEntry.month}</div>
+                <div style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9" }}>Dia {editEntry.day} de {editEntry.month}{editEntry.year ? " " + editEntry.year : ""}</div>
                 <div style={{ fontSize:"11px",color:"#64748b",marginTop:"1px" }}>{editEntry.consultor}</div>
               </div>
             </div>
@@ -892,7 +911,7 @@ function LoginScreen({ onLogin }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // TELA DE GERENCIAR USUÁRIOS (apenas admin)
 // ─────────────────────────────────────────────────────────────────────────────
-function GerenciarUsuarios({ consultores, onClose }) {
+function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [novoEmail, setNovoEmail] = useState("");
@@ -924,8 +943,11 @@ function GerenciarUsuarios({ consultores, onClose }) {
       const perfil = { email: novoEmail.trim(), nome: novoNome.trim(), role: novoRole, consultorName: novoRole === "consultor" ? novoConsultor : "" };
       const ref = await addDoc(collection(db, "usuarios"), perfil);
       setUsuarios(prev => [...prev, { id: ref.id, ...perfil }]);
+      if (novoRole === "consultor" && novoConsultor && !consultores.includes(novoConsultor)) {
+        onAddConsultor && onAddConsultor(novoConsultor);
+      }
       setNovoEmail(""); setNovaSenha(""); setNovoNome(""); setNovoConsultor(""); setNovoRole("viewer");
-      setSuccess("✅ Usuário criado com sucesso!");
+      setSuccess("✅ Usuário criado com sucesso! " + (novoRole === "consultor" ? "Consultor " + novoConsultor + " vinculado à agenda." : ""));
     } catch(e) {
       const msgs = { "auth/email-already-in-use":"Este e-mail já está cadastrado.", "auth/invalid-email":"E-mail inválido.", "auth/weak-password":"Senha muito fraca (mín. 6 caracteres)." };
       setError(msgs[e.code] || "Erro ao criar usuário: " + e.message);
@@ -1005,6 +1027,89 @@ function GerenciarUsuarios({ consultores, onClose }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HISTÓRICO DE ALTERAÇÕES
+// ─────────────────────────────────────────────────────────────────────────────
+function HistoricoView() {
+  const [historico, setHistorico] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [filtroConsultor, setFiltroConsultor] = React.useState("");
+  const [filtroAcao, setFiltroAcao] = React.useState("");
+
+  React.useEffect(() => {
+    async function load() {
+      try {
+        const snap = await getDocs(collection(db, "historico"));
+        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        items.sort((a,b) => b.timestamp.localeCompare(a.timestamp));
+        setHistorico(items);
+      } catch(e) { console.warn("Histórico load error:", e); }
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  const ACTION_LABEL = { add:"➕ Adicionado", edit:"✏️ Editado", delete:"🗑 Removido" };
+  const ACTION_COLOR = { add:"#22c55e", edit:"#f59e0b", delete:"#ef4444" };
+  const ACTION_BG    = { add:"#22c55e22", edit:"#f59e0b22", delete:"#ef444422" };
+
+  const consultoresUnicos = [...new Set(historico.map(h => h.consultor).filter(Boolean))];
+
+  const filtrado = historico.filter(h =>
+    (!filtroConsultor || h.consultor === filtroConsultor) &&
+    (!filtroAcao || h.action === filtroAcao)
+  );
+
+  const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #334155", background:"#0f172a", color:"#e2e8f0", fontSize:"13px", cursor:"pointer" };
+
+  return (
+    <div>
+      <h2 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:"20px", fontWeight:700, color:"#f8fafc", marginBottom:"20px" }}>📋 Histórico de Alterações</h2>
+      <div style={{ display:"flex", gap:"12px", marginBottom:"20px", flexWrap:"wrap" }}>
+        <select value={filtroConsultor} onChange={e=>setFiltroConsultor(e.target.value)} style={inp}>
+          <option value="">Todos os consultores</option>
+          {consultoresUnicos.map(c=><option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={filtroAcao} onChange={e=>setFiltroAcao(e.target.value)} style={inp}>
+          <option value="">Todas as ações</option>
+          <option value="add">➕ Adicionado</option>
+          <option value="edit">✏️ Editado</option>
+          <option value="delete">🗑 Removido</option>
+        </select>
+        <span style={{ fontSize:"13px", color:"#64748b", alignSelf:"center" }}>{filtrado.length} registro(s)</span>
+      </div>
+      {loading ? (
+        <p style={{ color:"#64748b", fontSize:"13px" }}>Carregando histórico...</p>
+      ) : filtrado.length === 0 ? (
+        <p style={{ color:"#475569", fontSize:"13px", textAlign:"center", padding:"40px" }}>Nenhum registro encontrado.</p>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+          {filtrado.map(h => (
+            <div key={h.id} style={{ background:"#1e293b", borderRadius:"10px", padding:"12px 16px", border:"1px solid #334155", display:"grid", gridTemplateColumns:"auto 1fr auto", gap:"12px", alignItems:"center" }}>
+              <div style={{ background:ACTION_BG[h.action]||"#334155", border:"1px solid "+(ACTION_COLOR[h.action]||"#64748b")+"44", borderRadius:"8px", padding:"4px 10px", fontSize:"11px", fontWeight:700, color:ACTION_COLOR[h.action]||"#94a3b8", whiteSpace:"nowrap" }}>
+                {ACTION_LABEL[h.action]||h.action}
+              </div>
+              <div>
+                <div style={{ fontSize:"13px", fontWeight:600, color:"#f1f5f9" }}>
+                  {h.consultor} · {h.month}{h.year ? " "+h.year : ""} · Dia {h.day}
+                  {h.client && h.client !== "-" && <span style={{ color:"#94a3b8", fontWeight:400 }}> — {h.client}</span>}
+                </div>
+                <div style={{ fontSize:"11px", color:"#64748b", marginTop:"2px" }}>
+                  por {h.nome || h.usuario}
+                </div>
+              </div>
+              <div style={{ fontSize:"11px", color:"#64748b", textAlign:"right", whiteSpace:"nowrap" }}>
+                {h.timestamp ? new Date(h.timestamp).toLocaleString("pt-BR") : "—"}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1107,14 +1212,14 @@ function Dashboard({ currentUser, onLogout }) {
   const showToast = (msg,color) => { setToast({msg,color:color||"#22c55e"}); setTimeout(()=>setToast(null),3000); };
 
   const handleSaveEntry = (entry) => {
-    const {consultor,month,days,client,type} = entry;
+    const {consultor,month,year,days,client,type} = entry;
     setScheduleData(prev=>{
       const updated={...prev};
       let list=[...(updated[consultor]||[])];
       days.forEach(day=>{
         const idx=list.findIndex(e=>e.month===month&&e.day===day);
         if (idx>=0) list[idx]={...list[idx],client,type};
-        else list.push({month,day,weekday:"-",client,type});
+        else list.push({month,year,day,weekday:"-",client,type});
       });
       list.sort((a,b)=>{
         const mi=MONTHS_ORDER.findIndex(m=>m.toUpperCase()===a.month.toUpperCase());
@@ -1125,11 +1230,23 @@ function Dashboard({ currentUser, onLogout }) {
       return updated;
     });
     showToast("✅ "+days.length+" dia(s) salvo(s) para "+consultor.split(" ")[0]);
+    days.forEach(day => {
+      saveHistorico(editEntry ? "edit" : "add", {
+        consultor, month, year, day, client: client || "-", type,
+        usuario: currentUser.email, nome: currentUser.nome || currentUser.email
+      });
+    });
     setShowModal(false); setEditEntry(null);
   };
 
   const handleDeleteEntry = (consultor,month,day) => {
+    const deletedEntry = (scheduleData[consultor]||[]).find(e=>e.month===month&&e.day===day);
     setScheduleData(prev=>{ const u={...prev}; u[consultor]=(u[consultor]||[]).filter(e=>!(e.month===month&&e.day===day)); return u; });
+    saveHistorico("delete", {
+      consultor, month, year: deletedEntry?.year || null, day,
+      client: deletedEntry?.client || "-", type: deletedEntry?.type || "-",
+      usuario: currentUser.email, nome: currentUser.nome || currentUser.email
+    });
     showToast("🗑 Entrada removida","#ef4444");
   };
 
@@ -1185,11 +1302,11 @@ function Dashboard({ currentUser, onLogout }) {
   },[selectedConsultor,selectedMonth,filteredData]);
 
   const VIEWS = canManage
-    ? ["grid","calendario","timeline","stats","cadastros"]
+    ? ["grid","calendario","timeline","stats","cadastros","historico"]
     : isViewer || isConsultor
     ? ["grid","calendario","timeline","stats"]
     : ["grid","calendario","timeline","stats"]; // editor
-  const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros" };
+  const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros", historico:"📋 Histórico" };
 
   const badge = ROLE_BADGES[currentUser.role];
 
@@ -1321,6 +1438,7 @@ function Dashboard({ currentUser, onLogout }) {
         )}
         {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
         {view==="stats" && <StatsView stats={stats}/>}
+        {view==="historico" && canManage && <HistoricoView />}
         {view==="cadastros" && canManage && (
           <CadastrosView
             consultores={consultores} clients={clientList} projects={projects}
@@ -1333,6 +1451,7 @@ function Dashboard({ currentUser, onLogout }) {
       {showUserMgmt && (
         <GerenciarUsuarios
           consultores={consultores}
+          onAddConsultor={handleAddConsultor}
           onClose={() => setShowUserMgmt(false)}
         />
       )}
