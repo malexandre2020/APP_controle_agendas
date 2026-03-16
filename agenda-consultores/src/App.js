@@ -85,9 +85,21 @@ function normalizeClient(client) {
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
 function ensureIds(scheduleData) {
+  const currentYear = new Date().getFullYear();
   const result = {};
   for (const [c, entries] of Object.entries(scheduleData||{})) {
-    result[c] = (entries||[]).map(e => e.id ? e : {...e, id:genId()});
+    result[c] = (entries||[]).map(e => {
+      let upd = e.id ? e : {...e, id: genId()};
+      if (!upd.year) {
+        // Inferir ano a partir de criadoEm, se disponível
+        let inferredYear = currentYear;
+        if (upd.criadoEm) {
+          try { inferredYear = new Date(upd.criadoEm).getFullYear(); } catch(_) {}
+        }
+        upd = {...upd, year: inferredYear};
+      }
+      return upd;
+    });
   }
   return result;
 }
@@ -410,7 +422,7 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
   const lookup = {};
   for (const [name, entries] of Object.entries(data)) {
     lookup[name] = {};
-    entries.filter(e=>e.month.toUpperCase()===calMes.toUpperCase() && (!e.year || e.year===calAno))
+    entries.filter(e=>e.month.toUpperCase()===calMes.toUpperCase() && e.year===calAno)
       .forEach(e=>{ if (!lookup[name][e.day]) lookup[name][e.day]=[]; lookup[name][e.day].push(e); });
   }
 
@@ -418,7 +430,7 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
   const allClientsInMonth = React.useMemo(() => {
     const set = new Set();
     consultores.forEach(name => {
-      (data[name]||[]).filter(e=>e.month.toUpperCase()===calMes.toUpperCase()&&(!e.year||e.year===calAno)&&e.type==="client")
+      (data[name]||[]).filter(e=>e.month.toUpperCase()===calMes.toUpperCase()&&e.year===calAno&&e.type==="client")
         .forEach(e => set.add(normalizeClient(e.client)));
     });
     return [...set].sort();
@@ -453,7 +465,7 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
 
   const clientFilterActive = selectedClients.size < allClientsInMonth.length;
 
-  const allConsultoresWithData = consultores.filter(name=>(data[name]||[]).some(e=>e.month.toUpperCase()===calMes.toUpperCase()&&(!e.year||e.year===calAno)));
+  const allConsultoresWithData = consultores.filter(name=>(data[name]||[]).some(e=>e.month.toUpperCase()===calMes.toUpperCase()&&e.year===calAno));
   const activeConsultores = allConsultoresWithData.filter(name => selectedConsultores.has(name));
 
   // Map month name → approximate year/month for Date calculations
