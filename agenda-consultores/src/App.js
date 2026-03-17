@@ -1592,6 +1592,93 @@ function Dashboard({ currentUser, onLogout }) {
   const handleAddProject = (project) => { setProjects(prev=>[...prev,project]); showToast("📋 Projeto "+project.name+" cadastrado!"); };
   const handleRemoveProject = (idx) => { setProjects(prev=>prev.filter((_,i)=>i!==idx)); showToast("🗑 Projeto removido","#ef4444"); };
 
+  // ── Exportar para Excel ──
+  const handleExportExcel = () => {
+    const loadXLSX = () => new Promise(resolve => {
+      if (window.XLSX) { resolve(window.XLSX); return; }
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = () => resolve(window.XLSX);
+      document.head.appendChild(s);
+    });
+
+    const TYPE_PT = { client:"Cliente", vacation:"Férias", holiday:"Feriado", reserved:"Reservado", blocked:"Bloqueado" };
+    const fmtDate = v => v ? new Date(v).toLocaleString('pt-BR') : '';
+
+    loadXLSX().then(XLSX => {
+      // Build flat rows
+      const rows = [];
+      for (const [consultor, entries] of Object.entries(scheduleData)) {
+        for (const e of (entries||[])) {
+          rows.push({
+            Consultor: consultor,
+            Mês: e.month || '',
+            Ano: e.year || '',
+            Dia: e.day || '',
+            Cliente: e.client || '',
+            Tipo: TYPE_PT[e.type] || e.type || '',
+            'Hora Início': e.horaInicio || '',
+            'Hora Fim': e.horaFim || '',
+            'Intervalo (min)': e.intervalo || '',
+            Atividades: e.atividades || '',
+            'Criado Por': e.criadoPor || '',
+            'Criado Em': fmtDate(e.criadoEm),
+            'Alterado Por': e.alteradoPor || '',
+            'Alterado Em': fmtDate(e.alteradoEm),
+          });
+        }
+      }
+
+      const sortRows = (a, b, primaryKey) => {
+        if (a[primaryKey] !== b[primaryKey]) return a[primaryKey].localeCompare(b[primaryKey]);
+        const ma = MONTHS_ORDER.indexOf(a.Mês), mb = MONTHS_ORDER.indexOf(b.Mês);
+        if (ma !== mb) return ma - mb;
+        if ((a.Ano||0) !== (b.Ano||0)) return (a.Ano||0) - (b.Ano||0);
+        return (a.Dia||0) - (b.Dia||0);
+      };
+
+      const byConsultor = [...rows].sort((a,b)=>sortRows(a,b,'Consultor'));
+      const byCliente   = [...rows].sort((a,b)=>sortRows(a,b,'Cliente'));
+
+      // Resumo: consultor × cliente → count
+      const resumoMap = {};
+      rows.forEach(r => {
+        if (!resumoMap[r.Consultor]) resumoMap[r.Consultor] = {};
+        resumoMap[r.Consultor][r.Cliente] = (resumoMap[r.Consultor][r.Cliente]||0) + 1;
+      });
+      const allClients = [...new Set(rows.map(r=>r.Cliente))].sort();
+      const resumoRows = Object.entries(resumoMap).sort(([a],[b])=>a.localeCompare(b)).map(([cons,clients])=>{
+        const row = { Consultor: cons };
+        allClients.forEach(c => { row[c] = clients[c] || 0; });
+        row['Total'] = Object.values(clients).reduce((s,v)=>s+v,0);
+        return row;
+      });
+
+      const wb = XLSX.utils.book_new();
+
+      const makeSheet = (data) => {
+        const ws = XLSX.utils.json_to_sheet(data);
+        // Auto column widths
+        const cols = Object.keys(data[0]||{});
+        ws['!cols'] = cols.map(k => ({
+          wch: Math.max(k.length, ...data.map(r=>String(r[k]||'').length), 10)
+        }));
+        // Freeze header row
+        ws['!freeze'] = { xSplit:0, ySplit:1 };
+        return ws;
+      };
+
+      XLSX.utils.book_append_sheet(wb, makeSheet(byConsultor), 'Por Consultor');
+      XLSX.utils.book_append_sheet(wb, makeSheet(byCliente),   'Por Cliente');
+      if (resumoRows.length > 0)
+        XLSX.utils.book_append_sheet(wb, makeSheet(resumoRows), 'Resumo');
+
+      const date = new Date().toISOString().slice(0,10);
+      XLSX.writeFile(wb, `Agenda_Consultores_${date}.xlsx`);
+      showToast('📊 Planilha exportada!', '#22c55e');
+    }).catch(()=>showToast('Erro ao exportar planilha','#ef4444'));
+  };
+
   const allMonths = useMemo(()=>["Todos",...MONTHS_ORDER],[]);
 
   const filteredData = useMemo(()=>{
@@ -1666,6 +1753,9 @@ function Dashboard({ currentUser, onLogout }) {
           {/* New agenda button — only for editors/admins */}
           {canEdit && (
             <button onClick={()=>{setEditEntry(null);setShowModal(true);}} style={{ padding:"8px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:700,fontSize:"13px",background:"#22c55e",color:"#fff" }}>➕ Nova Agenda</button>
+          )}
+          {canEdit && (
+            <button onClick={handleExportExcel} title="Exportar agendas para Excel" style={{ padding:"8px 16px",borderRadius:"8px",border:"1px solid "+T.border2,cursor:"pointer",fontWeight:600,fontSize:"13px",background:T.btnInactive,color:T.btnInactiveText }}>📊 Exportar Excel</button>
           )}
           {canManage && (
             <button onClick={()=>setShowUserMgmt(true)} style={{ padding:"8px 16px",borderRadius:"8px",border:"1px solid "+T.border2,cursor:"pointer",fontWeight:600,fontSize:"13px",background:T.btnInactive,color:T.btnInactiveText }}>👥 Usuários</button>
