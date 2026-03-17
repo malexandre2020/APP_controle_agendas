@@ -588,7 +588,6 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
           </div>
         </div>
       )}
-    </div>
 
       {/* ─ E-MAIL ─ */}
       {tab==="email" && (
