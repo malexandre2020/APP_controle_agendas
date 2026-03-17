@@ -1323,6 +1323,29 @@ function Dashboard({ currentUser, onLogout }) {
   const [editEntry, setEditEntry] = useState(null);
   const [toast, setToast] = useState(null);
   const [showUserMgmt, setShowUserMgmt] = useState(false);
+  const [theme, setTheme] = useState("dark");
+  const [consultorViewMode, setConsultorViewMode] = useState("mensal"); // "semanal" | "mensal"
+
+  const isDark = theme === "dark";
+  const T = {
+    bg: isDark ? "#0f172a" : "#f1f5f9",
+    surface: isDark ? "#1e293b" : "#ffffff",
+    surface2: isDark ? "#0f172a" : "#f8fafc",
+    border: isDark ? "#1e293b" : "#e2e8f0",
+    border2: isDark ? "#334155" : "#cbd5e1",
+    text: isDark ? "#e2e8f0" : "#1e293b",
+    text2: isDark ? "#94a3b8" : "#64748b",
+    text3: isDark ? "#64748b" : "#94a3b8",
+    heading: isDark ? "#f8fafc" : "#0f172a",
+    headerBg: isDark ? "linear-gradient(135deg,#1e293b 0%,#0f172a 100%)" : "linear-gradient(135deg,#ffffff 0%,#f1f5f9 100%)",
+    headerBorder: isDark ? "#1e293b" : "#e2e8f0",
+    btnInactive: isDark ? "#1e293b" : "#e2e8f0",
+    btnInactiveText: isDark ? "#94a3b8" : "#475569",
+    filterBg: isDark ? "#1e293b" : "#ffffff",
+    inputBg: isDark ? "#0f172a" : "#f8fafc",
+    inputColor: isDark ? "#e2e8f0" : "#1e293b",
+    cardBg: isDark ? "#1e293b" : "#ffffff",
+  };
 
   // ── Carregar dados do Firestore na inicialização ──
   useEffect(() => {
@@ -1464,11 +1487,9 @@ function Dashboard({ currentUser, onLogout }) {
   },[selectedConsultor,selectedMonth,filteredData]);
 
   const VIEWS = canManage
-    ? ["grid","calendario","timeline","stats","cadastros","historico"]
-    : isViewer || isConsultor
-    ? ["grid","calendario","timeline","stats"]
-    : ["grid","calendario","timeline","stats"]; // editor
-  const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros", historico:"📋 Histórico" };
+    ? ["grid","calendario","timeline","stats","cadastros"]
+    : ["grid","calendario","timeline","stats"];
+  const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros" };
 
   const badge = ROLE_BADGES[currentUser.role];
 
@@ -1487,18 +1508,18 @@ function Dashboard({ currentUser, onLogout }) {
   );
 
   return (
-    <div style={{ fontFamily:"'DM Sans',sans-serif",background:"#0f172a",minHeight:"100vh",color:"#e2e8f0" }}>
+    <div style={{ fontFamily:"'DM Sans',sans-serif",background:T.bg,minHeight:"100vh",color:T.text }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
 
       {/* HEADER */}
-      <div style={{ background:"linear-gradient(135deg,#1e293b 0%,#0f172a 100%)",borderBottom:"1px solid #1e293b",padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"12px" }}>
+      <div style={{ background:T.headerBg,borderBottom:"1px solid "+T.headerBorder,padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"12px" }}>
         <div>
-          <h1 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:"#f8fafc",margin:0 }}>📅 Agenda de Consultores</h1>
-          <p style={{ margin:"3px 0 0",fontSize:"12px",color:"#64748b" }}>
+          <h1 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:T.heading,margin:0 }}>📅 Agenda de Consultores</h1>
+          <p style={{ margin:"3px 0 0",fontSize:"12px",color:T.text2 }}>
             {consultores.length} consultores · {Object.values(scheduleData).flat().filter(e=>e.type==="client").length} dias agendados
             {canManage && ` · ${clientList.length} clientes · ${projects.length} projetos`}
           </p>
-          <p style={{ margin:"4px 0 0",fontSize:"10px",color:"#334155",fontStyle:"italic" }}>Desenvolvido por Marcelo Alexandre · Todos os direitos reservados</p>
+          <p style={{ margin:"4px 0 0",fontSize:"10px",color:T.text3,fontStyle:"italic" }}>Desenvolvido por Marcelo Alexandre · Todos os direitos reservados</p>
         </div>
         <div style={{ display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"center" }}>
           {/* New agenda button — only for editors/admins */}
@@ -1506,18 +1527,20 @@ function Dashboard({ currentUser, onLogout }) {
             <button onClick={()=>{setEditEntry(null);setShowModal(true);}} style={{ padding:"8px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:700,fontSize:"13px",background:"#22c55e",color:"#fff" }}>➕ Nova Agenda</button>
           )}
           {canManage && (
-            <button onClick={()=>setShowUserMgmt(true)} style={{ padding:"8px 16px",borderRadius:"8px",border:"1px solid #334155",cursor:"pointer",fontWeight:600,fontSize:"13px",background:"#1e293b",color:"#94a3b8" }}>👥 Usuários</button>
+            <button onClick={()=>setShowUserMgmt(true)} style={{ padding:"8px 16px",borderRadius:"8px",border:"1px solid "+T.border2,cursor:"pointer",fontWeight:600,fontSize:"13px",background:T.btnInactive,color:T.btnInactiveText }}>👥 Usuários</button>
           )}
           {VIEWS.map(v=>(
-            <button key={v} onClick={()=>setView(v)} style={{ padding:"8px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"13px",background:view===v?"#3b82f6":"#1e293b",color:view===v?"#fff":"#94a3b8" }}>{VIEW_LABELS[v]}</button>
+            <button key={v} onClick={()=>setView(v)} style={{ padding:"8px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"13px",background:view===v?"#3b82f6":T.btnInactive,color:view===v?"#fff":T.btnInactiveText }}>{VIEW_LABELS[v]}</button>
           ))}
+          {/* Theme toggle */}
+          <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} title={isDark?"Tema claro":"Tema escuro"} style={{ padding:"8px 12px",borderRadius:"8px",border:"1px solid "+T.border2,cursor:"pointer",fontWeight:600,fontSize:"16px",background:T.btnInactive,color:T.btnInactiveText,lineHeight:1 }}>{isDark?"☀️":"🌙"}</button>
           {/* User badge + logout */}
-          <div style={{ display:"flex",alignItems:"center",gap:"8px",padding:"6px 12px",borderRadius:"8px",background:"#0f172a",border:"1px solid #1e293b",marginLeft:"4px" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:"8px",padding:"6px 12px",borderRadius:"8px",background:T.surface2,border:"1px solid "+T.border,marginLeft:"4px" }}>
             <div style={{ textAlign:"right" }}>
-              <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>{currentUser.consultorName || currentUser.username}</div>
+              <div style={{ fontSize:"13px",fontWeight:700,color:T.heading }}>{currentUser.consultorName || currentUser.username}</div>
               <div style={{ display:"inline-block",fontSize:"10px",fontWeight:700,color:badge.color,background:badge.bg,padding:"1px 8px",borderRadius:"10px",marginTop:"2px" }}>{badge.label}</div>
             </div>
-            <button onClick={onLogout} title="Sair" style={{ background:"#1e293b",border:"1px solid #334155",color:"#64748b",borderRadius:"8px",width:"32px",height:"32px",cursor:"pointer",fontSize:"16px",display:"flex",alignItems:"center",justifyContent:"center" }}>⎋</button>
+            <button onClick={onLogout} title="Sair" style={{ background:T.btnInactive,border:"1px solid "+T.border2,color:T.text2,borderRadius:"8px",width:"32px",height:"32px",cursor:"pointer",fontSize:"16px",display:"flex",alignItems:"center",justifyContent:"center" }}>⎋</button>
           </div>
         </div>
       </div>
@@ -1539,7 +1562,7 @@ function Dashboard({ currentUser, onLogout }) {
 
       {/* READONLY BANNER for viewer/consultor */}
       {(isViewer || isConsultor) && (
-        <div style={{ background:"#1f1a0e",borderBottom:"1px solid #f59e0b33",padding:"8px 32px",display:"flex",alignItems:"center",gap:"10px" }}>
+        <div style={{ background:isDark?"#1f1a0e":"#fffbeb",borderBottom:"1px solid "+isDark?"#f59e0b33":"#fcd34d",padding:"8px 32px",display:"flex",alignItems:"center",gap:"10px" }}>
           <span style={{ fontSize:"14px" }}>🔒</span>
           <span style={{ fontSize:"13px",color:"#f59e0b",fontWeight:500 }}>
             {isConsultor
@@ -1551,12 +1574,12 @@ function Dashboard({ currentUser, onLogout }) {
 
       {/* FILTERS — consultor sees only their own, no toggle */}
       {view !== "cadastros" && (
-        <div style={{ background:"#1e293b",padding:"12px 32px",display:"flex",gap:"16px",flexWrap:"wrap",alignItems:"center",borderBottom:"1px solid #334155" }}>
+        <div style={{ background:T.filterBg,padding:"12px 32px",display:"flex",gap:"16px",flexWrap:"wrap",alignItems:"center",borderBottom:"1px solid "+T.border2 }}>
           {!isConsultor && (
             <select
               value={selectedConsultor || ""}
               onChange={e => setSelectedConsultor(e.target.value || null)}
-              style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid #334155",background:"#0f172a",color:"#e2e8f0",fontSize:"13px",cursor:"pointer",minWidth:"180px" }}
+              style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid "+T.border2,background:T.inputBg,color:T.inputColor,fontSize:"13px",cursor:"pointer",minWidth:"180px" }}
             >
               <option value="">Todos os consultores</option>
               {consultores.map(c => (
@@ -1567,13 +1590,13 @@ function Dashboard({ currentUser, onLogout }) {
           {isConsultor && (
             <div style={{ display:"flex",alignItems:"center",gap:"10px" }}>
               <div style={{ width:"32px",height:"32px",borderRadius:"50%",background:"hsl("+(consultores.indexOf(currentUser.consultorName)*29%360)+",65%,55%)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:700,color:"#fff" }}>{getInitials(currentUser.consultorName||"")}</div>
-              <span style={{ fontSize:"14px",fontWeight:600,color:"#f1f5f9" }}>{currentUser.consultorName}</span>
+              <span style={{ fontSize:"14px",fontWeight:600,color:T.heading }}>{currentUser.consultorName}</span>
             </div>
           )}
-          <select value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid #334155",background:"#0f172a",color:"#e2e8f0",fontSize:"13px",cursor:"pointer" }}>
+          <select value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid "+T.border2,background:T.inputBg,color:T.inputColor,fontSize:"13px",cursor:"pointer" }}>
             {allMonths.map(m=><option key={m} value={m}>{m}</option>)}
           </select>
-          <input placeholder="🔍 Buscar cliente..." value={searchClient} onChange={e=>setSearchClient(e.target.value)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid #334155",background:"#0f172a",color:"#e2e8f0",fontSize:"13px",minWidth:"180px" }}/>
+          <input placeholder="🔍 Buscar cliente..." value={searchClient} onChange={e=>setSearchClient(e.target.value)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid "+T.border2,background:T.inputBg,color:T.inputColor,fontSize:"13px",minWidth:"180px" }}/>
         </div>
       )}
 
@@ -1581,7 +1604,27 @@ function Dashboard({ currentUser, onLogout }) {
       <div style={{ padding:"24px 32px" }}>
         {view==="grid" && (
           selectedConsultor&&selectedMonth!=="Todos"&&calendarData
-            ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
+            ? <div>
+                {/* Semanal / Mensal toggle for consultant detail */}
+                <div style={{ display:"flex",alignItems:"center",gap:"8px",marginBottom:"16px" }}>
+                  <button onClick={()=>setConsultorViewMode("semanal")} style={{ padding:"7px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"13px",background:consultorViewMode==="semanal"?"#3b82f6":T.btnInactive,color:consultorViewMode==="semanal"?"#fff":T.btnInactiveText }}>📅 Semanal</button>
+                  <button onClick={()=>setConsultorViewMode("mensal")} style={{ padding:"7px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"13px",background:consultorViewMode==="mensal"?"#3b82f6":T.btnInactive,color:consultorViewMode==="mensal"?"#fff":T.btnInactiveText }}>🗓 Mensal</button>
+                </div>
+                {consultorViewMode==="semanal"
+                  ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
+                  : <CalendarioMensal
+                      data={{[selectedConsultor]: scheduleData[selectedConsultor]||[]}}
+                      selectedMonth={selectedMonth}
+                      allMonths={allMonths}
+                      consultores={[selectedConsultor]}
+                      clientColors={clientColorMap}
+                      readonly={!canEdit}
+                      onEdit={canEdit ? (entry)=>{setEditEntry(entry);setShowModal(true);} : null}
+                      onDelete={canEdit ? handleDeleteEntry : null}
+                      onNewEntry={canEdit ? ({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); } : null}
+                    />
+                }
+              </div>
             : <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:"16px" }}>
                 {Object.entries(filteredData).filter(([,e])=>e.length>0).map(([name,entries])=>(
                   <ConsultorCard key={name} name={name} entries={entries} idx={consultores.indexOf(name)} onClick={()=>!isConsultor&&setSelectedConsultor(selectedConsultor===name?null:name)} selected={selectedConsultor===name}/>
@@ -1601,7 +1644,7 @@ function Dashboard({ currentUser, onLogout }) {
         )}
         {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
         {view==="stats" && <StatsView stats={stats}/>}
-        {view==="historico" && canManage && <HistoricoView />}
+
         {view==="cadastros" && canManage && (
           <CadastrosView
             consultores={consultores} clients={clientList} projects={projects}
