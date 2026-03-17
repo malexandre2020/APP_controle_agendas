@@ -816,21 +816,85 @@ function ConsultorCard({ name, entries, idx, onClick, selected }) {
 // CALENDAR VIEW (single consultant)
 // ─────────────────────────────────────────────────────────────────────────────
 function CalendarView({ consultant, month, byDay }) {
-  const days = Array.from({length:31},(_,i)=>i+1);
+  const [weekIdx, setWeekIdx] = React.useState(0);
   const wd = ["Seg","Ter","Qua","Qui","Sex","Sab","Dom"];
+  const WD_FULL = ["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"];
+
+  // Infer year from entries or use current year
+  const entryValues = Object.values(byDay||{});
+  const year = (entryValues[0]?.year) || new Date().getFullYear();
+
+  // Build month grid aligned to correct weekday
+  const monthIdx = MONTHS_ORDER.indexOf(month);
+  const firstDayRaw = monthIdx >= 0 ? new Date(year, monthIdx, 1).getDay() : 1;
+  const offset = (firstDayRaw + 6) % 7; // Mon=0 … Sun=6
+  const daysInMonth = monthIdx >= 0 ? new Date(year, monthIdx + 1, 0).getDate() : 31;
+
+  const slots = [];
+  for (let i = 0; i < offset; i++) slots.push(null);
+  for (let d = 1; d <= daysInMonth; d++) slots.push(d);
+  while (slots.length % 7 !== 0) slots.push(null);
+
+  const weeks = [];
+  for (let i = 0; i < slots.length; i += 7) weeks.push(slots.slice(i, i + 7));
+  const totalWeeks = weeks.length;
+  const wi = Math.min(weekIdx, totalWeeks - 1);
+  const currentWeek = weeks[wi] || [];
+
+  // Week label: first non-null to last non-null day
+  const firstDay = currentWeek.find(d => d !== null);
+  const lastDay = [...currentWeek].reverse().find(d => d !== null);
+  const weekLabel = firstDay && lastDay ? firstDay === lastDay ? `Dia ${firstDay}` : `${firstDay} – ${lastDay} de ${month}` : month;
+
   return (
     <div>
-      <h2 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:"#f8fafc",marginBottom:"20px" }}>📅 {consultant} — {month}</h2>
-      <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"6px" }}>
-        {wd.map(d=><div key={d} style={{ textAlign:"center",fontSize:"11px",fontWeight:700,color:"#64748b",padding:"8px 0" }}>{d}</div>)}
-        {days.map(d=>{
-          const entry = byDay[d];
-          if (!entry) return <div key={d} style={{ minHeight:"64px",borderRadius:"8px",background:"#1e293b33" }}/>;
-          const color = entry.type==="vacation"?"#22c55e":entry.type==="holiday"?"#ef4444":entry.type==="reserved"?"#94a3b8":entry.type==="blocked"?"#475569":getClientColor(entry.client);
+      {/* Header */}
+      <div style={{ display:"flex",alignItems:"center",gap:"16px",marginBottom:"20px",flexWrap:"wrap" }}>
+        <h2 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:"#f8fafc",margin:0 }}>📅 {consultant} — {month} {year}</h2>
+        <div style={{ display:"flex",alignItems:"center",gap:"6px",background:"#1e293b",borderRadius:"10px",padding:"4px 6px",border:"1px solid #334155" }}>
+          <button
+            onClick={()=>setWeekIdx(w=>Math.max(0,w-1))}
+            disabled={wi===0}
+            style={{ background:"none",border:"none",color:wi===0?"#334155":"#94a3b8",cursor:wi===0?"default":"pointer",fontWeight:700,fontSize:"16px",padding:"2px 8px",lineHeight:1 }}
+          >‹</button>
+          <span style={{ fontSize:"12px",fontWeight:600,color:"#94a3b8",minWidth:"120px",textAlign:"center" }}>{weekLabel}</span>
+          <button
+            onClick={()=>setWeekIdx(w=>Math.min(totalWeeks-1,w+1))}
+            disabled={wi===totalWeeks-1}
+            style={{ background:"none",border:"none",color:wi===totalWeeks-1?"#334155":"#94a3b8",cursor:wi===totalWeeks-1?"default":"pointer",fontWeight:700,fontSize:"16px",padding:"2px 8px",lineHeight:1 }}
+          >›</button>
+        </div>
+        <span style={{ fontSize:"12px",color:"#475569" }}>Semana {wi+1} de {totalWeeks}</span>
+      </div>
+
+      {/* Week grid */}
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"10px" }}>
+        {wd.map((d,i)=>(
+          <div key={d} style={{ textAlign:"center",fontSize:"11px",fontWeight:700,color:"#64748b",padding:"8px 0",borderBottom:"1px solid #1e293b" }}>
+            <div>{d}</div>
+            <div style={{ fontSize:"10px",fontWeight:400,color:"#334155",marginTop:"2px" }}>{WD_FULL[i]}</div>
+          </div>
+        ))}
+        {currentWeek.map((day,i)=>{
+          if (!day) return <div key={"e"+i} style={{ minHeight:"140px",borderRadius:"10px",background:"#0f172a44" }}/>;
+          const entries = Array.isArray(byDay[day]) ? byDay[day] : (byDay[day] ? [byDay[day]] : []);
+          const isToday = (() => { const t=new Date(); return t.getDate()===day && t.getMonth()===monthIdx && t.getFullYear()===year; })();
           return (
-            <div key={d} style={{ minHeight:"64px",borderRadius:"8px",background:color+"22",border:"1px solid "+color+"44",padding:"6px" }}>
-              <div style={{ fontSize:"11px",fontWeight:700,color:"#94a3b8",marginBottom:"2px" }}>{d}</div>
-              <div style={{ fontSize:"9px",fontWeight:600,color:color,lineHeight:1.3,wordBreak:"break-word" }}>{entry.client.split("\n")[0].slice(0,12)}</div>
+            <div key={day} style={{ minHeight:"140px",borderRadius:"10px",background:isToday?"#1e3a5f":"#1e293b",border:"1px solid "+(isToday?"#3b82f6":"#334155"),padding:"10px",display:"flex",flexDirection:"column",gap:"6px" }}>
+              <div style={{ fontSize:"18px",fontWeight:700,color:isToday?"#60a5fa":"#f1f5f9",marginBottom:"4px" }}>{day}</div>
+              {entries.length===0 && <div style={{ fontSize:"11px",color:"#334155",fontStyle:"italic" }}>—</div>}
+              {entries.map((entry,ei)=>{
+                const color = entry.type==="vacation"?"#22c55e":entry.type==="holiday"?"#ef4444":entry.type==="reserved"?"#94a3b8":entry.type==="blocked"?"#475569":getClientColor(entry.client);
+                return (
+                  <div key={ei} style={{ background:color+"22",border:"1px solid "+color+"55",borderRadius:"6px",padding:"6px 8px" }}>
+                    <div style={{ fontSize:"11px",fontWeight:700,color:color,lineHeight:1.3 }}>{entry.client}</div>
+                    {(entry.horaInicio||entry.horaFim) && (
+                      <div style={{ fontSize:"10px",color:"#64748b",marginTop:"2px" }}>{entry.horaInicio||""}{entry.horaFim?" – "+entry.horaFim:""}</div>
+                    )}
+                    {entry.atividades && <div style={{ fontSize:"10px",color:"#94a3b8",marginTop:"2px",fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{entry.atividades}</div>}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
@@ -1482,7 +1546,10 @@ function Dashboard({ currentUser, onLogout }) {
     if (!selectedConsultor||selectedMonth==="Todos") return null;
     const entries=filteredData[selectedConsultor]||[];
     const byDay={};
-    entries.forEach(e=>{byDay[e.day]=e;});
+    entries.forEach(e=>{
+      if (!byDay[e.day]) byDay[e.day]=[];
+      byDay[e.day].push(e);
+    });
     return byDay;
   },[selectedConsultor,selectedMonth,filteredData]);
 
