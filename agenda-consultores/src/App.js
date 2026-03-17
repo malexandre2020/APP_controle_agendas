@@ -891,7 +891,6 @@ function CalendarView({ consultant, month, byDay }) {
                     {(entry.horaInicio||entry.horaFim) && (
                       <div style={{ fontSize:"10px",color:"#64748b",marginTop:"2px" }}>{entry.horaInicio||""}{entry.horaFim?" – "+entry.horaFim:""}</div>
                     )}
-                    {entry.atividades && <div style={{ fontSize:"10px",color:"#94a3b8",marginTop:"2px",fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{entry.atividades}</div>}
                   </div>
                 );
               })}
