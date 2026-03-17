@@ -1855,8 +1855,7 @@ function Dashboard({ currentUser, onLogout }) {
       ["Cliente",   client || '—'],
       ["Data",      `${diaLabel} de ${mesAno}`],
       ["Horário",   horarioTexto],
-      ...(atividades ? [["Atividades", atividades.replace(/
-/g,'<br>')]] : []),
+      ...(atividades ? [["Atividades", atividades.replace(/\n/g,'<br>')]] : []),
       ["Agendado por", nomeUsuario],
     ];
     const tbody = rows.map(([k,v],i) =>
