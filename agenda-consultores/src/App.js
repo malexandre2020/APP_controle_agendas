@@ -1369,7 +1369,6 @@ function LoginScreen({ onLogin }) {
 // ─────────────────────────────────────────────────────────────────────────────
 function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   const [usuarios, setUsuarios] = useState([]);
-  const [emailConfig, setEmailConfig] = useState(EMAIL_CONFIG_DEFAULT);
   const [loading, setLoading] = useState(true);
   const [novoEmail, setNovoEmail] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
@@ -1645,6 +1644,7 @@ function Dashboard({ currentUser, onLogout }) {
   const [showUserMgmt, setShowUserMgmt] = useState(false);
   const [theme, setTheme] = useState("dark");
   const [usuarios, setUsuarios] = useState([]);
+  const [emailConfig, setEmailConfig] = useState(EMAIL_CONFIG_DEFAULT);
   const [consultorViewMode, setConsultorViewMode] = useState("mensal"); // "semanal" | "mensal"
 
   const isDark = theme === "dark";
