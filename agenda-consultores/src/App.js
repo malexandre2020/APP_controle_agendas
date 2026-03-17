@@ -16,6 +16,14 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
 
+// ─── EMAIL CONFIG DEFAULT (substituído pelas configurações salvas no Firestore) ──
+const EMAIL_CONFIG_DEFAULT = {
+  enabled:    false,
+  publicKey:  "",
+  serviceId:  "",
+  templateId: "",
+};
+
 // App secundário para criar usuários sem deslogar o admin
 function getSecondaryAuth() {
   try { initializeApp(firebaseConfig, "admin-ops"); } catch(e) {}
@@ -125,6 +133,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
   const [dayTo, setDayTo] = useState(editEntry?.day || 1);
   const [selectedDays, setSelectedDays] = useState(editEntry?.day ? [editEntry.day] : []);
   const [error, setError] = useState("");
+  const [notifyEmail, setNotifyEmail] = useState(true);
 
   const toggleDay = (d) => setSelectedDays(prev => prev.includes(d) ? prev.filter(x=>x!==d) : [...prev,d].sort((a,b)=>a-b));
 
@@ -136,7 +145,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
     else if (dayMode === "range") { for (let d=Number(dayFrom);d<=Number(dayTo);d++) days.push(d); }
     else { days = selectedDays; }
     if (days.length === 0) { setError("Selecione ao menos um dia."); return; }
-    onSave({ id: editEntry?.id, consultor, month, year: Number(year), days, client: client.trim(), type, horaInicio, horaFim, intervalo, atividades: atividades.trim() });
+    onSave({ id: editEntry?.id, consultor, month, year: Number(year), days, client: client.trim(), type, horaInicio, horaFim, intervalo, atividades: atividades.trim(), notifyEmail });
   };
 
   const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #334155", background:"#0f172a", color:"#e2e8f0", fontSize:"13px", width:"100%", boxSizing:"border-box" };
@@ -266,6 +275,23 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
             </div>
           </div>
         )}
+        {/* Notificação por e-mail */}
+        <div style={{ display:"flex",alignItems:"center",gap:"10px",padding:"10px 14px",background:"#0f172a",borderRadius:"8px",border:"1px solid #334155",marginBottom:"16px" }}>
+          <input
+            type="checkbox"
+            id="notifyEmailChk"
+            checked={notifyEmail}
+            onChange={e=>setNotifyEmail(e.target.checked)}
+            style={{ width:"16px",height:"16px",cursor:"pointer",accentColor:"#3b82f6" }}
+          />
+          <label htmlFor="notifyEmailChk" style={{ fontSize:"13px",color:"#94a3b8",cursor:"pointer",userSelect:"none" }}>
+            📧 Notificar por e-mail
+            {isEdit
+              ? <span style={{ fontSize:"11px",color:"#64748b",marginLeft:"6px" }}>(consultor + quem incluiu, se diferente)</span>
+              : <span style={{ fontSize:"11px",color:"#64748b",marginLeft:"6px" }}>(consultor + você)</span>
+            }
+          </label>
+        </div>
         <div style={{ display:"flex",gap:"10px",justifyContent:"flex-end" }}>
           <button onClick={onClose} style={{ padding:"10px 20px",borderRadius:"8px",border:"1px solid #334155",background:"transparent",color:"#94a3b8",cursor:"pointer",fontWeight:600,fontSize:"14px" }}>Cancelar</button>
           <button onClick={handleSave} style={{ padding:"10px 24px",borderRadius:"8px",border:"none",background:"#3b82f6",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"14px" }}>{isEdit?"💾 Salvar":"✅ Adicionar"}</button>
@@ -276,9 +302,159 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CONFIGURAÇÃO DE E-MAIL (tab dentro de Cadastros)
+// ─────────────────────────────────────────────────────────────────────────────
+function EmailConfigTab({ emailConfig, onSave }) {
+  const [publicKey,  setPublicKey]  = useState(emailConfig.publicKey  || "");
+  const [serviceId,  setServiceId]  = useState(emailConfig.serviceId  || "");
+  const [templateId, setTemplateId] = useState(emailConfig.templateId || "");
+  const [enabled,    setEnabled]    = useState(emailConfig.enabled    || false);
+  const [testStatus, setTestStatus] = useState(null); // null | "sending" | "ok" | "err"
+
+  const inp = { padding:"8px 12px",borderRadius:"8px",border:"1px solid #334155",background:"#0f172a",color:"#e2e8f0",fontSize:"13px",width:"100%",boxSizing:"border-box",fontFamily:"monospace" };
+  const lbl = { fontSize:"12px",color:"#64748b",fontWeight:600,display:"block",marginBottom:"6px" };
+  const card = { background:"#1e293b",borderRadius:"12px",padding:"20px",border:"1px solid #334155" };
+
+  const isConfigured = publicKey.trim() && serviceId.trim() && templateId.trim();
+
+  const handleTestSend = async () => {
+    if (!isConfigured) return;
+    setTestStatus("sending");
+    try {
+      const loadEJ = () => new Promise((resolve, reject) => {
+        if (window.emailjs) { resolve(window.emailjs); return; }
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+        s.onload = () => { window.emailjs.init({ publicKey: publicKey.trim() }); resolve(window.emailjs); };
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      const ej = await loadEJ();
+      // re-init with current key
+      ej.init({ publicKey: publicKey.trim() });
+      // dummy test
+      await ej.send(serviceId.trim(), templateId.trim(), {
+        to_name: "Administrador", to_email: emailConfig._testEmail || "teste@email.com",
+        assunto: "✅ Teste de configuração — Agenda de Consultores",
+        corpo: "<p>Este é um e-mail de teste enviado pelo sistema Agenda de Consultores.</p><p>Se você recebeu esta mensagem, a configuração está correta!</p>",
+        acao:"teste", consultor:"—", cliente:"—", mes_ano:"—", dias:"—", horario:"—", atividades:"—", realizado_por:"Admin",
+      });
+      setTestStatus("ok");
+      setTimeout(() => setTestStatus(null), 4000);
+    } catch(e) {
+      setTestStatus("err");
+      console.error(e);
+      setTimeout(() => setTestStatus(null), 5000);
+    }
+  };
+
+  return (
+    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"24px" }}>
+      {/* LEFT – form */}
+      <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
+        <div style={card}>
+          <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>⚙️ Credenciais EmailJS</h3>
+          <p style={{ fontSize:"12px",color:"#64748b",marginTop:0,marginBottom:"16px",lineHeight:"1.6" }}>
+            Configure sua conta em{" "}
+            <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" style={{ color:"#3b82f6" }}>emailjs.com</a>{" "}
+            (plano gratuito inclui 200 e-mails/mês).
+          </p>
+
+          {/* Enable toggle */}
+          <div style={{ display:"flex",alignItems:"center",gap:"12px",padding:"10px 14px",background:"#0f172a",borderRadius:"8px",border:"1px solid #334155",marginBottom:"16px",cursor:"pointer" }} onClick={()=>setEnabled(e=>!e)}>
+            <div style={{ width:"40px",height:"22px",borderRadius:"11px",background:enabled?"#22c55e":"#334155",position:"relative",transition:"background .2s",flexShrink:0 }}>
+              <div style={{ position:"absolute",top:"3px",left:enabled?"21px":"3px",width:"16px",height:"16px",borderRadius:"50%",background:"#fff",transition:"left .2s" }}/>
+            </div>
+            <span style={{ fontSize:"13px",fontWeight:600,color:enabled?"#22c55e":"#64748b" }}>
+              {enabled ? "✅ Envio de e-mails ativado" : "⭕ Envio de e-mails desativado"}
+            </span>
+          </div>
+
+          <div style={{ display:"flex",flexDirection:"column",gap:"14px" }}>
+            <div>
+              <label style={lbl}>🔑 Public Key <span style={{ color:"#475569",fontWeight:400 }}>(Account → API Keys)</span></label>
+              <input value={publicKey} onChange={e=>setPublicKey(e.target.value)} placeholder="ex: aBcDeFgHiJkLmNoP" style={inp}/>
+            </div>
+            <div>
+              <label style={lbl}>📡 Service ID <span style={{ color:"#475569",fontWeight:400 }}>(Email Services)</span></label>
+              <input value={serviceId} onChange={e=>setServiceId(e.target.value)} placeholder="ex: service_xxxxxxx" style={inp}/>
+            </div>
+            <div>
+              <label style={lbl}>📄 Template ID <span style={{ color:"#475569",fontWeight:400 }}>(Email Templates)</span></label>
+              <input value={templateId} onChange={e=>setTemplateId(e.target.value)} placeholder="ex: template_xxxxxxx" style={inp}/>
+            </div>
+          </div>
+
+          <div style={{ display:"flex",gap:"10px",marginTop:"20px",alignItems:"center",flexWrap:"wrap" }}>
+            <button
+              onClick={()=>onSave({ enabled, publicKey:publicKey.trim(), serviceId:serviceId.trim(), templateId:templateId.trim() })}
+              style={{ padding:"10px 24px",borderRadius:"8px",border:"none",background:"#3b82f6",color:"#fff",fontWeight:700,fontSize:"13px",cursor:"pointer" }}>
+              💾 Salvar configuração
+            </button>
+            <button
+              onClick={handleTestSend}
+              disabled={!isConfigured || testStatus==="sending"}
+              style={{ padding:"10px 20px",borderRadius:"8px",border:"1px solid #334155",background:"transparent",color:isConfigured?"#94a3b8":"#334155",fontWeight:600,fontSize:"13px",cursor:isConfigured?"pointer":"default" }}>
+              {testStatus==="sending"?"⏳ Enviando...":"📧 Enviar e-mail de teste"}
+            </button>
+            {testStatus==="ok"  && <span style={{ fontSize:"12px",color:"#22c55e",fontWeight:600 }}>✅ E-mail de teste enviado!</span>}
+            {testStatus==="err" && <span style={{ fontSize:"12px",color:"#ef4444",fontWeight:600 }}>❌ Falha — verifique as credenciais</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT – instructions */}
+      <div style={{ display:"flex",flexDirection:"column",gap:"16px" }}>
+        <div style={card}>
+          <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"12px" }}>📋 Como configurar (passo a passo)</h3>
+          <ol style={{ margin:0,paddingLeft:"18px",display:"flex",flexDirection:"column",gap:"10px" }}>
+            {[
+              <>Acesse <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" style={{color:"#3b82f6"}}>emailjs.com</a> e crie uma conta grátis.</>,
+              <>Vá em <strong style={{color:"#f1f5f9"}}>Email Services</strong> → conecte seu Gmail ou Outlook → copie o <code style={{color:"#f59e0b",background:"#1e293b",padding:"1px 5px",borderRadius:"4px"}}>Service ID</code>.</>,
+              <>Vá em <strong style={{color:"#f1f5f9"}}>Email Templates</strong> → crie um novo template com as variáveis ao lado → copie o <code style={{color:"#f59e0b",background:"#1e293b",padding:"1px 5px",borderRadius:"4px"}}>Template ID</code>.</>,
+              <>Vá em <strong style={{color:"#f1f5f9"}}>Account → API Keys</strong> → copie a <code style={{color:"#f59e0b",background:"#1e293b",padding:"1px 5px",borderRadius:"4px"}}>Public Key</code>.</>,
+              <>Preencha os campos ao lado, ative o envio e clique em <strong style={{color:"#f1f5f9"}}>Salvar</strong>.</>,
+            ].map((step,i)=>(
+              <li key={i} style={{ fontSize:"12px",color:"#94a3b8",lineHeight:"1.6" }}>{step}</li>
+            ))}
+          </ol>
+        </div>
+
+        <div style={card}>
+          <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"12px" }}>📄 Template sugerido no EmailJS</h3>
+          <p style={{ fontSize:"11px",color:"#64748b",marginTop:0,marginBottom:"10px" }}>Configure seu template com estes campos:</p>
+          <div style={{ display:"flex",flexDirection:"column",gap:"8px" }}>
+            {[
+              ["To Email",  "{{to_email}}",  "E-mail do destinatário (obrigatório)"],
+              ["To Name",   "{{to_name}}",   "Nome do destinatário"],
+              ["Subject",   "{{assunto}}",   "Assunto gerado automaticamente pelo sistema"],
+              ["Content",   "{{corpo}}",     "Corpo HTML gerado automaticamente"],
+            ].map(([field,variable,desc])=>(
+              <div key={field} style={{ padding:"8px 10px",background:"#0f172a",borderRadius:"6px",border:"1px solid #1e293b" }}>
+                <div style={{ display:"flex",justifyContent:"space-between",marginBottom:"2px" }}>
+                  <span style={{ fontSize:"11px",fontWeight:700,color:"#f1f5f9" }}>{field}</span>
+                  <code style={{ fontSize:"11px",color:"#f59e0b",background:"#1e293b",padding:"1px 6px",borderRadius:"4px" }}>{variable}</code>
+                </div>
+                <span style={{ fontSize:"10px",color:"#475569" }}>{desc}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop:"12px",padding:"8px 10px",background:"#0f172a",borderRadius:"6px",border:"1px solid #1e293b" }}>
+            <p style={{ fontSize:"11px",color:"#64748b",margin:0,lineHeight:"1.6" }}>
+              <strong style={{color:"#f59e0b"}}>Assunto gerado:</strong> "Agenda incluída: Dia 17 — VEDACIT (Março 2026)"<br/>
+              <strong style={{color:"#f59e0b"}}>Corpo:</strong> tabela HTML com dia, horário, cliente e atividades.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MÓDULO DE CADASTROS (Consultores, Clientes, Projetos)
 // ─────────────────────────────────────────────────────────────────────────────
-function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemoveConsultor, onAddClient, onRemoveClient, onAddProject, onRemoveProject }) {
+function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemoveConsultor, onAddClient, onRemoveClient, onAddProject, onRemoveProject, emailConfig, onSaveEmailConfig }) {
   const [tab, setTab] = useState("consultores");
   const [newConsultor, setNewConsultor] = useState("");
   const [newClient, setNewClient] = useState("");
@@ -288,7 +464,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
   const inp = { padding:"8px 12px",borderRadius:"8px",border:"1px solid #334155",background:"#0f172a",color:"#e2e8f0",fontSize:"13px" };
   const card = { background:"#1e293b",borderRadius:"12px",padding:"20px",border:"1px solid #334155" };
 
-  const tabs = [["consultores","👥 Consultores"],["clientes","🏢 Clientes"],["projetos","📋 Projetos"]];
+  const tabs = [["consultores","👥 Consultores"],["clientes","🏢 Clientes"],["projetos","📋 Projetos"],["email","📧 E-mail"]];
 
   return (
     <div>
@@ -411,6 +587,12 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
             </div>
           </div>
         </div>
+      )}
+    </div>
+
+      {/* ─ E-MAIL ─ */}
+      {tab==="email" && (
+        <EmailConfigTab emailConfig={emailConfig||{}} onSave={onSaveEmailConfig}/>
       )}
     </div>
   );
@@ -1188,6 +1370,7 @@ function LoginScreen({ onLogin }) {
 // ─────────────────────────────────────────────────────────────────────────────
 function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   const [usuarios, setUsuarios] = useState([]);
+  const [emailConfig, setEmailConfig] = useState(EMAIL_CONFIG_DEFAULT);
   const [loading, setLoading] = useState(true);
   const [novoEmail, setNovoEmail] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
@@ -1462,6 +1645,7 @@ function Dashboard({ currentUser, onLogout }) {
   const [toast, setToast] = useState(null);
   const [showUserMgmt, setShowUserMgmt] = useState(false);
   const [theme, setTheme] = useState("dark");
+  const [usuarios, setUsuarios] = useState([]);
   const [consultorViewMode, setConsultorViewMode] = useState("mensal"); // "semanal" | "mensal"
 
   const isDark = theme === "dark";
@@ -1496,6 +1680,14 @@ function Dashboard({ currentUser, onLogout }) {
       setScheduleData(ensureIds(sd));
       setClientList(cl);
       setProjects(pj);
+      // Carregar usuários para notificações de e-mail
+      try {
+        const uSnap = await getDocs(collection(db, "usuarios"));
+        setUsuarios(uSnap.docs.map(d=>({id:d.id,...d.data()})));
+      } catch(e) {}
+      // Carregar configuração de e-mail
+      const ec = await loadFromFirestore("emailConfig", EMAIL_CONFIG_DEFAULT);
+      setEmailConfig(ec);
       setDbLoaded(true);
     }
     loadData();
@@ -1526,9 +1718,17 @@ function Dashboard({ currentUser, onLogout }) {
   const showToast = (msg,color) => { setToast({msg,color:color||"#22c55e"}); setTimeout(()=>setToast(null),3000); };
 
   const handleSaveEntry = (entry) => {
-    const {id, consultor, month, year, days, client, type, horaInicio, horaFim, intervalo, atividades} = entry;
+    const {id, consultor, month, year, days, client, type, horaInicio, horaFim, intervalo, atividades, notifyEmail} = entry;
     const agora = new Date().toISOString();
     const nomeUsuario = currentUser.nome || currentUser.email;
+
+    // Capturar criadoPor antes de atualizar o estado (para notificação de alteração)
+    let criadoPorOriginal = nomeUsuario;
+    if (id) {
+      const existing = (scheduleData[consultor]||[]).find(e => e.id === id);
+      criadoPorOriginal = existing?.criadoPor || nomeUsuario;
+    }
+
     setScheduleData(prev=>{
       const updated={...prev};
       let list=[...(updated[consultor]||[])];
@@ -1566,6 +1766,17 @@ function Dashboard({ currentUser, onLogout }) {
     });
     showToast("✅ "+(id?"Entrada atualizada":""+days.length+" dia(s) salvo(s)")+" para "+consultor.split(" ")[0]);
     setShowModal(false); setEditEntry(null);
+
+    // Enviar notificação por e-mail se solicitado
+    if (notifyEmail) {
+      sendAgendaEmail({
+        action:      id ? 'alterada' : 'nova',
+        consultor, client, month, year, days,
+        horaInicio, horaFim, intervalo, atividades,
+        criadoPor:   criadoPorOriginal,
+        nomeUsuario,
+      });
+    }
   };
 
   const handleDeleteEntry = (consultor, entryId) => {
@@ -1574,6 +1785,12 @@ function Dashboard({ currentUser, onLogout }) {
   };
 
   // Cadastros handlers
+  const handleSaveEmailConfig = (cfg) => {
+    setEmailConfig(cfg);
+    saveToFirestore("emailConfig", cfg);
+    showToast("✅ Configuração de e-mail salva!", "#22c55e");
+  };
+
   const handleAddConsultor = (name) => {
     if (scheduleData[name]) { showToast("Consultor já existe","#ef4444"); return; }
     setScheduleData(prev=>({...prev,[name]:[]}));
@@ -1591,6 +1808,106 @@ function Dashboard({ currentUser, onLogout }) {
   const handleRemoveClient = (name) => { setClientList(prev=>prev.filter(c=>c.name!==name)); showToast("🗑 Cliente removido","#ef4444"); };
   const handleAddProject = (project) => { setProjects(prev=>[...prev,project]); showToast("📋 Projeto "+project.name+" cadastrado!"); };
   const handleRemoveProject = (idx) => { setProjects(prev=>prev.filter((_,i)=>i!==idx)); showToast("🗑 Projeto removido","#ef4444"); };
+
+  // ── Enviar notificação por e-mail (EmailJS) ──
+  const sendAgendaEmail = async ({ action, consultor, client, month, year, days, horaInicio, horaFim, intervalo, atividades, criadoPor, nomeUsuario }) => {
+    const cfg = emailConfig;
+    if (!cfg.enabled) {
+      showToast("⚠️ Envio de e-mail está desativado. Configure em Cadastros → E-mail","#f59e0b");
+      return;
+    }
+    if (!cfg.publicKey || !cfg.serviceId || !cfg.templateId) {
+      showToast("⚠️ Configure as credenciais do e-mail em Cadastros → E-mail","#f59e0b");
+      return;
+    }
+
+    // Carregar EmailJS do CDN se ainda não estiver
+    const loadEJ = () => new Promise((resolve, reject) => {
+      if (window.emailjs) { window.emailjs.init({ publicKey: cfg.publicKey }); resolve(window.emailjs); return; }
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+      s.onload = () => { window.emailjs.init({ publicKey: cfg.publicKey }); resolve(window.emailjs); };
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+
+    // Encontrar usuário pelo nome do consultor, nome ou e-mail
+    const findUser = (nameOrEmail) => {
+      if (!nameOrEmail) return null;
+      return usuarios.find(u =>
+        u.consultorName === nameOrEmail || u.nome === nameOrEmail || u.email === nameOrEmail
+      ) || null;
+    };
+
+    const mesAno = `${month} ${year}`;
+    const diasStr = (days||[]).join(', ');
+    const acao = action === 'nova' ? 'incluída' : 'alterada';
+    const horarioTexto = [
+      horaInicio, horaFim ? `→ ${horaFim}` : '', intervalo ? `(intervalo: ${intervalo}min)` : ''
+    ].filter(Boolean).join(' ') || '—';
+
+    // ── Compor assunto: "Agenda incluída: Dia 17 — VEDACIT (Março 2026)"
+    const diaLabel = days && days.length === 1 ? `Dia ${days[0]}` : `Dias ${diasStr}`;
+    const assunto = `Agenda ${acao}: ${diaLabel} — ${client || '—'} (${mesAno})`;
+
+    // ── Compor corpo HTML
+    const rows = [
+      ["Consultor", consultor],
+      ["Cliente",   client || '—'],
+      ["Data",      `${diaLabel} de ${mesAno}`],
+      ["Horário",   horarioTexto],
+      ...(atividades ? [["Atividades", atividades.replace(/
+/g,'<br>')]] : []),
+      ["Agendado por", nomeUsuario],
+    ];
+    const tbody = rows.map(([k,v],i) =>
+      `<tr style="background:${i%2===0?'#f8fafc':'#ffffff'}"><td style="padding:10px 14px;font-weight:600;color:#475569;width:130px;border-right:1px solid #e2e8f0">${k}</td><td style="padding:10px 14px;color:#1e293b">${v}</td></tr>`
+    ).join('');
+    const corpo = `
+<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
+  <div style="background:linear-gradient(135deg,#1e3a5f,#0f172a);padding:20px 24px">
+    <h2 style="color:#f8fafc;margin:0;font-size:18px">📅 Agenda de Consultores</h2>
+    <p style="color:#94a3b8;margin:4px 0 0;font-size:13px">Notificação automática — agenda <strong style="color:#60a5fa">${acao}</strong></p>
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:14px">${tbody}</table>
+  <div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0">
+    <p style="margin:0;font-size:11px;color:#94a3b8">Esta mensagem foi enviada automaticamente pelo sistema Agenda de Consultores.</p>
+  </div>
+</div>`.trim();
+
+    // ── Montar destinatários
+    const recipients = [];
+    if (action === 'nova') {
+      const cons = findUser(consultor);
+      if (cons?.email) recipients.push({ email: cons.email, name: cons.nome || cons.consultorName || cons.email });
+      if (currentUser.email && !recipients.find(r => r.email === currentUser.email))
+        recipients.push({ email: currentUser.email, name: currentUser.nome || currentUser.email });
+    } else {
+      const cons = findUser(consultor);
+      if (cons?.email) recipients.push({ email: cons.email, name: cons.nome || cons.consultorName || cons.email });
+      if (criadoPor && criadoPor !== nomeUsuario) {
+        const orig = findUser(criadoPor);
+        if (orig?.email && !recipients.find(r => r.email === orig.email))
+          recipients.push({ email: orig.email, name: orig.nome || orig.email });
+      }
+    }
+
+    if (recipients.length === 0) {
+      showToast("⚠️ Nenhum e-mail encontrado para notificar. Verifique o cadastro de usuários.","#f59e0b");
+      return;
+    }
+
+    try {
+      const ej = await loadEJ();
+      for (const r of recipients) {
+        await ej.send(cfg.serviceId, cfg.templateId, { assunto, corpo, to_name: r.name, to_email: r.email, acao, consultor, cliente: client||'—', mes_ano: mesAno, dias: diasStr, horario: horarioTexto, atividades: atividades||'—', realizado_por: nomeUsuario });
+      }
+      showToast(`📧 E-mail enviado para ${recipients.length} destinatário(s)`, "#3b82f6");
+    } catch(e) {
+      console.error("EmailJS error:", e);
+      showToast("❌ Falha ao enviar e-mail: " + (e?.text || e?.message || "erro desconhecido"), "#ef4444");
+    }
+  };
 
   // ── Exportar para Excel ──
   const handleExportExcel = () => {
@@ -1893,6 +2210,7 @@ function Dashboard({ currentUser, onLogout }) {
             onAddConsultor={handleAddConsultor} onRemoveConsultor={handleRemoveConsultor}
             onAddClient={handleAddClient} onRemoveClient={handleRemoveClient}
             onAddProject={handleAddProject} onRemoveProject={handleRemoveProject}
+            emailConfig={emailConfig} onSaveEmailConfig={handleSaveEmailConfig}
           />
         )}
       </div>
