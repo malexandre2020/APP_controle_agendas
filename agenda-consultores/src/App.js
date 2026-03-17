@@ -1597,34 +1597,38 @@ function Dashboard({ currentUser, onLogout }) {
             {allMonths.map(m=><option key={m} value={m}>{m}</option>)}
           </select>
           <input placeholder="🔍 Buscar cliente..." value={searchClient} onChange={e=>setSearchClient(e.target.value)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid "+T.border2,background:T.inputBg,color:T.inputColor,fontSize:"13px",minWidth:"180px" }}/>
+          {/* Semanal / Mensal toggle — shown when a consultant is selected */}
+          {selectedConsultor && (
+            <div style={{ display:"flex",gap:"4px",marginLeft:"auto",background:T.surface2,borderRadius:"10px",padding:"3px",border:"1px solid "+T.border2 }}>
+              <button onClick={()=>setConsultorViewMode("semanal")} style={{ padding:"6px 14px",borderRadius:"7px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"12px",background:consultorViewMode==="semanal"?"#3b82f6":"transparent",color:consultorViewMode==="semanal"?"#fff":T.btnInactiveText,transition:"all .15s" }}>📅 Semanal</button>
+              <button onClick={()=>setConsultorViewMode("mensal")} style={{ padding:"6px 14px",borderRadius:"7px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"12px",background:consultorViewMode==="mensal"?"#3b82f6":"transparent",color:consultorViewMode==="mensal"?"#fff":T.btnInactiveText,transition:"all .15s" }}>🗓 Mensal</button>
+            </div>
+          )}
         </div>
       )}
 
       {/* CONTENT */}
       <div style={{ padding:"24px 32px" }}>
         {view==="grid" && (
-          selectedConsultor&&selectedMonth!=="Todos"&&calendarData
-            ? <div>
-                {/* Semanal / Mensal toggle for consultant detail */}
-                <div style={{ display:"flex",alignItems:"center",gap:"8px",marginBottom:"16px" }}>
-                  <button onClick={()=>setConsultorViewMode("semanal")} style={{ padding:"7px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"13px",background:consultorViewMode==="semanal"?"#3b82f6":T.btnInactive,color:consultorViewMode==="semanal"?"#fff":T.btnInactiveText }}>📅 Semanal</button>
-                  <button onClick={()=>setConsultorViewMode("mensal")} style={{ padding:"7px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"13px",background:consultorViewMode==="mensal"?"#3b82f6":T.btnInactive,color:consultorViewMode==="mensal"?"#fff":T.btnInactiveText }}>🗓 Mensal</button>
-                </div>
-                {consultorViewMode==="semanal"
-                  ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
-                  : <CalendarioMensal
-                      data={{[selectedConsultor]: scheduleData[selectedConsultor]||[]}}
-                      selectedMonth={selectedMonth}
-                      allMonths={allMonths}
-                      consultores={[selectedConsultor]}
-                      clientColors={clientColorMap}
-                      readonly={!canEdit}
-                      onEdit={canEdit ? (entry)=>{setEditEntry(entry);setShowModal(true);} : null}
-                      onDelete={canEdit ? handleDeleteEntry : null}
-                      onNewEntry={canEdit ? ({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); } : null}
-                    />
-                }
-              </div>
+          selectedConsultor
+            ? consultorViewMode==="semanal"
+              ? selectedMonth!=="Todos"&&calendarData
+                ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
+                : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}>
+                    <div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>
+                    Selecione um mês específico para ver a visualização semanal
+                  </div>
+              : <CalendarioMensal
+                  data={{[selectedConsultor]: scheduleData[selectedConsultor]||[]}}
+                  selectedMonth={selectedMonth}
+                  allMonths={allMonths}
+                  consultores={[selectedConsultor]}
+                  clientColors={clientColorMap}
+                  readonly={!canEdit}
+                  onEdit={canEdit ? (entry)=>{setEditEntry(entry);setShowModal(true);} : null}
+                  onDelete={canEdit ? handleDeleteEntry : null}
+                  onNewEntry={canEdit ? ({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); } : null}
+                />
             : <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:"16px" }}>
                 {Object.entries(filteredData).filter(([,e])=>e.length>0).map(([name,entries])=>(
                   <ConsultorCard key={name} name={name} entries={entries} idx={consultores.indexOf(name)} onClick={()=>!isConsultor&&setSelectedConsultor(selectedConsultor===name?null:name)} selected={selectedConsultor===name}/>
@@ -1632,15 +1636,22 @@ function Dashboard({ currentUser, onLogout }) {
               </div>
         )}
         {view==="calendario" && (
-          <CalendarioMensal
-            data={filteredData} selectedMonth={selectedMonth} allMonths={allMonths}
-            consultores={isConsultor ? [currentUser.consultorName] : consultores}
-            clientColors={clientColorMap}
-            readonly={!canEdit}
-            onEdit={canEdit ? (entry)=>{setEditEntry(entry);setShowModal(true);} : null}
-            onDelete={canEdit ? handleDeleteEntry : null}
-            onNewEntry={canEdit ? ({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); } : null}
-          />
+          selectedConsultor && consultorViewMode==="semanal"
+            ? selectedMonth!=="Todos"&&calendarData
+              ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
+              : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}>
+                  <div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>
+                  Selecione um mês específico para ver a visualização semanal
+                </div>
+            : <CalendarioMensal
+                data={filteredData} selectedMonth={selectedMonth} allMonths={allMonths}
+                consultores={isConsultor ? [currentUser.consultorName] : consultores}
+                clientColors={clientColorMap}
+                readonly={!canEdit}
+                onEdit={canEdit ? (entry)=>{setEditEntry(entry);setShowModal(true);} : null}
+                onDelete={canEdit ? handleDeleteEntry : null}
+                onNewEntry={canEdit ? ({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); } : null}
+              />
         )}
         {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
         {view==="stats" && <StatsView stats={stats}/>}
