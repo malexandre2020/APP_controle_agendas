@@ -817,11 +817,13 @@ function ConsultorCard({ name, entries, idx, onClick, selected }) {
 // ─────────────────────────────────────────────────────────────────────────────
 function CalendarView({ consultant, month, byDay }) {
   const [weekIdx, setWeekIdx] = React.useState(0);
+  const [popup, setPopup] = React.useState(null); // { day, entries, x, y }
   const wd = ["Seg","Ter","Qua","Qui","Sex","Sab","Dom"];
   const WD_FULL = ["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"];
+  const TYPE_LABEL = {client:"👤 Cliente",vacation:"🏖 Férias",holiday:"🎉 Feriado",reserved:"🔒 Reservado",blocked:"⛔ Bloqueado"};
 
   // Infer year from entries or use current year
-  const entryValues = Object.values(byDay||{});
+  const entryValues = Object.values(byDay||{}).flat();
   const year = (entryValues[0]?.year) || new Date().getFullYear();
 
   // Build month grid aligned to correct weekday
@@ -841,28 +843,23 @@ function CalendarView({ consultant, month, byDay }) {
   const wi = Math.min(weekIdx, totalWeeks - 1);
   const currentWeek = weeks[wi] || [];
 
-  // Week label: first non-null to last non-null day
   const firstDay = currentWeek.find(d => d !== null);
   const lastDay = [...currentWeek].reverse().find(d => d !== null);
   const weekLabel = firstDay && lastDay ? firstDay === lastDay ? `Dia ${firstDay}` : `${firstDay} – ${lastDay} de ${month}` : month;
 
+  const getColor = e => e.type==="vacation"?"#22c55e":e.type==="holiday"?"#ef4444":e.type==="reserved"?"#94a3b8":e.type==="blocked"?"#475569":getClientColor(e.client);
+
   return (
-    <div>
+    <div onClick={()=>setPopup(null)}>
       {/* Header */}
       <div style={{ display:"flex",alignItems:"center",gap:"16px",marginBottom:"20px",flexWrap:"wrap" }}>
         <h2 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:"#f8fafc",margin:0 }}>📅 {consultant} — {month} {year}</h2>
         <div style={{ display:"flex",alignItems:"center",gap:"6px",background:"#1e293b",borderRadius:"10px",padding:"4px 6px",border:"1px solid #334155" }}>
-          <button
-            onClick={()=>setWeekIdx(w=>Math.max(0,w-1))}
-            disabled={wi===0}
-            style={{ background:"none",border:"none",color:wi===0?"#334155":"#94a3b8",cursor:wi===0?"default":"pointer",fontWeight:700,fontSize:"16px",padding:"2px 8px",lineHeight:1 }}
-          >‹</button>
+          <button onClick={()=>setWeekIdx(w=>Math.max(0,w-1))} disabled={wi===0}
+            style={{ background:"none",border:"none",color:wi===0?"#334155":"#94a3b8",cursor:wi===0?"default":"pointer",fontWeight:700,fontSize:"16px",padding:"2px 8px",lineHeight:1 }}>‹</button>
           <span style={{ fontSize:"12px",fontWeight:600,color:"#94a3b8",minWidth:"120px",textAlign:"center" }}>{weekLabel}</span>
-          <button
-            onClick={()=>setWeekIdx(w=>Math.min(totalWeeks-1,w+1))}
-            disabled={wi===totalWeeks-1}
-            style={{ background:"none",border:"none",color:wi===totalWeeks-1?"#334155":"#94a3b8",cursor:wi===totalWeeks-1?"default":"pointer",fontWeight:700,fontSize:"16px",padding:"2px 8px",lineHeight:1 }}
-          >›</button>
+          <button onClick={()=>setWeekIdx(w=>Math.min(totalWeeks-1,w+1))} disabled={wi===totalWeeks-1}
+            style={{ background:"none",border:"none",color:wi===totalWeeks-1?"#334155":"#94a3b8",cursor:wi===totalWeeks-1?"default":"pointer",fontWeight:700,fontSize:"16px",padding:"2px 8px",lineHeight:1 }}>›</button>
         </div>
         <span style={{ fontSize:"12px",color:"#475569" }}>Semana {wi+1} de {totalWeeks}</span>
       </div>
@@ -880,14 +877,17 @@ function CalendarView({ consultant, month, byDay }) {
           const entries = Array.isArray(byDay[day]) ? byDay[day] : (byDay[day] ? [byDay[day]] : []);
           const isToday = (() => { const t=new Date(); return t.getDate()===day && t.getMonth()===monthIdx && t.getFullYear()===year; })();
           return (
-            <div key={day} style={{ minHeight:"140px",borderRadius:"10px",background:isToday?"#1e3a5f":"#1e293b",border:"1px solid "+(isToday?"#3b82f6":"#334155"),padding:"10px",display:"flex",flexDirection:"column",gap:"6px" }}>
+            <div key={day} onClick={e=>e.stopPropagation()} style={{ minHeight:"140px",borderRadius:"10px",background:isToday?"#1e3a5f":"#1e293b",border:"1px solid "+(isToday?"#3b82f6":"#334155"),padding:"10px",display:"flex",flexDirection:"column",gap:"6px" }}>
               <div style={{ fontSize:"18px",fontWeight:700,color:isToday?"#60a5fa":"#f1f5f9",marginBottom:"4px" }}>{day}</div>
               {entries.length===0 && <div style={{ fontSize:"11px",color:"#334155",fontStyle:"italic" }}>—</div>}
               {entries.map((entry,ei)=>{
-                const color = entry.type==="vacation"?"#22c55e":entry.type==="holiday"?"#ef4444":entry.type==="reserved"?"#94a3b8":entry.type==="blocked"?"#475569":getClientColor(entry.client);
+                const color = getColor(entry);
                 return (
-                  <div key={ei} style={{ background:color+"22",border:"1px solid "+color+"55",borderRadius:"6px",padding:"6px 8px" }}>
-                    <div style={{ fontSize:"11px",fontWeight:700,color:color,lineHeight:1.3 }}>{entry.client}</div>
+                  <div key={ei} onClick={e=>{ e.stopPropagation(); setPopup({day,entries,x:e.clientX,y:e.clientY}); }}
+                    style={{ background:color+"22",border:"1px solid "+color+"55",borderRadius:"6px",padding:"6px 8px",cursor:"pointer",transition:"filter .1s" }}
+                    onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.2)"}
+                    onMouseLeave={e=>e.currentTarget.style.filter=""}>
+                    <div style={{ fontSize:"11px",fontWeight:700,color:color,lineHeight:1.3 }}>{entry.client||TYPE_LABEL[entry.type]||entry.type}</div>
                     {(entry.horaInicio||entry.horaFim) && (
                       <div style={{ fontSize:"10px",color:"#64748b",marginTop:"2px" }}>{entry.horaInicio||""}{entry.horaFim?" – "+entry.horaFim:""}</div>
                     )}
@@ -899,6 +899,81 @@ function CalendarView({ consultant, month, byDay }) {
           );
         })}
       </div>
+
+      {/* POPUP — detail view on entry click */}
+      {popup && (
+        <div onClick={e=>e.stopPropagation()}
+          style={{ position:"fixed",left:Math.min(popup.x+8,window.innerWidth-300)+"px",top:Math.min(popup.y+8,window.innerHeight-340)+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",padding:"16px",zIndex:9000,width:"290px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",overflowY:"auto" }}>
+          {/* Header */}
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px" }}>
+            <div>
+              <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>{consultant.trim().split(" ")[0]}</div>
+              <div style={{ fontSize:"11px",color:"#64748b" }}>Dia {popup.day} · {month} {year} ({WD_FULL[(new Date(year,monthIdx,popup.day).getDay()+6)%7]})</div>
+            </div>
+            <button onClick={()=>setPopup(null)} style={{ background:"#334155",border:"none",color:"#94a3b8",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center" }}>✕</button>
+          </div>
+          {/* Entries */}
+          <div style={{ display:"flex",flexDirection:"column",gap:"8px" }}>
+            {(popup.entries||[]).map((entry,ei)=>{
+              const color = getColor(entry);
+              return (
+                <div key={entry.id||ei} style={{ background:"#0f172a",borderRadius:"8px",border:"1px solid #334155",overflow:"hidden" }}>
+                  {/* Color bar header */}
+                  <div style={{ background:color,padding:"6px 10px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                    <span style={{ fontSize:"12px",fontWeight:800,color:"#fff" }}>{entry.client||TYPE_LABEL[entry.type]||entry.type}</span>
+                    {(entry.horaInicio||entry.horaFim) && (
+                      <span style={{ fontSize:"10px",color:"rgba(255,255,255,0.85)",fontWeight:600 }}>
+                        {entry.horaInicio||""}{entry.horaFim?" → "+entry.horaFim:""}{entry.intervalo?" ☕"+entry.intervalo+"m":""}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ padding:"8px 10px",display:"flex",flexDirection:"column",gap:"6px" }}>
+                    {/* Type badge */}
+                    <div style={{ fontSize:"11px",color:"#64748b" }}>{TYPE_LABEL[entry.type]||entry.type}</div>
+                    {/* Horário detail */}
+                    {(entry.horaInicio||entry.horaFim||entry.intervalo) && (
+                      <div style={{ background:"#1e293b",borderRadius:"6px",padding:"6px 8px",fontSize:"11px",color:"#94a3b8",display:"flex",gap:"12px",flexWrap:"wrap" }}>
+                        {entry.horaInicio && <span>🕐 Início: <strong style={{ color:"#f1f5f9" }}>{entry.horaInicio}</strong></span>}
+                        {entry.horaFim && <span>🕔 Fim: <strong style={{ color:"#f1f5f9" }}>{entry.horaFim}</strong></span>}
+                        {entry.intervalo && <span>☕ Intervalo: <strong style={{ color:"#f1f5f9" }}>{entry.intervalo}min</strong></span>}
+                      </div>
+                    )}
+                    {/* Atividades */}
+                    {entry.atividades && (
+                      <div style={{ background:"#1e293b",borderRadius:"6px",padding:"6px 8px" }}>
+                        <div style={{ fontSize:"10px",fontWeight:700,color:"#64748b",marginBottom:"3px",textTransform:"uppercase",letterSpacing:"0.5px" }}>Atividades</div>
+                        <div style={{ fontSize:"11px",color:"#94a3b8",lineHeight:"1.6",whiteSpace:"pre-wrap" }}>{entry.atividades}</div>
+                      </div>
+                    )}
+                    {/* Histórico */}
+                    {(entry.historico||[]).length>0 && (
+                      <div style={{ borderTop:"1px solid #1e293b",paddingTop:"6px" }}>
+                        <div style={{ fontSize:"10px",fontWeight:700,color:"#64748b",marginBottom:"4px",textTransform:"uppercase",letterSpacing:"0.5px" }}>Histórico</div>
+                        {entry.historico.map((h,hi)=>(
+                          <div key={hi} style={{ fontSize:"10px",color:"#64748b",marginBottom:"3px" }}>
+                            <span style={{ color:h.acao==="criado"?"#22c55e":h.acao==="alterado"?"#f59e0b":"#ef4444",marginRight:"4px" }}>{h.acao==="criado"?"＋":h.acao==="alterado"?"✎":"✕"}</span>
+                            <span style={{ color:"#94a3b8",fontWeight:600 }}>{h.por}</span>
+                            <span style={{ color:"#475569" }}> · {formatDateTime(h.em)}</span>
+                            {h.alteracoes&&h.alteracoes.length>0&&(
+                              <div style={{ marginTop:"2px",paddingLeft:"14px" }}>
+                                {h.alteracoes.map((a,ai)=>(
+                                  <div key={ai} style={{ fontSize:"9px",color:"#64748b" }}>
+                                    <span style={{ color:"#94a3b8" }}>{a.campo}:</span> <span style={{ textDecoration:"line-through",color:"#ef444488" }}>{a.de}</span> → <span style={{ color:"#22c55e" }}>{a.para}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
