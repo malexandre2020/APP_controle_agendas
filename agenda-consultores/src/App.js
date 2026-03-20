@@ -898,17 +898,22 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
       </div>
       <p style={{ fontSize:"11px",color:"#475569",marginTop:"8px" }}>💡 Clique em célula colorida para editar/excluir · Clique em célula vazia para adicionar agenda · Colunas escuras = fim de semana</p>
       {popup && (
-        <div onClick={e=>e.stopPropagation()} style={{ position:"fixed",left:Math.min(popup.x,window.innerWidth-290)+"px",top:Math.min(popup.y+8,window.innerHeight-320)+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",padding:"16px",zIndex:9000,width:"280px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",overflowY:"auto" }}>
-          {/* Header */}
-          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"10px" }}>
-            <div>
-              <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>{popup.name.trim().split(" ")[0]}</div>
-              <div style={{ fontSize:"11px",color:"#64748b" }}>Dia {popup.day} · {calMes} {calAno} ({WEEKDAY_LABELS[getDayOfWeek(popup.day)]})</div>
+        <div onClick={e=>e.stopPropagation()} style={{ position:"fixed",left:Math.min(popup.x,window.innerWidth-290)+"px",top:Math.min(popup.y+8,window.innerHeight-340)+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",zIndex:9000,width:"280px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",display:"flex",flexDirection:"column" }}>
+          {/* Header fixo */}
+          <div style={{ padding:"14px 16px 10px",borderBottom:"1px solid #334155",flexShrink:0 }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
+              <div>
+                <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>{popup.name.trim().split(" ")[0]}</div>
+                <div style={{ fontSize:"11px",color:"#64748b" }}>Dia {popup.day} · {calMes} {calAno} ({WEEKDAY_LABELS[getDayOfWeek(popup.day)]})</div>
+              </div>
+              <div style={{ display:"flex",gap:"6px",alignItems:"center" }}>
+                {!readonly && <button onClick={()=>{ onNewEntry({consultor:popup.name,month:calMes,day:popup.day}); setPopup(null); }} style={{ padding:"4px 8px",borderRadius:"6px",border:"1px solid #22c55e44",background:"#22c55e18",color:"#22c55e",fontSize:"11px",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap" }}>＋ Novo</button>}
+                <button onClick={()=>setPopup(null)} style={{ background:"#334155",border:"none",color:"#94a3b8",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
+              </div>
             </div>
-            {!readonly && <button onClick={()=>{ onNewEntry({consultor:popup.name,month:calMes,day:popup.day}); setPopup(null); }} style={{ padding:"4px 8px",borderRadius:"6px",border:"1px solid #22c55e44",background:"#22c55e18",color:"#22c55e",fontSize:"11px",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap" }}>＋ Novo</button>}
           </div>
-          {/* Entry list */}
-          <div style={{ display:"flex",flexDirection:"column",gap:"8px" }}>
+          {/* Entry list com scroll */}
+          <div style={{ display:"flex",flexDirection:"column",gap:"8px",overflowY:"auto",padding:"12px 16px 16px",maxHeight:"calc(80vh - 70px)" }}>
             {(popup.entries||[]).map((entry,ei)=>{
               const color = getColor(entry);
               const TYPE_LABEL = {client:"👤 Cliente",vacation:"🏖 Férias",holiday:"🎉 Feriado",reserved:"🔒 Reservado",blocked:"⛔ Bloqueado"};
@@ -1099,17 +1104,19 @@ function CalendarView({ consultant, month, byDay }) {
       {/* POPUP — detail view on entry click */}
       {popup && (
         <div onClick={e=>e.stopPropagation()}
-          style={{ position:"fixed",left:Math.min(popup.x+8,window.innerWidth-300)+"px",top:Math.min(popup.y+8,window.innerHeight-340)+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",padding:"16px",zIndex:9000,width:"290px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",overflowY:"auto" }}>
-          {/* Header */}
-          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px" }}>
-            <div>
-              <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>{consultant.trim().split(" ")[0]}</div>
-              <div style={{ fontSize:"11px",color:"#64748b" }}>Dia {popup.day} · {month} {year} ({WD_FULL[(new Date(year,monthIdx,popup.day).getDay()+6)%7]})</div>
+          style={{ position:"fixed",left:Math.min(popup.x+8,window.innerWidth-300)+"px",top:Math.min(popup.y+8,window.innerHeight-340)+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",zIndex:9000,width:"290px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",display:"flex",flexDirection:"column" }}>
+          {/* Header fixo */}
+          <div style={{ padding:"14px 16px 12px",borderBottom:"1px solid #334155",flexShrink:0 }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+              <div>
+                <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>{consultant.trim().split(" ")[0]}</div>
+                <div style={{ fontSize:"11px",color:"#64748b" }}>Dia {popup.day} · {month} {year} ({WD_FULL[(new Date(year,monthIdx,popup.day).getDay()+6)%7]})</div>
+              </div>
+              <button onClick={()=>setPopup(null)} style={{ background:"#334155",border:"none",color:"#94a3b8",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
             </div>
-            <button onClick={()=>setPopup(null)} style={{ background:"#334155",border:"none",color:"#94a3b8",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center" }}>✕</button>
           </div>
-          {/* Entries */}
-          <div style={{ display:"flex",flexDirection:"column",gap:"8px" }}>
+          {/* Entries com scroll */}
+          <div style={{ display:"flex",flexDirection:"column",gap:"8px",overflowY:"auto",padding:"12px 16px 16px",maxHeight:"calc(80vh - 70px)" }}>
             {(popup.entries||[]).map((entry,ei)=>{
               const color = getColor(entry);
               return (
