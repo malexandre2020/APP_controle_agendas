@@ -617,6 +617,20 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
   const [calMes, setCalMes] = React.useState(selectedMonth !== "Todos" ? selectedMonth : allMonths[1] || "Setembro");
   const [calAno, setCalAno] = React.useState(new Date().getFullYear());
   const [popup, setPopup] = React.useState(null);
+  const [popupPos, setPopupPos] = React.useState({x:0,y:0});
+  const dragRef = React.useRef(null);
+  const startDrag = React.useCallback((e) => {
+    e.preventDefault();
+    const startX = e.clientX - popupPos.x, startY = e.clientY - popupPos.y;
+    const onMove = (ev) => setPopupPos({ x: ev.clientX - startX, y: ev.clientY - startY });
+    const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [popupPos]);
+  const openPopup = React.useCallback((entries, x, y) => {
+    setPopupPos({ x: Math.min(x+8, window.innerWidth-300), y: Math.min(y+8, window.innerHeight-340) });
+    setPopup(entries);
+  }, []);
   const [selectedConsultores, setSelectedConsultores] = React.useState(new Set(consultores));
   const [showFilter, setShowFilter] = React.useState(false);
   const [showClientFilter, setShowClientFilter] = React.useState(false);
@@ -874,7 +888,7 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                   );
                   const allFiltered = dayEntries.every(e=>e.type==="client"&&clientFilterActive&&!selectedClients.has(normalizeClient(e.client)));
                   return (
-                    <td key={d} style={{ padding:"2px",borderLeft:"1px solid #1e293b",background:colBg,verticalAlign:"top" }} onClick={e=>{e.stopPropagation();if(!allFiltered)setPopup({name,day:d,entries:dayEntries,x:e.clientX,y:e.clientY});}}>
+                    <td key={d} style={{ padding:"2px",borderLeft:"1px solid #1e293b",background:colBg,verticalAlign:"top" }} onClick={e=>{e.stopPropagation();if(!allFiltered)openPopup({name,day:d,entries:dayEntries},e.clientX,e.clientY);}}>
                       <div style={{ width:"28px",minHeight:"28px",borderRadius:"4px",overflow:"hidden",margin:"0 auto",cursor:allFiltered?"default":"pointer",display:"flex",flexDirection:"column",gap:"1px" }}>
                         {dayEntries.slice(0,3).map((entry,ei)=>{
                           const color=getColor(entry);
@@ -898,17 +912,17 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
       </div>
       <p style={{ fontSize:"11px",color:"#475569",marginTop:"8px" }}>💡 Clique em célula colorida para editar/excluir · Clique em célula vazia para adicionar agenda · Colunas escuras = fim de semana</p>
       {popup && (
-        <div onClick={e=>e.stopPropagation()} style={{ position:"fixed",left:Math.min(popup.x,window.innerWidth-290)+"px",top:Math.min(popup.y+8,window.innerHeight-340)+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",zIndex:9000,width:"280px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",display:"flex",flexDirection:"column" }}>
-          {/* Header fixo */}
-          <div style={{ padding:"14px 16px 10px",borderBottom:"1px solid #334155",flexShrink:0 }}>
+        <div onClick={e=>e.stopPropagation()} style={{ position:"fixed",left:popupPos.x+"px",top:popupPos.y+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",zIndex:9000,width:"280px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",display:"flex",flexDirection:"column" }}>
+          {/* Header fixo + drag */}
+          <div onMouseDown={startDrag} style={{ padding:"14px 16px 10px",borderBottom:"1px solid #334155",flexShrink:0,cursor:"grab",userSelect:"none" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
               <div>
                 <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>{popup.name.trim().split(" ")[0]}</div>
                 <div style={{ fontSize:"11px",color:"#64748b" }}>Dia {popup.day} · {calMes} {calAno} ({WEEKDAY_LABELS[getDayOfWeek(popup.day)]})</div>
               </div>
               <div style={{ display:"flex",gap:"6px",alignItems:"center" }}>
-                {!readonly && <button onClick={()=>{ onNewEntry({consultor:popup.name,month:calMes,day:popup.day}); setPopup(null); }} style={{ padding:"4px 8px",borderRadius:"6px",border:"1px solid #22c55e44",background:"#22c55e18",color:"#22c55e",fontSize:"11px",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap" }}>＋ Novo</button>}
-                <button onClick={()=>setPopup(null)} style={{ background:"#334155",border:"none",color:"#94a3b8",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
+                {!readonly && <button onMouseDown={e=>e.stopPropagation()} onClick={()=>{ onNewEntry({consultor:popup.name,month:calMes,day:popup.day}); setPopup(null); }} style={{ padding:"4px 8px",borderRadius:"6px",border:"1px solid #22c55e44",background:"#22c55e18",color:"#22c55e",fontSize:"11px",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap" }}>＋ Novo</button>}
+                <button onMouseDown={e=>e.stopPropagation()} onClick={()=>setPopup(null)} style={{ background:"#334155",border:"none",color:"#94a3b8",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
               </div>
             </div>
           </div>
@@ -1020,6 +1034,19 @@ function ConsultorCard({ name, entries, idx, onClick, selected }) {
 function CalendarView({ consultant, month, byDay }) {
   const [weekIdx, setWeekIdx] = React.useState(0);
   const [popup, setPopup] = React.useState(null); // { day, entries, x, y }
+  const [popupPos, setPopupPos] = React.useState({x:0,y:0});
+  const startDrag = React.useCallback((e) => {
+    e.preventDefault();
+    const startX = e.clientX - popupPos.x, startY = e.clientY - popupPos.y;
+    const onMove = (ev) => setPopupPos({ x: ev.clientX - startX, y: ev.clientY - startY });
+    const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [popupPos]);
+  const openPopupCV = React.useCallback((data, x, y) => {
+    setPopupPos({ x: Math.min(x+8, window.innerWidth-300), y: Math.min(y+8, window.innerHeight-340) });
+    setPopup(data);
+  }, []);
   const wd = ["Seg","Ter","Qua","Qui","Sex","Sab","Dom"];
   const WD_FULL = ["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"];
   const TYPE_LABEL = {client:"👤 Cliente",vacation:"🏖 Férias",holiday:"🎉 Feriado",reserved:"🔒 Reservado",blocked:"⛔ Bloqueado"};
@@ -1085,7 +1112,7 @@ function CalendarView({ consultant, month, byDay }) {
               {entries.map((entry,ei)=>{
                 const color = getColor(entry);
                 return (
-                  <div key={ei} onClick={e=>{ e.stopPropagation(); setPopup({day,entries,x:e.clientX,y:e.clientY}); }}
+                  <div key={ei} onClick={e=>{ e.stopPropagation(); openPopupCV({day,entries},e.clientX,e.clientY); }}
                     style={{ background:color+"22",border:"1px solid "+color+"55",borderRadius:"6px",padding:"6px 8px",cursor:"pointer",transition:"filter .1s" }}
                     onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.2)"}
                     onMouseLeave={e=>e.currentTarget.style.filter=""}>
@@ -1104,15 +1131,15 @@ function CalendarView({ consultant, month, byDay }) {
       {/* POPUP — detail view on entry click */}
       {popup && (
         <div onClick={e=>e.stopPropagation()}
-          style={{ position:"fixed",left:Math.min(popup.x+8,window.innerWidth-300)+"px",top:Math.min(popup.y+8,window.innerHeight-340)+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",zIndex:9000,width:"290px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",display:"flex",flexDirection:"column" }}>
-          {/* Header fixo */}
-          <div style={{ padding:"14px 16px 12px",borderBottom:"1px solid #334155",flexShrink:0 }}>
+          style={{ position:"fixed",left:popupPos.x+"px",top:popupPos.y+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",zIndex:9000,width:"290px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",display:"flex",flexDirection:"column" }}>
+          {/* Header fixo + drag */}
+          <div onMouseDown={startDrag} style={{ padding:"14px 16px 12px",borderBottom:"1px solid #334155",flexShrink:0,cursor:"grab",userSelect:"none" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
               <div>
                 <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>{consultant.trim().split(" ")[0]}</div>
                 <div style={{ fontSize:"11px",color:"#64748b" }}>Dia {popup.day} · {month} {year} ({WD_FULL[(new Date(year,monthIdx,popup.day).getDay()+6)%7]})</div>
               </div>
-              <button onClick={()=>setPopup(null)} style={{ background:"#334155",border:"none",color:"#94a3b8",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
+              <button onMouseDown={e=>e.stopPropagation()} onClick={()=>setPopup(null)} style={{ background:"#334155",border:"none",color:"#94a3b8",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
             </div>
           </div>
           {/* Entries com scroll */}
