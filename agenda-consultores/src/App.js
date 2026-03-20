@@ -730,15 +730,65 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 // VISUALIZAÇÃO SEMANAL GLOBAL (todos os consultores, semana a semana)
 // ─────────────────────────────────────────────────────────────────────────────
 function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEdit, onEdit, onNewEntry, theme: T }) {
-  const { days, consultores, monday } = weeklyData;
+  const { days, consultores: allConsultores } = weeklyData;
   const WD_SHORT = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
-  const WD_COLOR = ["#18181f","#18181f","#18181f","#18181f","#18181f","#0d0d14","#0d0d14"];
   const today = new Date(); today.setHours(0,0,0,0);
 
-  // Formata o range da semana ex: "17 - 23 Mar 2026"
+  // ── Filtros internos ──
+  const [search, setSearch] = React.useState("");
+  const [selConsultores, setSelConsultores] = React.useState(new Set()); // vazio = todos
+  const [selClientes, setSelClientes] = React.useState(new Set());       // vazio = todos
+  const [showConsFilter, setShowConsFilter] = React.useState(false);
+  const [showCliFilter, setShowCliFilter] = React.useState(false);
+  const consRef = React.useRef(null);
+  const cliRef  = React.useRef(null);
+
+  // Fechar dropdowns ao clicar fora
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (consRef.current && !consRef.current.contains(e.target)) setShowConsFilter(false);
+      if (cliRef.current  && !cliRef.current.contains(e.target))  setShowCliFilter(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Coletar todos os clientes únicos da semana
+  const allClientes = React.useMemo(() => {
+    const set = new Set();
+    allConsultores.forEach(({cells}) => cells.forEach(entries => entries.forEach(e => { if(e.client) set.add(e.client); })));
+    return [...set].sort();
+  }, [allConsultores]);
+
+  // Aplicar filtros
+  const consultores = React.useMemo(() => {
+    return allConsultores
+      .filter(({name}) => {
+        if (selConsultores.size > 0 && !selConsultores.has(name)) return false;
+        if (search.trim()) return name.toLowerCase().includes(search.toLowerCase());
+        return true;
+      })
+      .map(({name, cells}) => ({
+        name,
+        cells: cells.map(entries =>
+          entries.filter(e => {
+            if (selClientes.size > 0 && e.client && !selClientes.has(e.client)) return false;
+            if (search.trim() && selConsultores.size === 0) {
+              // quando busca sem filtro de consultor, filtra também por cliente
+              const q = search.toLowerCase();
+              const matchCons = name.toLowerCase().includes(q);
+              const matchCli  = (e.client||"").toLowerCase().includes(q);
+              if (!matchCons && !matchCli) return false;
+            }
+            return true;
+          })
+        )
+      }));
+  }, [allConsultores, selConsultores, selClientes, search]);
+
   const fmtRange = () => {
     const start = days[0], end = days[6];
-    const fmt = (d) => d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}).replace(".","");
+    const fmt = d => d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}).replace(".","");
     return `${fmt(start)} – ${fmt(end)} ${end.getFullYear()}`;
   };
 
@@ -752,24 +802,125 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
     return key ? clientColorMap[key] : CLIENT_COLORS.default;
   };
 
+  const toggleSet = (set, setFn, val) => setFn(prev => {
+    const n = new Set(prev);
+    n.has(val) ? n.delete(val) : n.add(val);
+    return n;
+  });
+
+  const dropStyle = { position:"absolute",top:"calc(100% + 6px)",left:0,zIndex:500,background:"#111118",border:"1px solid #2a2a3a",borderRadius:"12px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",minWidth:"200px",maxHeight:"260px",overflowY:"auto",padding:"6px" };
+  const chipActive = { padding:"5px 12px",borderRadius:"99px",border:"1px solid #6c63ff",background:"#6c63ff22",color:"#a78bfa",fontSize:"12px",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap" };
+  const chipInactive = { padding:"5px 12px",borderRadius:"99px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",fontSize:"12px",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap" };
+
   return (
     <div>
-      {/* Navegação da semana */}
-      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"20px",flexWrap:"wrap",gap:"10px" }}>
-        <div style={{ display:"flex",alignItems:"center",gap:"10px" }}>
-          <button onClick={()=>setOffset(o=>o-1)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#18181f",color:"#6e6e88",cursor:"pointer",fontSize:"18px",lineHeight:1 }}>‹</button>
-          <div style={{ textAlign:"center" }}>
-            <div style={{ fontSize:"16px",fontWeight:700,color:"#f0f0fa" }}>{fmtRange()}</div>
-            {offset!==0 && <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"2px" }}>{offset>0?`+${offset}`:`${offset}`} semana{Math.abs(offset)>1?"s":""} da atual</div>}
-          </div>
-          <button onClick={()=>setOffset(o=>o+1)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#18181f",color:"#6e6e88",cursor:"pointer",fontSize:"18px",lineHeight:1 }}>›</button>
+      {/* ── Barra de filtros ── */}
+      <div style={{ display:"flex",alignItems:"center",gap:"8px",marginBottom:"16px",flexWrap:"wrap" }}>
+        {/* Busca */}
+        <div style={{ position:"relative",display:"flex",alignItems:"center",flex:"1",minWidth:"180px",maxWidth:"260px" }}>
+          <span style={{ position:"absolute",left:"10px",fontSize:"13px",color:"#3e3e55",pointerEvents:"none" }}>🔍</span>
+          <input
+            value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Buscar consultor ou cliente..."
+            style={{ width:"100%",padding:"8px 12px 8px 32px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"12px",fontFamily:"inherit",outline:"none" }}
+          />
+          {search && <button onClick={()=>setSearch("")} style={{ position:"absolute",right:"8px",background:"none",border:"none",color:"#3e3e55",cursor:"pointer",fontSize:"14px",lineHeight:1 }}>✕</button>}
         </div>
-        <button onClick={()=>setOffset(0)} style={{ padding:"7px 16px",borderRadius:"8px",border:"1px solid #3b82f644",background:"#3b82f618",color:"#6c63ff",cursor:"pointer",fontSize:"12px",fontWeight:700,opacity:offset===0?0.4:1 }} disabled={offset===0}>
-          📍 Semana atual
-        </button>
+
+        {/* Filtro consultores */}
+        <div ref={consRef} style={{ position:"relative" }}>
+          <button onClick={()=>{ setShowConsFilter(v=>!v); setShowCliFilter(false); }}
+            style={selConsultores.size>0 ? chipActive : chipInactive}>
+            👥 Consultores{selConsultores.size>0?` (${selConsultores.size})`:""}
+            <span style={{ marginLeft:"5px",fontSize:"9px" }}>▾</span>
+          </button>
+          {showConsFilter && (
+            <div style={dropStyle}>
+              <div style={{ padding:"6px 8px 8px",borderBottom:"1px solid #1f1f2e",marginBottom:"4px",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+                <span style={{ fontSize:"11px",color:"#6e6e88",fontWeight:700 }}>CONSULTORES</span>
+                {selConsultores.size>0 && <button onClick={()=>setSelConsultores(new Set())} style={{ background:"none",border:"none",color:"#6c63ff",fontSize:"11px",cursor:"pointer",fontWeight:600 }}>Limpar</button>}
+              </div>
+              {allConsultores.map(({name},i)=>{
+                const sel = selConsultores.has(name);
+                return (
+                  <div key={name} onClick={()=>toggleSet(selConsultores,setSelConsultores,name)}
+                    style={{ display:"flex",alignItems:"center",gap:"8px",padding:"7px 10px",borderRadius:"8px",cursor:"pointer",background:sel?"#6c63ff15":"transparent" }}
+                    onMouseEnter={e=>!sel&&(e.currentTarget.style.background="#18181f")}
+                    onMouseLeave={e=>!sel&&(e.currentTarget.style.background="transparent")}>
+                    <div style={{ width:"22px",height:"22px",borderRadius:"50%",background:`hsl(${i*37%360},55%,48%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"9px",fontWeight:800,color:"#fff",flexShrink:0 }}>
+                      {name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+                    </div>
+                    <span style={{ fontSize:"12px",color:sel?"#a78bfa":"#c8c8d8",fontWeight:sel?600:400,flex:1 }}>{name.split(" ")[0]}</span>
+                    {sel && <span style={{ color:"#6c63ff",fontSize:"14px" }}>✓</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Filtro clientes */}
+        <div ref={cliRef} style={{ position:"relative" }}>
+          <button onClick={()=>{ setShowCliFilter(v=>!v); setShowConsFilter(false); }}
+            style={selClientes.size>0 ? chipActive : chipInactive}>
+            🏢 Clientes{selClientes.size>0?` (${selClientes.size})`:""}
+            <span style={{ marginLeft:"5px",fontSize:"9px" }}>▾</span>
+          </button>
+          {showCliFilter && (
+            <div style={dropStyle}>
+              <div style={{ padding:"6px 8px 8px",borderBottom:"1px solid #1f1f2e",marginBottom:"4px",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+                <span style={{ fontSize:"11px",color:"#6e6e88",fontWeight:700 }}>CLIENTES</span>
+                {selClientes.size>0 && <button onClick={()=>setSelClientes(new Set())} style={{ background:"none",border:"none",color:"#6c63ff",fontSize:"11px",cursor:"pointer",fontWeight:600 }}>Limpar</button>}
+              </div>
+              {allClientes.length===0 && <div style={{ padding:"12px",fontSize:"12px",color:"#3e3e55",textAlign:"center" }}>Nenhum cliente nesta semana</div>}
+              {allClientes.map(cli=>{
+                const sel = selClientes.has(cli);
+                const color = clientColorMap && Object.keys(clientColorMap).find(k=>cli.toUpperCase().includes(k));
+                const dot = color ? clientColorMap[color] : "#6e6e88";
+                return (
+                  <div key={cli} onClick={()=>toggleSet(selClientes,setSelClientes,cli)}
+                    style={{ display:"flex",alignItems:"center",gap:"8px",padding:"7px 10px",borderRadius:"8px",cursor:"pointer",background:sel?"#6c63ff15":"transparent" }}
+                    onMouseEnter={e=>!sel&&(e.currentTarget.style.background="#18181f")}
+                    onMouseLeave={e=>!sel&&(e.currentTarget.style.background="transparent")}>
+                    <div style={{ width:"10px",height:"10px",borderRadius:"3px",background:dot,flexShrink:0 }}/>
+                    <span style={{ fontSize:"12px",color:sel?"#a78bfa":"#c8c8d8",fontWeight:sel?600:400,flex:1 }}>{cli}</span>
+                    {sel && <span style={{ color:"#6c63ff",fontSize:"14px" }}>✓</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Tags de filtros ativos */}
+        {[...selConsultores].map(name=>(
+          <span key={name} style={{ display:"inline-flex",alignItems:"center",gap:"5px",padding:"4px 10px",borderRadius:"99px",background:"#6c63ff22",border:"1px solid #6c63ff44",color:"#a78bfa",fontSize:"11px",fontWeight:600 }}>
+            {name.split(" ")[0]}
+            <button onClick={()=>toggleSet(selConsultores,setSelConsultores,name)} style={{ background:"none",border:"none",color:"#6c63ff",cursor:"pointer",fontSize:"12px",lineHeight:1,padding:0 }}>✕</button>
+          </span>
+        ))}
+        {[...selClientes].map(cli=>(
+          <span key={cli} style={{ display:"inline-flex",alignItems:"center",gap:"5px",padding:"4px 10px",borderRadius:"99px",background:"#22d3a015",border:"1px solid #22d3a040",color:"#22d3a0",fontSize:"11px",fontWeight:600 }}>
+            {cli}
+            <button onClick={()=>toggleSet(selClientes,setSelClientes,cli)} style={{ background:"none",border:"none",color:"#22d3a0",cursor:"pointer",fontSize:"12px",lineHeight:1,padding:0 }}>✕</button>
+          </span>
+        ))}
+
+        {/* Spacer + navegação semana */}
+        <div style={{ marginLeft:"auto",display:"flex",alignItems:"center",gap:"8px" }}>
+          <button onClick={()=>setOffset(o=>o-1)} style={{ width:"32px",height:"32px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#18181f",color:"#6e6e88",cursor:"pointer",fontSize:"18px",lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center" }}>‹</button>
+          <div style={{ textAlign:"center",minWidth:"200px" }}>
+            <div style={{ fontSize:"15px",fontWeight:700,color:"#f0f0fa" }}>{fmtRange()}</div>
+            {offset!==0 && <div style={{ fontSize:"10px",color:"#3e3e55",marginTop:"1px" }}>{offset>0?`+${offset}`:`${offset}`} semana{Math.abs(offset)>1?"s":""} da atual</div>}
+          </div>
+          <button onClick={()=>setOffset(o=>o+1)} style={{ width:"32px",height:"32px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#18181f",color:"#6e6e88",cursor:"pointer",fontSize:"18px",lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center" }}>›</button>
+          <button onClick={()=>setOffset(0)} style={{ padding:"6px 14px",borderRadius:"8px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontSize:"11px",fontWeight:700,opacity:offset===0?0.35:1,whiteSpace:"nowrap" }} disabled={offset===0}>
+            📍 Hoje
+          </button>
+        </div>
       </div>
 
-      {/* Tabela */}
+      {/* ── Tabela ── */}
       <div style={{ overflowX:"auto" }}>
         <table style={{ width:"100%",borderCollapse:"collapse",tableLayout:"fixed",minWidth:"700px" }}>
           <colgroup>
@@ -778,73 +929,79 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
           </colgroup>
           <thead>
             <tr>
-              <th style={{ padding:"8px 12px",textAlign:"left",fontSize:"11px",color:"#6e6e88",fontWeight:700,background:"#0d0d14",borderBottom:"2px solid #2a2a3a" }}>Consultor</th>
+              <th style={{ padding:"8px 12px",textAlign:"left",fontSize:"11px",color:"#6e6e88",fontWeight:700,background:"#0d0d14",borderBottom:"2px solid #2a2a3a",letterSpacing:"0.5px" }}>CONSULTOR</th>
               {days.map((d,i)=>{
                 const isToday = d.getTime()===today.getTime();
                 const isWknd = i>=5;
                 return (
-                  <th key={i} style={{ padding:"8px 6px",textAlign:"center",fontSize:"11px",fontWeight:700,background:isWknd?"#0a0f1a":"#0d0d14",borderBottom:"2px solid "+(isToday?"#3b82f6":"#2a2a3a"),color:isToday?"#3b82f6":isWknd?"#6e6e88":"#6e6e88",minWidth:"90px" }}>
-                    <div>{WD_SHORT[i]}</div>
-                    <div style={{ fontSize:"16px",fontWeight:800,color:isToday?"#3b82f6":isWknd?"#374151":"#c8c8d8",marginTop:"2px" }}>{d.getDate()}</div>
-                    <div style={{ fontSize:"10px",color:"#6e6e88",marginTop:"1px" }}>{d.toLocaleDateString("pt-BR",{month:"short"}).replace(".","")}</div>
+                  <th key={i} style={{ padding:"8px 6px",textAlign:"center",fontSize:"11px",fontWeight:700,background:isWknd?"#0a0a12":"#0d0d14",borderBottom:"2px solid "+(isToday?"#6c63ff":"#2a2a3a"),color:isToday?"#a78bfa":isWknd?"#2a2a3a":"#6e6e88",minWidth:"90px" }}>
+                    <div style={{ letterSpacing:"0.5px" }}>{WD_SHORT[i]}</div>
+                    <div style={{ fontSize:"18px",fontWeight:800,color:isToday?"#a78bfa":isWknd?"#2a2a3a":"#c8c8d8",marginTop:"2px" }}>{d.getDate()}</div>
+                    <div style={{ fontSize:"10px",color:isWknd?"#1f1f2e":"#3e3e55",marginTop:"1px" }}>{d.toLocaleDateString("pt-BR",{month:"short"}).replace(".","")}</div>
                   </th>
                 );
               })}
             </tr>
           </thead>
           <tbody>
-            {consultores.map(({name, cells},ri)=>(
-              <tr key={name} style={{ borderBottom:"1px solid #18181f" }}>
-                {/* Nome do consultor */}
-                <td style={{ padding:"8px 10px",verticalAlign:"middle",background:"#0d0d14",borderRight:"2px solid #18181f" }}>
-                  <div style={{ display:"flex",alignItems:"center",gap:"8px" }}>
-                    <div style={{ width:"26px",height:"26px",borderRadius:"50%",background:"hsl("+(ri*37%360)+",55%,48%)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10px",fontWeight:800,color:"#fff",flexShrink:0 }}>
-                      {name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+            {consultores.length===0 && (
+              <tr><td colSpan={8} style={{ textAlign:"center",padding:"48px",color:"#3e3e55",fontSize:"13px" }}>
+                Nenhum consultor encontrado para os filtros selecionados
+              </td></tr>
+            )}
+            {consultores.map(({name, cells},ri)=>{
+              const origIdx = allConsultores.findIndex(c=>c.name===name);
+              return (
+                <tr key={name} style={{ borderBottom:"1px solid #18181f" }}>
+                  <td style={{ padding:"8px 10px",verticalAlign:"middle",background:"#0d0d14",borderRight:"2px solid #18181f" }}>
+                    <div style={{ display:"flex",alignItems:"center",gap:"8px" }}>
+                      <div style={{ width:"28px",height:"28px",borderRadius:"9px",background:`hsl(${origIdx*37%360},55%,48%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10px",fontWeight:800,color:"#fff",flexShrink:0 }}>
+                        {name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+                      </div>
+                      <span style={{ fontSize:"12px",fontWeight:600,color:"#c8c8d8" }}>{name.split(" ")[0]}</span>
                     </div>
-                    <span style={{ fontSize:"11px",fontWeight:600,color:"#c8c8d8",lineHeight:1.3 }}>{name.split(" ")[0]}</span>
-                  </div>
-                </td>
-                {/* Células dos dias */}
-                {cells.map((entries,ci)=>{
-                  const d = days[ci];
-                  const isToday = d.getTime()===today.getTime();
-                  const isWknd = ci>=5;
-                  const mName = MONTHS_ORDER[d.getMonth()];
-                  const yr = d.getFullYear();
-                  return (
-                    <td key={ci}
-                      onClick={()=>{ if(canEdit&&!isWknd&&onNewEntry&&entries.length===0) onNewEntry({consultor:name,month:mName,day:d.getDate(),year:yr}); }}
-                      style={{ padding:"4px",verticalAlign:"top",background:isToday?"#16102a22":isWknd?"#0a0f1a":"transparent",borderLeft:"1px solid #18181f",cursor:(canEdit&&!isWknd&&entries.length===0)?"pointer":"default",minHeight:"60px" }}>
-                      {entries.length===0 && !isWknd && canEdit && (
-                        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"52px",opacity:0.15,fontSize:"18px",color:"#6e6e88" }}>+</div>
-                      )}
-                      {entries.map((entry,ei)=>{
-                        const color = getColor(entry);
-                        return (
-                          <div key={entry.id||ei}
-                            onClick={e=>{e.stopPropagation();if(canEdit&&onEdit)onEdit(entry,name);}}
-                            style={{ background:color,borderRadius:"6px",padding:"4px 6px",marginBottom:"3px",cursor:canEdit?"pointer":"default",transition:"opacity .15s" }}
-                            onMouseEnter={e=>e.currentTarget.style.opacity="0.85"}
-                            onMouseLeave={e=>e.currentTarget.style.opacity="1"}
-                          >
-                            <div style={{ fontSize:"10px",fontWeight:800,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
-                              {entry.modalidade==="remoto"?"💻 ":entry.modalidade==="presencial"?"🏢 ":""}{entry.client||entry.type}
+                  </td>
+                  {cells.map((entries,ci)=>{
+                    const d = days[ci];
+                    const isToday = d.getTime()===today.getTime();
+                    const isWknd = ci>=5;
+                    const mName = MONTHS_ORDER[d.getMonth()];
+                    const yr = d.getFullYear();
+                    return (
+                      <td key={ci}
+                        onClick={()=>{ if(canEdit&&!isWknd&&onNewEntry&&entries.length===0) onNewEntry({consultor:name,month:mName,day:d.getDate(),year:yr}); }}
+                        style={{ padding:"4px",verticalAlign:"top",background:isToday?"#16102a18":isWknd?"#0a0a12":"transparent",borderLeft:"1px solid #18181f",cursor:(canEdit&&!isWknd&&entries.length===0)?"pointer":"default",minHeight:"64px" }}>
+                        {entries.length===0 && !isWknd && canEdit && (
+                          <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"56px",opacity:0.1,fontSize:"20px",color:"#6e6e88" }}>+</div>
+                        )}
+                        {entries.map((entry,ei)=>{
+                          const color = getColor(entry);
+                          return (
+                            <div key={entry.id||ei}
+                              onClick={e=>{e.stopPropagation();if(canEdit&&onEdit)onEdit(entry,name);}}
+                              style={{ background:color,borderRadius:"7px",padding:"5px 7px",marginBottom:"3px",cursor:canEdit?"pointer":"default",transition:"opacity .15s" }}
+                              onMouseEnter={e=>e.currentTarget.style.opacity="0.8"}
+                              onMouseLeave={e=>e.currentTarget.style.opacity="1"}
+                            >
+                              <div style={{ fontSize:"10px",fontWeight:800,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
+                                {entry.modalidade==="remoto"?"💻 ":entry.modalidade==="presencial"?"🏢 ":""}{entry.client||entry.type}
+                              </div>
+                              {(entry.horaInicio||entry.horaFim) && (
+                                <div style={{ fontSize:"9px",color:"rgba(255,255,255,0.75)",marginTop:"2px" }}>{entry.horaInicio||""}{entry.horaFim?"→"+entry.horaFim:""}</div>
+                              )}
                             </div>
-                            {(entry.horaInicio||entry.horaFim) && (
-                              <div style={{ fontSize:"9px",color:"rgba(255,255,255,0.8)",marginTop:"1px" }}>{entry.horaInicio||""}{entry.horaFim?"→"+entry.horaFim:""}</div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+                          );
+                        })}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-      <p style={{ fontSize:"11px",color:"#6e6e88",marginTop:"10px" }}>💡 Clique em célula vazia para adicionar · Clique em agenda para editar · Colunas escuras = fim de semana</p>
+      <p style={{ fontSize:"11px",color:"#3e3e55",marginTop:"10px" }}>💡 Clique em célula vazia para adicionar · Clique em agenda para editar · Colunas escuras = fim de semana</p>
     </div>
   );
 }
