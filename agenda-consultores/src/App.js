@@ -71,7 +71,7 @@ const SCHEDULE_DATA = {"Antonio Matos":[{"month":"Setembro","day":1,"weekday":"S
 
 const MONTHS_ORDER = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const INITIAL_CLIENTS = ["VEDACIT","TIROLEZ","MAZZAFERRO","TSJC","TSUL","GHT4","UNIMOL","TEJOFRAN","TSM","TOYOBO","PARTICULAR","CABOVEL","GOBEAUTE"];
-const CLIENT_COLORS = { VEDACIT:"#3b82f6",TIROLEZ:"#f59e0b",MAZZAFERRO:"#8b5cf6",TSJC:"#10b981",TSUL:"#06b6d4",GHT4:"#f97316",UNIMOL:"#ec4899",TEJOFRAN:"#6366f1",TSM:"#84cc16",TOYOBO:"#a855f7",PARTICULAR:"#64748b",CABOVEL:"#14b8a6",GOBEAUTE:"#f43f5e",RESERVADO:"#94a3b8",default:"#6b7280" };
+const CLIENT_COLORS = { VEDACIT:"#3b82f6",TIROLEZ:"#f59e0b",MAZZAFERRO:"#8b5cf6",TSJC:"#10b981",TSUL:"#06b6d4",GHT4:"#f97316",UNIMOL:"#ec4899",TEJOFRAN:"#6366f1",TSM:"#84cc16",TOYOBO:"#a855f7",PARTICULAR:"#6e6e88",CABOVEL:"#14b8a6",GOBEAUTE:"#f43f5e",RESERVADO:"#6e6e88",default:"#6b7280" };
 
 function getClientColor(client) {
   if (!client) return "#e5e7eb";
@@ -149,20 +149,20 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
     onSave({ id: editEntry?.id, consultor, month, year: Number(year), days, client: client.trim(), type, modalidade, horaInicio, horaFim, intervalo, atividades: atividades.trim(), notifyEmail });
   };
 
-  const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #334155", background:"#0f172a", color:"#e2e8f0", fontSize:"13px", width:"100%", boxSizing:"border-box" };
-  const lbl = { fontSize:"12px", color:"#64748b", fontWeight:600, marginBottom:"6px", display:"block" };
+  const inp = { padding:"9px 13px", borderRadius:"10px", border:"1px solid #2a2a3a", background:"#0d0d14", color:"#c8c8d8", fontSize:"13px", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
+  const lbl = { fontSize:"11px", color:"#3e3e55", fontWeight:700, marginBottom:"7px", display:"block", letterSpacing:"0.5px", textTransform:"uppercase" };
 
   return (
-    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px" }}>
-      <div style={{ background:"#1e293b",borderRadius:"16px",padding:"28px",width:"100%",maxWidth:"520px",border:"1px solid #334155",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.5)" }}>
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"22px" }}>
+    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px" }}>
+      <div style={{ background:"#111118",borderRadius:"20px",padding:"30px",width:"100%",maxWidth:"520px",border:"1px solid #1f1f2e",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 32px 80px rgba(0,0,0,0.8)",animation:"fadeUp .25s cubic-bezier(.4,0,.2,1)" }}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"24px" }}>
           <div>
-            <h2 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"18px",fontWeight:700,color:"#f8fafc",margin:0 }}>{isEdit?"✏️ Editar Agenda":"➕ Nova Agenda"}</h2>
-            {isPrefill && <p style={{ margin:"4px 0 0",fontSize:"12px",color:"#64748b" }}>📅 {editEntry.consultor.split(" ")[0]} · {editEntry.month} · Dia {editEntry.day}</p>}
+            <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"18px",fontWeight:900,color:"#f0f0fa",margin:0,letterSpacing:"-0.3px" }}>{isEdit?"Editar Agenda":"Nova Agenda"}</h2>
+            {isPrefill && <p style={{ margin:"4px 0 0",fontSize:"12px",color:"#3e3e55" }}>📅 {editEntry.consultor.split(" ")[0]} · {editEntry.month} · Dia {editEntry.day}</p>}
           </div>
-          <button onClick={onClose} style={{ background:"#334155",border:"none",color:"#94a3b8",borderRadius:"8px",width:"32px",height:"32px",cursor:"pointer",fontSize:"16px" }}>✕</button>
+          <button onClick={onClose} style={{ background:"#1f1f2e",border:"1px solid #2a2a3a",color:"#6e6e88",borderRadius:"10px",width:"32px",height:"32px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
         </div>
-        {error && <div style={{ background:"#ef444422",border:"1px solid #ef4444",borderRadius:"8px",padding:"10px 14px",color:"#ef4444",fontSize:"13px",marginBottom:"16px" }}>⚠️ {error}</div>}
+        {error && <div style={{ background:"#f04f5e15",border:"1px solid #f04f5e40",borderRadius:"10px",padding:"10px 14px",color:"#f87171",fontSize:"13px",marginBottom:"16px" }}>⚠️ {error}</div>}
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 80px",gap:"16px",marginBottom:"16px" }}>
           <div><label style={lbl}>Consultor</label>
             <select value={consultor} onChange={e=>setConsultor(e.target.value)} style={{...inp, opacity:(isEdit||isPrefill)?0.6:1}} disabled={isEdit||isPrefill}>
@@ -184,9 +184,9 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
         </div>
         <div style={{ marginBottom:"16px" }}>
           <label style={lbl}>Tipo de lançamento</label>
-          <div style={{ display:"flex",gap:"6px",flexWrap:"wrap" }}>
+          <div style={{ display:"flex",gap:"5px",flexWrap:"wrap" }}>
             {[["client","👤 Cliente"],["vacation","🏖 Férias"],["holiday","🎉 Feriado"],["reserved","🔒 Reservado"],["blocked","⛔ Bloqueado"]].map(([val,lab])=>(
-              <button key={val} onClick={()=>setType(val)} style={{ padding:"6px 12px",borderRadius:"20px",border:"none",cursor:"pointer",fontSize:"12px",fontWeight:600,background:type===val?"#3b82f6":"#334155",color:type===val?"#fff":"#94a3b8" }}>{lab}</button>
+              <button key={val} onClick={()=>setType(val)} style={{ padding:"6px 13px",borderRadius:"99px",border:"1px solid",cursor:"pointer",fontSize:"12px",fontWeight:600,transition:"all .15s",borderColor:type===val?"#6c63ff":"#2a2a3a",background:type===val?"#6c63ff22":"transparent",color:type===val?"#a78bfa":"#3e3e55" }}>{lab}</button>
             ))}
           </div>
         </div>
@@ -194,10 +194,10 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
           <label style={lbl}>Modalidade</label>
           <div style={{ display:"flex", gap:"8px" }}>
             {[["presencial","🏢 Presencial"],["remoto","💻 Remoto"]].map(([val,lab])=>(
-              <button key={val} onClick={()=>setModalidade(val)} style={{ flex:1, padding:"10px 16px", borderRadius:"10px", border:"2px solid", cursor:"pointer", fontSize:"13px", fontWeight:700, transition:"all .15s",
-                borderColor: modalidade===val ? (val==="presencial"?"#10b981":"#6366f1") : "#334155",
-                background: modalidade===val ? (val==="presencial"?"#10b98122":"#6366f122") : "#0f172a",
-                color: modalidade===val ? (val==="presencial"?"#10b981":"#818cf8") : "#475569"
+              <button key={val} onClick={()=>setModalidade(val)} style={{ flex:1, padding:"10px 16px", borderRadius:"12px", border:"1px solid", cursor:"pointer", fontSize:"13px", fontWeight:600, transition:"all .15s",
+                borderColor: modalidade===val ? (val==="presencial"?"#22d3a0":"#6c63ff") : "#2a2a3a",
+                background: modalidade===val ? (val==="presencial"?"#22d3a015":"#6c63ff15") : "transparent",
+                color: modalidade===val ? (val==="presencial"?"#22d3a0":"#a78bfa") : "#3e3e55"
               }}>{lab}</button>
             ))}
           </div>
@@ -226,7 +226,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
             </div>
           </div>
           {horaInicio && horaFim && horaInicio < horaFim && (
-            <div style={{ fontSize:"11px", color:"#64748b", marginTop:"6px" }}>
+            <div style={{ fontSize:"11px", color:"#6e6e88", marginTop:"6px" }}>
               {(() => {
                 const [hi,mi] = horaInicio.split(":").map(Number);
                 const [hf,mf] = horaFim.split(":").map(Number);
@@ -253,24 +253,24 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
           <div style={{ marginBottom:"20px" }}>
             <label style={lbl}>Seleção de dias</label>
             <div style={{ display:"flex",gap:"8px",marginBottom:"12px" }}>
-              <button onClick={()=>setDayMode("range")} style={{ padding:"6px 14px",borderRadius:"20px",border:"none",cursor:"pointer",fontSize:"12px",fontWeight:600,background:dayMode==="range"?"#6366f1":"#334155",color:dayMode==="range"?"#fff":"#94a3b8" }}>📅 Período</button>
-              <button onClick={()=>setDayMode("individual")} style={{ padding:"6px 14px",borderRadius:"20px",border:"none",cursor:"pointer",fontSize:"12px",fontWeight:600,background:dayMode==="individual"?"#6366f1":"#334155",color:dayMode==="individual"?"#fff":"#94a3b8" }}>🔢 Individuais</button>
+              <button onClick={()=>setDayMode("range")} style={{ padding:"6px 14px",borderRadius:"20px",border:"none",cursor:"pointer",fontSize:"12px",fontWeight:600,background:dayMode==="range"?"#6366f1":"#2a2a3a",color:dayMode==="range"?"#fff":"#6e6e88" }}>📅 Período</button>
+              <button onClick={()=>setDayMode("individual")} style={{ padding:"6px 14px",borderRadius:"20px",border:"none",cursor:"pointer",fontSize:"12px",fontWeight:600,background:dayMode==="individual"?"#6366f1":"#2a2a3a",color:dayMode==="individual"?"#fff":"#6e6e88" }}>🔢 Individuais</button>
             </div>
             {dayMode==="range" ? (
               <div style={{ display:"flex",gap:"12px",alignItems:"flex-end" }}>
                 <div style={{ flex:1 }}><label style={{...lbl,fontSize:"11px"}}>Dia inicial</label><input type="number" min="1" max="31" value={dayFrom} onChange={e=>setDayFrom(e.target.value)} style={inp}/></div>
-                <div style={{ color:"#64748b",paddingBottom:"10px",fontSize:"18px" }}>→</div>
+                <div style={{ color:"#6e6e88",paddingBottom:"10px",fontSize:"18px" }}>→</div>
                 <div style={{ flex:1 }}><label style={{...lbl,fontSize:"11px"}}>Dia final</label><input type="number" min="1" max="31" value={dayTo} onChange={e=>setDayTo(e.target.value)} style={inp}/></div>
-                {dayFrom && dayTo && Number(dayFrom)<=Number(dayTo) && <div style={{ paddingBottom:"10px",color:"#22c55e",fontWeight:700,fontSize:"13px" }}>{Number(dayTo)-Number(dayFrom)+1}d</div>}
+                {dayFrom && dayTo && Number(dayFrom)<=Number(dayTo) && <div style={{ paddingBottom:"10px",color:"#22d3a0",fontWeight:700,fontSize:"13px" }}>{Number(dayTo)-Number(dayFrom)+1}d</div>}
               </div>
             ) : (
               <div>
                 <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"4px" }}>
                   {Array.from({length:31},(_,i)=>i+1).map(d=>(
-                    <button key={d} onClick={()=>toggleDay(d)} style={{ padding:"6px 2px",borderRadius:"6px",border:"none",cursor:"pointer",fontSize:"12px",fontWeight:700,background:selectedDays.includes(d)?"#3b82f6":"#334155",color:selectedDays.includes(d)?"#fff":"#64748b" }}>{d}</button>
+                    <button key={d} onClick={()=>toggleDay(d)} style={{ padding:"6px 2px",borderRadius:"6px",border:"none",cursor:"pointer",fontSize:"12px",fontWeight:700,background:selectedDays.includes(d)?"#3b82f6":"#2a2a3a",color:selectedDays.includes(d)?"#fff":"#6e6e88" }}>{d}</button>
                   ))}
                 </div>
-                <p style={{ fontSize:"11px",color:"#64748b",margin:"8px 0 0" }}>{selectedDays.length} dia(s) selecionado(s)</p>
+                <p style={{ fontSize:"11px",color:"#6e6e88",margin:"8px 0 0" }}>{selectedDays.length} dia(s) selecionado(s)</p>
               </div>
             )}
           </div>
@@ -279,17 +279,17 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
         {(isEdit || isPrefill) && (
           <div style={{ marginBottom:"20px" }}>
             <label style={lbl}>Dia</label>
-            <div style={{ display:"flex",alignItems:"center",gap:"10px",padding:"10px 14px",background:"#0f172a",borderRadius:"8px",border:"1px solid #334155" }}>
+            <div style={{ display:"flex",alignItems:"center",gap:"10px",padding:"10px 14px",background:"#0d0d14",borderRadius:"8px",border:"1px solid #2a2a3a" }}>
               <span style={{ fontSize:"20px" }}>📅</span>
               <div>
-                <div style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9" }}>Dia {editEntry.day} de {editEntry.month}{editEntry.year ? " " + editEntry.year : ""}</div>
-                <div style={{ fontSize:"11px",color:"#64748b",marginTop:"1px" }}>{editEntry.consultor}</div>
+                <div style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa" }}>Dia {editEntry.day} de {editEntry.month}{editEntry.year ? " " + editEntry.year : ""}</div>
+                <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"1px" }}>{editEntry.consultor}</div>
               </div>
             </div>
           </div>
         )}
         {/* Notificação por e-mail */}
-        <div style={{ display:"flex",alignItems:"center",gap:"10px",padding:"10px 14px",background:"#0f172a",borderRadius:"8px",border:"1px solid #334155",marginBottom:"16px" }}>
+        <div style={{ display:"flex",alignItems:"center",gap:"10px",padding:"10px 14px",background:"#0d0d14",borderRadius:"8px",border:"1px solid #2a2a3a",marginBottom:"16px" }}>
           <input
             type="checkbox"
             id="notifyEmailChk"
@@ -297,17 +297,17 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
             onChange={e=>setNotifyEmail(e.target.checked)}
             style={{ width:"16px",height:"16px",cursor:"pointer",accentColor:"#3b82f6" }}
           />
-          <label htmlFor="notifyEmailChk" style={{ fontSize:"13px",color:"#94a3b8",cursor:"pointer",userSelect:"none" }}>
+          <label htmlFor="notifyEmailChk" style={{ fontSize:"13px",color:"#6e6e88",cursor:"pointer",userSelect:"none" }}>
             📧 Notificar por e-mail
             {isEdit
-              ? <span style={{ fontSize:"11px",color:"#64748b",marginLeft:"6px" }}>(consultor + quem incluiu, se diferente)</span>
-              : <span style={{ fontSize:"11px",color:"#64748b",marginLeft:"6px" }}>(consultor + você)</span>
+              ? <span style={{ fontSize:"11px",color:"#6e6e88",marginLeft:"6px" }}>(consultor + quem incluiu, se diferente)</span>
+              : <span style={{ fontSize:"11px",color:"#6e6e88",marginLeft:"6px" }}>(consultor + você)</span>
             }
           </label>
         </div>
-        <div style={{ display:"flex",gap:"10px",justifyContent:"flex-end" }}>
-          <button onClick={onClose} style={{ padding:"10px 20px",borderRadius:"8px",border:"1px solid #334155",background:"transparent",color:"#94a3b8",cursor:"pointer",fontWeight:600,fontSize:"14px" }}>Cancelar</button>
-          <button onClick={handleSave} style={{ padding:"10px 24px",borderRadius:"8px",border:"none",background:"#3b82f6",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"14px" }}>{isEdit?"💾 Salvar":"✅ Adicionar"}</button>
+        <div style={{ display:"flex",gap:"10px",justifyContent:"flex-end",paddingTop:"4px" }}>
+          <button onClick={onClose} style={{ padding:"10px 20px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>Cancelar</button>
+          <button onClick={handleSave} style={{ padding:"10px 24px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>{isEdit?"Salvar alterações":"Adicionar agenda"}</button>
         </div>
       </div>
     </div>
@@ -324,9 +324,9 @@ function EmailConfigTab({ emailConfig, onSave }) {
   const [enabled,    setEnabled]    = useState(emailConfig.enabled    || false);
   const [testStatus, setTestStatus] = useState(null); // null | "sending" | "ok" | "err"
 
-  const inp = { padding:"8px 12px",borderRadius:"8px",border:"1px solid #334155",background:"#0f172a",color:"#e2e8f0",fontSize:"13px",width:"100%",boxSizing:"border-box",fontFamily:"monospace" };
-  const lbl = { fontSize:"12px",color:"#64748b",fontWeight:600,display:"block",marginBottom:"6px" };
-  const card = { background:"#1e293b",borderRadius:"12px",padding:"20px",border:"1px solid #334155" };
+  const inp = { padding:"8px 12px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",width:"100%",boxSizing:"border-box",fontFamily:"monospace" };
+  const lbl = { fontSize:"12px",color:"#6e6e88",fontWeight:600,display:"block",marginBottom:"6px" };
+  const card = { background:"#18181f",borderRadius:"12px",padding:"20px",border:"1px solid #2a2a3a" };
 
   const isConfigured = publicKey.trim() && serviceId.trim() && templateId.trim();
 
@@ -366,34 +366,34 @@ function EmailConfigTab({ emailConfig, onSave }) {
       {/* LEFT – form */}
       <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
         <div style={card}>
-          <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>⚙️ Credenciais EmailJS</h3>
-          <p style={{ fontSize:"12px",color:"#64748b",marginTop:0,marginBottom:"16px",lineHeight:"1.6" }}>
+          <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa",marginTop:0,marginBottom:"16px" }}>⚙️ Credenciais EmailJS</h3>
+          <p style={{ fontSize:"12px",color:"#6e6e88",marginTop:0,marginBottom:"16px",lineHeight:"1.6" }}>
             Configure sua conta em{" "}
-            <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" style={{ color:"#3b82f6" }}>emailjs.com</a>{" "}
+            <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" style={{ color:"#6c63ff" }}>emailjs.com</a>{" "}
             (plano gratuito inclui 200 e-mails/mês).
           </p>
 
           {/* Enable toggle */}
-          <div style={{ display:"flex",alignItems:"center",gap:"12px",padding:"10px 14px",background:"#0f172a",borderRadius:"8px",border:"1px solid #334155",marginBottom:"16px",cursor:"pointer" }} onClick={()=>setEnabled(e=>!e)}>
-            <div style={{ width:"40px",height:"22px",borderRadius:"11px",background:enabled?"#22c55e":"#334155",position:"relative",transition:"background .2s",flexShrink:0 }}>
+          <div style={{ display:"flex",alignItems:"center",gap:"12px",padding:"10px 14px",background:"#0d0d14",borderRadius:"8px",border:"1px solid #2a2a3a",marginBottom:"16px",cursor:"pointer" }} onClick={()=>setEnabled(e=>!e)}>
+            <div style={{ width:"40px",height:"22px",borderRadius:"11px",background:enabled?"#22c55e":"#2a2a3a",position:"relative",transition:"background .2s",flexShrink:0 }}>
               <div style={{ position:"absolute",top:"3px",left:enabled?"21px":"3px",width:"16px",height:"16px",borderRadius:"50%",background:"#fff",transition:"left .2s" }}/>
             </div>
-            <span style={{ fontSize:"13px",fontWeight:600,color:enabled?"#22c55e":"#64748b" }}>
+            <span style={{ fontSize:"13px",fontWeight:600,color:enabled?"#22c55e":"#6e6e88" }}>
               {enabled ? "✅ Envio de e-mails ativado" : "⭕ Envio de e-mails desativado"}
             </span>
           </div>
 
           <div style={{ display:"flex",flexDirection:"column",gap:"14px" }}>
             <div>
-              <label style={lbl}>🔑 Public Key <span style={{ color:"#475569",fontWeight:400 }}>(Account → API Keys)</span></label>
+              <label style={lbl}>🔑 Public Key <span style={{ color:"#6e6e88",fontWeight:400 }}>(Account → API Keys)</span></label>
               <input value={publicKey} onChange={e=>setPublicKey(e.target.value)} placeholder="ex: aBcDeFgHiJkLmNoP" style={inp}/>
             </div>
             <div>
-              <label style={lbl}>📡 Service ID <span style={{ color:"#475569",fontWeight:400 }}>(Email Services)</span></label>
+              <label style={lbl}>📡 Service ID <span style={{ color:"#6e6e88",fontWeight:400 }}>(Email Services)</span></label>
               <input value={serviceId} onChange={e=>setServiceId(e.target.value)} placeholder="ex: service_xxxxxxx" style={inp}/>
             </div>
             <div>
-              <label style={lbl}>📄 Template ID <span style={{ color:"#475569",fontWeight:400 }}>(Email Templates)</span></label>
+              <label style={lbl}>📄 Template ID <span style={{ color:"#6e6e88",fontWeight:400 }}>(Email Templates)</span></label>
               <input value={templateId} onChange={e=>setTemplateId(e.target.value)} placeholder="ex: template_xxxxxxx" style={inp}/>
             </div>
           </div>
@@ -401,16 +401,16 @@ function EmailConfigTab({ emailConfig, onSave }) {
           <div style={{ display:"flex",gap:"10px",marginTop:"20px",alignItems:"center",flexWrap:"wrap" }}>
             <button
               onClick={()=>onSave({ enabled, publicKey:publicKey.trim(), serviceId:serviceId.trim(), templateId:templateId.trim() })}
-              style={{ padding:"10px 24px",borderRadius:"8px",border:"none",background:"#3b82f6",color:"#fff",fontWeight:700,fontSize:"13px",cursor:"pointer" }}>
+              style={{ padding:"10px 24px",borderRadius:"8px",border:"none",background:"#6c63ff",color:"#fff",fontWeight:700,fontSize:"13px",cursor:"pointer" }}>
               💾 Salvar configuração
             </button>
             <button
               onClick={handleTestSend}
               disabled={!isConfigured || testStatus==="sending"}
-              style={{ padding:"10px 20px",borderRadius:"8px",border:"1px solid #334155",background:"transparent",color:isConfigured?"#94a3b8":"#334155",fontWeight:600,fontSize:"13px",cursor:isConfigured?"pointer":"default" }}>
+              style={{ padding:"10px 20px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"transparent",color:isConfigured?"#6e6e88":"#2a2a3a",fontWeight:600,fontSize:"13px",cursor:isConfigured?"pointer":"default" }}>
               {testStatus==="sending"?"⏳ Enviando...":"📧 Enviar e-mail de teste"}
             </button>
-            {testStatus==="ok"  && <span style={{ fontSize:"12px",color:"#22c55e",fontWeight:600 }}>✅ E-mail de teste enviado!</span>}
+            {testStatus==="ok"  && <span style={{ fontSize:"12px",color:"#22d3a0",fontWeight:600 }}>✅ E-mail de teste enviado!</span>}
             {testStatus==="err" && <span style={{ fontSize:"12px",color:"#ef4444",fontWeight:600 }}>❌ Falha — verifique as credenciais</span>}
           </div>
         </div>
@@ -419,23 +419,23 @@ function EmailConfigTab({ emailConfig, onSave }) {
       {/* RIGHT – instructions */}
       <div style={{ display:"flex",flexDirection:"column",gap:"16px" }}>
         <div style={card}>
-          <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"12px" }}>📋 Como configurar (passo a passo)</h3>
+          <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa",marginTop:0,marginBottom:"12px" }}>📋 Como configurar (passo a passo)</h3>
           <ol style={{ margin:0,paddingLeft:"18px",display:"flex",flexDirection:"column",gap:"10px" }}>
             {[
-              <>Acesse <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" style={{color:"#3b82f6"}}>emailjs.com</a> e crie uma conta grátis.</>,
-              <>Vá em <strong style={{color:"#f1f5f9"}}>Email Services</strong> → conecte seu Gmail ou Outlook → copie o <code style={{color:"#f59e0b",background:"#1e293b",padding:"1px 5px",borderRadius:"4px"}}>Service ID</code>.</>,
-              <>Vá em <strong style={{color:"#f1f5f9"}}>Email Templates</strong> → crie um novo template com as variáveis ao lado → copie o <code style={{color:"#f59e0b",background:"#1e293b",padding:"1px 5px",borderRadius:"4px"}}>Template ID</code>.</>,
-              <>Vá em <strong style={{color:"#f1f5f9"}}>Account → API Keys</strong> → copie a <code style={{color:"#f59e0b",background:"#1e293b",padding:"1px 5px",borderRadius:"4px"}}>Public Key</code>.</>,
-              <>Preencha os campos ao lado, ative o envio e clique em <strong style={{color:"#f1f5f9"}}>Salvar</strong>.</>,
+              <>Acesse <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" style={{color:"#6c63ff"}}>emailjs.com</a> e crie uma conta grátis.</>,
+              <>Vá em <strong style={{color:"#f0f0fa"}}>Email Services</strong> → conecte seu Gmail ou Outlook → copie o <code style={{color:"#f59e0b",background:"#18181f",padding:"1px 5px",borderRadius:"4px"}}>Service ID</code>.</>,
+              <>Vá em <strong style={{color:"#f0f0fa"}}>Email Templates</strong> → crie um novo template com as variáveis ao lado → copie o <code style={{color:"#f59e0b",background:"#18181f",padding:"1px 5px",borderRadius:"4px"}}>Template ID</code>.</>,
+              <>Vá em <strong style={{color:"#f0f0fa"}}>Account → API Keys</strong> → copie a <code style={{color:"#f59e0b",background:"#18181f",padding:"1px 5px",borderRadius:"4px"}}>Public Key</code>.</>,
+              <>Preencha os campos ao lado, ative o envio e clique em <strong style={{color:"#f0f0fa"}}>Salvar</strong>.</>,
             ].map((step,i)=>(
-              <li key={i} style={{ fontSize:"12px",color:"#94a3b8",lineHeight:"1.6" }}>{step}</li>
+              <li key={i} style={{ fontSize:"12px",color:"#6e6e88",lineHeight:"1.6" }}>{step}</li>
             ))}
           </ol>
         </div>
 
         <div style={card}>
-          <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"12px" }}>📄 Template sugerido no EmailJS</h3>
-          <p style={{ fontSize:"11px",color:"#64748b",marginTop:0,marginBottom:"10px" }}>Configure seu template com estes campos:</p>
+          <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa",marginTop:0,marginBottom:"12px" }}>📄 Template sugerido no EmailJS</h3>
+          <p style={{ fontSize:"11px",color:"#6e6e88",marginTop:0,marginBottom:"10px" }}>Configure seu template com estes campos:</p>
           <div style={{ display:"flex",flexDirection:"column",gap:"8px" }}>
             {[
               ["To Email",  "{{to_email}}",  "E-mail do destinatário (obrigatório)"],
@@ -443,17 +443,17 @@ function EmailConfigTab({ emailConfig, onSave }) {
               ["Subject",   "{{assunto}}",   "Assunto gerado automaticamente pelo sistema"],
               ["Content",   "{{corpo}}",     "Corpo HTML gerado automaticamente"],
             ].map(([field,variable,desc])=>(
-              <div key={field} style={{ padding:"8px 10px",background:"#0f172a",borderRadius:"6px",border:"1px solid #1e293b" }}>
+              <div key={field} style={{ padding:"8px 10px",background:"#0d0d14",borderRadius:"6px",border:"1px solid #18181f" }}>
                 <div style={{ display:"flex",justifyContent:"space-between",marginBottom:"2px" }}>
-                  <span style={{ fontSize:"11px",fontWeight:700,color:"#f1f5f9" }}>{field}</span>
-                  <code style={{ fontSize:"11px",color:"#f59e0b",background:"#1e293b",padding:"1px 6px",borderRadius:"4px" }}>{variable}</code>
+                  <span style={{ fontSize:"11px",fontWeight:700,color:"#f0f0fa" }}>{field}</span>
+                  <code style={{ fontSize:"11px",color:"#f59e0b",background:"#18181f",padding:"1px 6px",borderRadius:"4px" }}>{variable}</code>
                 </div>
-                <span style={{ fontSize:"10px",color:"#475569" }}>{desc}</span>
+                <span style={{ fontSize:"10px",color:"#6e6e88" }}>{desc}</span>
               </div>
             ))}
           </div>
-          <div style={{ marginTop:"12px",padding:"8px 10px",background:"#0f172a",borderRadius:"6px",border:"1px solid #1e293b" }}>
-            <p style={{ fontSize:"11px",color:"#64748b",margin:0,lineHeight:"1.6" }}>
+          <div style={{ marginTop:"12px",padding:"8px 10px",background:"#0d0d14",borderRadius:"6px",border:"1px solid #18181f" }}>
+            <p style={{ fontSize:"11px",color:"#6e6e88",margin:0,lineHeight:"1.6" }}>
               <strong style={{color:"#f59e0b"}}>Assunto gerado:</strong> "Agenda incluída: Dia 17 — VEDACIT (Março 2026)"<br/>
               <strong style={{color:"#f59e0b"}}>Corpo:</strong> tabela HTML com dia, horário, cliente e atividades.
             </p>
@@ -475,20 +475,20 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
   const [editC, setEditC] = useState(null); // { idx, name, codigo, email }
 
   // ── Cliente form ──
-  const [newCl, setNewCl] = useState({ name:"", codigo:"", email:"", color:"#3b82f6" });
+  const [newCl, setNewCl] = useState({ name:"", codigo:"", email:"", color:"#6c63ff" });
   const [editCl, setEditCl] = useState(null);
 
   // ── Projeto form ──
   const [newP, setNewP] = useState({ name:"", codigo:"", client:"", description:"" });
   const [editP, setEditP] = useState(null);
 
-  const inp = { padding:"8px 12px",borderRadius:"8px",border:"1px solid #334155",background:"#0f172a",color:"#e2e8f0",fontSize:"13px",width:"100%",boxSizing:"border-box" };
-  const lbl = { fontSize:"12px",color:"#64748b",fontWeight:600,display:"block",marginBottom:"6px" };
-  const card = { background:"#1e293b",borderRadius:"12px",padding:"20px",border:"1px solid #334155" };
-  const btnGreen = { padding:"10px",borderRadius:"8px",border:"none",background:"#22c55e",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"13px",width:"100%" };
-  const btnBlue  = { padding:"10px",borderRadius:"8px",border:"none",background:"#3b82f6",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"13px",width:"100%" };
+  const inp = { padding:"8px 12px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",width:"100%",boxSizing:"border-box" };
+  const lbl = { fontSize:"12px",color:"#6e6e88",fontWeight:600,display:"block",marginBottom:"6px" };
+  const card = { background:"#18181f",borderRadius:"12px",padding:"20px",border:"1px solid #2a2a3a" };
+  const btnGreen = { padding:"10px",borderRadius:"8px",border:"none",background:"#22d3a0",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"13px",width:"100%" };
+  const btnBlue  = { padding:"10px",borderRadius:"8px",border:"none",background:"#6c63ff",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"13px",width:"100%" };
   const btnRed   = { background:"#ef444422",border:"1px solid #ef444444",color:"#ef4444",borderRadius:"6px",padding:"5px 10px",cursor:"pointer",fontSize:"12px",fontWeight:600 };
-  const btnEdit  = { background:"#3b82f622",border:"1px solid #3b82f644",color:"#3b82f6",borderRadius:"6px",padding:"5px 10px",cursor:"pointer",fontSize:"12px",fontWeight:600 };
+  const btnEdit  = { background:"#6c63ff22",border:"1px solid #3b82f644",color:"#6c63ff",borderRadius:"6px",padding:"5px 10px",cursor:"pointer",fontSize:"12px",fontWeight:600 };
 
   const tabs = [["consultores","👥 Consultores"],["clientes","🏢 Clientes"],["projetos","📋 Projetos"],["email","📧 E-mail"]];
 
@@ -498,10 +498,10 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 
   return (
     <div>
-      <h2 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:"#f8fafc",marginBottom:"20px" }}>🗂 Cadastros</h2>
+      <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:"#f0f0fa",marginBottom:"20px" }}>🗂 Cadastros</h2>
       <div style={{ display:"flex",gap:"8px",marginBottom:"24px",flexWrap:"wrap" }}>
         {tabs.map(([id,label])=>(
-          <button key={id} onClick={()=>setTab(id)} style={{ padding:"8px 20px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"13px",background:tab===id?"#3b82f6":"#1e293b",color:tab===id?"#fff":"#64748b" }}>{label}</button>
+          <button key={id} onClick={()=>setTab(id)} style={{ padding:"8px 20px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"13px",background:tab===id?"#3b82f6":"#18181f",color:tab===id?"#fff":"#6e6e88" }}>{label}</button>
         ))}
       </div>
 
@@ -510,7 +510,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"24px" }}>
           {/* Formulário */}
           <div style={card}>
-            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>
+            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa",marginTop:0,marginBottom:"16px" }}>
               {editC ? "✏️ Editar Consultor" : "➕ Novo Consultor"}
             </h3>
             <div style={{ display:"flex",flexDirection:"column",gap:"12px" }}>
@@ -532,7 +532,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
                 {editC ? (
                   <>
                     <button onClick={()=>{ if(!editC.name.trim()) return; onUpdateConsultor(editC._orig, editC); setEditC(null); }} style={btnBlue}>💾 Salvar alterações</button>
-                    <button onClick={()=>setEditC(null)} style={{ ...btnBlue,background:"#334155",width:"auto",padding:"10px 16px" }}>Cancelar</button>
+                    <button onClick={()=>setEditC(null)} style={{ ...btnBlue,background:"#2a2a3a",width:"auto",padding:"10px 16px" }}>Cancelar</button>
                   </>
                 ) : (
                   <button onClick={()=>{ if(!newC.name.trim()) return; onAddConsultor(newC); setNewC({name:"",codigo:"",email:""}); }} style={btnGreen}>✅ Cadastrar Consultor</button>
@@ -543,21 +543,21 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 
           {/* Lista */}
           <div style={card}>
-            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>👥 Consultores Cadastrados ({consultores.length})</h3>
+            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa",marginTop:0,marginBottom:"16px" }}>👥 Consultores Cadastrados ({consultores.length})</h3>
             <div style={{ display:"flex",flexDirection:"column",gap:"8px",maxHeight:"360px",overflowY:"auto" }}>
               {consultores.map((c,i)=>{
                 const meta = getMeta(c);
                 return (
-                  <div key={c} style={{ padding:"10px 12px",background:"#0f172a",borderRadius:"8px",border:"1px solid #1e293b" }}>
+                  <div key={c} style={{ padding:"10px 12px",background:"#0d0d14",borderRadius:"8px",border:"1px solid #18181f" }}>
                     <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                       <div style={{ display:"flex",alignItems:"center",gap:"10px",minWidth:0 }}>
                         <div style={{ width:"32px",height:"32px",borderRadius:"50%",background:"hsl("+(i*29%360)+",65%,50%)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:700,color:"#fff",flexShrink:0 }}>{getInitials(c)}</div>
                         <div style={{ minWidth:0 }}>
-                          <div style={{ fontSize:"13px",color:"#e2e8f0",fontWeight:600,display:"flex",alignItems:"center",gap:"6px" }}>
+                          <div style={{ fontSize:"13px",color:"#c8c8d8",fontWeight:600,display:"flex",alignItems:"center",gap:"6px" }}>
                             {c}
-                            {meta.codigo && <span style={{ fontSize:"10px",background:"#334155",color:"#94a3b8",padding:"1px 6px",borderRadius:"10px" }}>{meta.codigo}</span>}
+                            {meta.codigo && <span style={{ fontSize:"10px",background:"#2a2a3a",color:"#6e6e88",padding:"1px 6px",borderRadius:"10px" }}>{meta.codigo}</span>}
                           </div>
-                          {meta.email && <div style={{ fontSize:"11px",color:"#64748b",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>✉️ {meta.email}</div>}
+                          {meta.email && <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>✉️ {meta.email}</div>}
                         </div>
                       </div>
                       <div style={{ display:"flex",gap:"6px",flexShrink:0,marginLeft:"8px" }}>
@@ -578,7 +578,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"24px" }}>
           {/* Formulário */}
           <div style={card}>
-            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>
+            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa",marginTop:0,marginBottom:"16px" }}>
               {editCl ? "✏️ Editar Cliente" : "➕ Novo Cliente"}
             </h3>
             <div style={{ display:"flex",flexDirection:"column",gap:"12px" }}>
@@ -599,7 +599,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
               <div>
                 <label style={lbl}>Cor identificadora</label>
                 <div style={{ display:"flex",alignItems:"center",gap:"12px" }}>
-                  <input type="color" value={editCl?editCl.color:newCl.color} onChange={e=>editCl?setEditCl(x=>({...x,color:e.target.value})):setNewCl(x=>({...x,color:e.target.value}))} style={{ width:"48px",height:"36px",borderRadius:"8px",border:"1px solid #334155",background:"#0f172a",cursor:"pointer" }}/>
+                  <input type="color" value={editCl?editCl.color:newCl.color} onChange={e=>editCl?setEditCl(x=>({...x,color:e.target.value})):setNewCl(x=>({...x,color:e.target.value}))} style={{ width:"48px",height:"36px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#0d0d14",cursor:"pointer" }}/>
                   <div style={{ flex:1,height:"36px",borderRadius:"8px",background:editCl?editCl.color:newCl.color,display:"flex",alignItems:"center",justifyContent:"center" }}>
                     <span style={{ fontSize:"12px",fontWeight:700,color:"#fff",textShadow:"0 1px 3px rgba(0,0,0,0.5)" }}>{(editCl?editCl.name:newCl.name)||"PRÉVIA"}</span>
                   </div>
@@ -609,10 +609,10 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
                 {editCl ? (
                   <>
                     <button onClick={()=>{ if(!editCl.name.trim()) return; onUpdateClient(editCl._orig, editCl); setEditCl(null); }} style={btnBlue}>💾 Salvar alterações</button>
-                    <button onClick={()=>setEditCl(null)} style={{ ...btnBlue,background:"#334155",width:"auto",padding:"10px 16px" }}>Cancelar</button>
+                    <button onClick={()=>setEditCl(null)} style={{ ...btnBlue,background:"#2a2a3a",width:"auto",padding:"10px 16px" }}>Cancelar</button>
                   </>
                 ) : (
-                  <button onClick={()=>{ if(!newCl.name.trim()) return; onAddClient(newCl); setNewCl({name:"",codigo:"",email:"",color:"#3b82f6"}); }} style={btnGreen}>✅ Cadastrar Cliente</button>
+                  <button onClick={()=>{ if(!newCl.name.trim()) return; onAddClient(newCl); setNewCl({name:"",codigo:"",email:"",color:"#6c63ff"}); }} style={btnGreen}>✅ Cadastrar Cliente</button>
                 )}
               </div>
             </div>
@@ -620,19 +620,19 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 
           {/* Lista */}
           <div style={card}>
-            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>🏢 Clientes Cadastrados ({clients.length})</h3>
+            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa",marginTop:0,marginBottom:"16px" }}>🏢 Clientes Cadastrados ({clients.length})</h3>
             <div style={{ display:"flex",flexDirection:"column",gap:"8px",maxHeight:"380px",overflowY:"auto" }}>
               {clients.map(c=>(
-                <div key={c.name} style={{ padding:"10px 12px",background:"#0f172a",borderRadius:"8px",border:"1px solid #1e293b" }}>
+                <div key={c.name} style={{ padding:"10px 12px",background:"#0d0d14",borderRadius:"8px",border:"1px solid #18181f" }}>
                   <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                     <div style={{ display:"flex",alignItems:"center",gap:"10px",minWidth:0 }}>
                       <div style={{ width:"14px",height:"14px",borderRadius:"3px",background:c.color,flexShrink:0 }}/>
                       <div style={{ minWidth:0 }}>
-                        <div style={{ fontSize:"13px",color:"#e2e8f0",fontWeight:600,display:"flex",alignItems:"center",gap:"6px" }}>
+                        <div style={{ fontSize:"13px",color:"#c8c8d8",fontWeight:600,display:"flex",alignItems:"center",gap:"6px" }}>
                           {c.name}
-                          {c.codigo && <span style={{ fontSize:"10px",background:"#334155",color:"#94a3b8",padding:"1px 6px",borderRadius:"10px" }}>{c.codigo}</span>}
+                          {c.codigo && <span style={{ fontSize:"10px",background:"#2a2a3a",color:"#6e6e88",padding:"1px 6px",borderRadius:"10px" }}>{c.codigo}</span>}
                         </div>
-                        {c.email && <div style={{ fontSize:"11px",color:"#64748b",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>✉️ {c.email}</div>}
+                        {c.email && <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>✉️ {c.email}</div>}
                       </div>
                     </div>
                     <div style={{ display:"flex",gap:"6px",flexShrink:0,marginLeft:"8px" }}>
@@ -652,7 +652,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"24px" }}>
           {/* Formulário */}
           <div style={card}>
-            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>
+            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa",marginTop:0,marginBottom:"16px" }}>
               {editP ? "✏️ Editar Projeto" : "➕ Novo Projeto"}
             </h3>
             <div style={{ display:"flex",flexDirection:"column",gap:"12px" }}>
@@ -681,7 +681,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
                 {editP ? (
                   <>
                     <button onClick={()=>{ if(!editP.name.trim()||!editP.client) return; onUpdateProject(editP._idx,editP); setEditP(null); }} style={btnBlue}>💾 Salvar alterações</button>
-                    <button onClick={()=>setEditP(null)} style={{ ...btnBlue,background:"#334155",width:"auto",padding:"10px 16px" }}>Cancelar</button>
+                    <button onClick={()=>setEditP(null)} style={{ ...btnBlue,background:"#2a2a3a",width:"auto",padding:"10px 16px" }}>Cancelar</button>
                   </>
                 ) : (
                   <button onClick={()=>{ if(!newP.name.trim()||!newP.client) return; onAddProject({...newP}); setNewP({name:"",codigo:"",client:"",description:""}); }} style={btnGreen}>✅ Cadastrar Projeto</button>
@@ -692,19 +692,19 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 
           {/* Lista */}
           <div style={card}>
-            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>📋 Projetos Cadastrados ({projects.length})</h3>
+            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa",marginTop:0,marginBottom:"16px" }}>📋 Projetos Cadastrados ({projects.length})</h3>
             <div style={{ display:"flex",flexDirection:"column",gap:"8px",maxHeight:"380px",overflowY:"auto" }}>
-              {projects.length===0 && <p style={{ color:"#475569",fontSize:"13px",textAlign:"center",padding:"20px" }}>Nenhum projeto cadastrado ainda.</p>}
+              {projects.length===0 && <p style={{ color:"#6e6e88",fontSize:"13px",textAlign:"center",padding:"20px" }}>Nenhum projeto cadastrado ainda.</p>}
               {projects.map((p,i)=>(
-                <div key={i} style={{ padding:"10px 14px",background:"#0f172a",borderRadius:"8px",border:"1px solid #1e293b" }}>
+                <div key={i} style={{ padding:"10px 14px",background:"#0d0d14",borderRadius:"8px",border:"1px solid #18181f" }}>
                   <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px" }}>
                     <div style={{ minWidth:0 }}>
-                      <div style={{ fontSize:"13px",color:"#f1f5f9",fontWeight:700,display:"flex",alignItems:"center",gap:"6px" }}>
+                      <div style={{ fontSize:"13px",color:"#f0f0fa",fontWeight:700,display:"flex",alignItems:"center",gap:"6px" }}>
                         {p.name}
-                        {p.codigo && <span style={{ fontSize:"10px",background:"#334155",color:"#94a3b8",padding:"1px 6px",borderRadius:"10px" }}>{p.codigo}</span>}
+                        {p.codigo && <span style={{ fontSize:"10px",background:"#2a2a3a",color:"#6e6e88",padding:"1px 6px",borderRadius:"10px" }}>{p.codigo}</span>}
                       </div>
                       <div style={{ fontSize:"11px",color:getClientColor(p.client),fontWeight:600,marginTop:"3px" }}>{p.client}</div>
-                      {p.description && <div style={{ fontSize:"11px",color:"#64748b",marginTop:"4px" }}>{p.description}</div>}
+                      {p.description && <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"4px" }}>{p.description}</div>}
                     </div>
                     <div style={{ display:"flex",gap:"6px",flexShrink:0 }}>
                       <button onClick={()=>setEditP({...p,_idx:i})} style={btnEdit}>✏️</button>
@@ -732,7 +732,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEdit, onEdit, onNewEntry, theme: T }) {
   const { days, consultores, monday } = weeklyData;
   const WD_SHORT = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
-  const WD_COLOR = ["#1e293b","#1e293b","#1e293b","#1e293b","#1e293b","#0f172a","#0f172a"];
+  const WD_COLOR = ["#18181f","#18181f","#18181f","#18181f","#18181f","#0d0d14","#0d0d14"];
   const today = new Date(); today.setHours(0,0,0,0);
 
   // Formata o range da semana ex: "17 - 23 Mar 2026"
@@ -757,14 +757,14 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
       {/* Navegação da semana */}
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"20px",flexWrap:"wrap",gap:"10px" }}>
         <div style={{ display:"flex",alignItems:"center",gap:"10px" }}>
-          <button onClick={()=>setOffset(o=>o-1)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid #334155",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:"18px",lineHeight:1 }}>‹</button>
+          <button onClick={()=>setOffset(o=>o-1)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#18181f",color:"#6e6e88",cursor:"pointer",fontSize:"18px",lineHeight:1 }}>‹</button>
           <div style={{ textAlign:"center" }}>
-            <div style={{ fontSize:"16px",fontWeight:700,color:"#f1f5f9" }}>{fmtRange()}</div>
-            {offset!==0 && <div style={{ fontSize:"11px",color:"#64748b",marginTop:"2px" }}>{offset>0?`+${offset}`:`${offset}`} semana{Math.abs(offset)>1?"s":""} da atual</div>}
+            <div style={{ fontSize:"16px",fontWeight:700,color:"#f0f0fa" }}>{fmtRange()}</div>
+            {offset!==0 && <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"2px" }}>{offset>0?`+${offset}`:`${offset}`} semana{Math.abs(offset)>1?"s":""} da atual</div>}
           </div>
-          <button onClick={()=>setOffset(o=>o+1)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid #334155",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:"18px",lineHeight:1 }}>›</button>
+          <button onClick={()=>setOffset(o=>o+1)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#18181f",color:"#6e6e88",cursor:"pointer",fontSize:"18px",lineHeight:1 }}>›</button>
         </div>
-        <button onClick={()=>setOffset(0)} style={{ padding:"7px 16px",borderRadius:"8px",border:"1px solid #3b82f644",background:"#3b82f618",color:"#3b82f6",cursor:"pointer",fontSize:"12px",fontWeight:700,opacity:offset===0?0.4:1 }} disabled={offset===0}>
+        <button onClick={()=>setOffset(0)} style={{ padding:"7px 16px",borderRadius:"8px",border:"1px solid #3b82f644",background:"#3b82f618",color:"#6c63ff",cursor:"pointer",fontSize:"12px",fontWeight:700,opacity:offset===0?0.4:1 }} disabled={offset===0}>
           📍 Semana atual
         </button>
       </div>
@@ -778,15 +778,15 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
           </colgroup>
           <thead>
             <tr>
-              <th style={{ padding:"8px 12px",textAlign:"left",fontSize:"11px",color:"#64748b",fontWeight:700,background:"#0f172a",borderBottom:"2px solid #334155" }}>Consultor</th>
+              <th style={{ padding:"8px 12px",textAlign:"left",fontSize:"11px",color:"#6e6e88",fontWeight:700,background:"#0d0d14",borderBottom:"2px solid #2a2a3a" }}>Consultor</th>
               {days.map((d,i)=>{
                 const isToday = d.getTime()===today.getTime();
                 const isWknd = i>=5;
                 return (
-                  <th key={i} style={{ padding:"8px 6px",textAlign:"center",fontSize:"11px",fontWeight:700,background:isWknd?"#0a0f1a":"#0f172a",borderBottom:"2px solid "+(isToday?"#3b82f6":"#334155"),color:isToday?"#3b82f6":isWknd?"#475569":"#94a3b8",minWidth:"90px" }}>
+                  <th key={i} style={{ padding:"8px 6px",textAlign:"center",fontSize:"11px",fontWeight:700,background:isWknd?"#0a0f1a":"#0d0d14",borderBottom:"2px solid "+(isToday?"#3b82f6":"#2a2a3a"),color:isToday?"#3b82f6":isWknd?"#6e6e88":"#6e6e88",minWidth:"90px" }}>
                     <div>{WD_SHORT[i]}</div>
-                    <div style={{ fontSize:"16px",fontWeight:800,color:isToday?"#3b82f6":isWknd?"#374151":"#e2e8f0",marginTop:"2px" }}>{d.getDate()}</div>
-                    <div style={{ fontSize:"10px",color:"#475569",marginTop:"1px" }}>{d.toLocaleDateString("pt-BR",{month:"short"}).replace(".","")}</div>
+                    <div style={{ fontSize:"16px",fontWeight:800,color:isToday?"#3b82f6":isWknd?"#374151":"#c8c8d8",marginTop:"2px" }}>{d.getDate()}</div>
+                    <div style={{ fontSize:"10px",color:"#6e6e88",marginTop:"1px" }}>{d.toLocaleDateString("pt-BR",{month:"short"}).replace(".","")}</div>
                   </th>
                 );
               })}
@@ -794,14 +794,14 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
           </thead>
           <tbody>
             {consultores.map(({name, cells},ri)=>(
-              <tr key={name} style={{ borderBottom:"1px solid #1e293b" }}>
+              <tr key={name} style={{ borderBottom:"1px solid #18181f" }}>
                 {/* Nome do consultor */}
-                <td style={{ padding:"8px 10px",verticalAlign:"middle",background:"#0f172a",borderRight:"2px solid #1e293b" }}>
+                <td style={{ padding:"8px 10px",verticalAlign:"middle",background:"#0d0d14",borderRight:"2px solid #18181f" }}>
                   <div style={{ display:"flex",alignItems:"center",gap:"8px" }}>
                     <div style={{ width:"26px",height:"26px",borderRadius:"50%",background:"hsl("+(ri*37%360)+",55%,48%)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10px",fontWeight:800,color:"#fff",flexShrink:0 }}>
                       {name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
                     </div>
-                    <span style={{ fontSize:"11px",fontWeight:600,color:"#e2e8f0",lineHeight:1.3 }}>{name.split(" ")[0]}</span>
+                    <span style={{ fontSize:"11px",fontWeight:600,color:"#c8c8d8",lineHeight:1.3 }}>{name.split(" ")[0]}</span>
                   </div>
                 </td>
                 {/* Células dos dias */}
@@ -814,9 +814,9 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
                   return (
                     <td key={ci}
                       onClick={()=>{ if(canEdit&&!isWknd&&onNewEntry&&entries.length===0) onNewEntry({consultor:name,month:mName,day:d.getDate(),year:yr}); }}
-                      style={{ padding:"4px",verticalAlign:"top",background:isToday?"#1e3a5f22":isWknd?"#0a0f1a":"transparent",borderLeft:"1px solid #1e293b",cursor:(canEdit&&!isWknd&&entries.length===0)?"pointer":"default",minHeight:"60px" }}>
+                      style={{ padding:"4px",verticalAlign:"top",background:isToday?"#16102a22":isWknd?"#0a0f1a":"transparent",borderLeft:"1px solid #18181f",cursor:(canEdit&&!isWknd&&entries.length===0)?"pointer":"default",minHeight:"60px" }}>
                       {entries.length===0 && !isWknd && canEdit && (
-                        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"52px",opacity:0.15,fontSize:"18px",color:"#64748b" }}>+</div>
+                        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"52px",opacity:0.15,fontSize:"18px",color:"#6e6e88" }}>+</div>
                       )}
                       {entries.map((entry,ei)=>{
                         const color = getColor(entry);
@@ -844,7 +844,7 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
           </tbody>
         </table>
       </div>
-      <p style={{ fontSize:"11px",color:"#475569",marginTop:"10px" }}>💡 Clique em célula vazia para adicionar · Clique em agenda para editar · Colunas escuras = fim de semana</p>
+      <p style={{ fontSize:"11px",color:"#6e6e88",marginTop:"10px" }}>💡 Clique em célula vazia para adicionar · Clique em agenda para editar · Colunas escuras = fim de semana</p>
     </div>
   );
 }
@@ -946,8 +946,8 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
     if (!entry) return null;
     if (entry.type==="vacation") return "#22c55e";
     if (entry.type==="holiday") return "#ef4444";
-    if (entry.type==="reserved") return "#94a3b8";
-    if (entry.type==="blocked") return "#475569";
+    if (entry.type==="reserved") return "#6e6e88";
+    if (entry.type==="blocked") return "#6e6e88";
     const cname = normalizeClient(entry.client);
     return clientColors[cname] || getClientColor(entry.client);
   };
@@ -958,16 +958,16 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
     <div onClick={closeAll}>
       {/* MONTH SELECTOR */}
       <div style={{ display:"flex",alignItems:"center",gap:"16px",marginBottom:"16px",flexWrap:"wrap" }}>
-        <h2 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:"#f8fafc",margin:0 }}>📆 Calendário Mensal</h2>
+        <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:"#f0f0fa",margin:0 }}>📆 Calendário Mensal</h2>
         <div style={{ display:"flex",gap:"6px",flexWrap:"wrap" }}>
           {monthsAvail.map(m=>(
-            <button key={m} onClick={()=>setCalMes(m)} style={{ padding:"5px 12px",borderRadius:"16px",border:"none",cursor:"pointer",fontSize:"12px",fontWeight:600,background:calMes===m?"#3b82f6":"#1e293b",color:calMes===m?"#fff":"#64748b" }}>{m.slice(0,3)}</button>
+            <button key={m} onClick={()=>setCalMes(m)} style={{ padding:"5px 12px",borderRadius:"16px",border:"none",cursor:"pointer",fontSize:"12px",fontWeight:600,background:calMes===m?"#3b82f6":"#18181f",color:calMes===m?"#fff":"#6e6e88" }}>{m.slice(0,3)}</button>
           ))}
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:"4px" }}>
-          <button onClick={()=>setCalAno(a=>a-1)} style={{ padding:"4px 8px",borderRadius:"8px",border:"1px solid #334155",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:"13px",fontWeight:700,lineHeight:1 }}>‹</button>
-          <span style={{ padding:"4px 14px",borderRadius:"8px",background:"#1e293b",border:"1px solid #334155",fontSize:"13px",fontWeight:700,color:"#f1f5f9",minWidth:"62px",textAlign:"center" }}>{calAno}</span>
-          <button onClick={()=>setCalAno(a=>a+1)} style={{ padding:"4px 8px",borderRadius:"8px",border:"1px solid #334155",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:"13px",fontWeight:700,lineHeight:1 }}>›</button>
+          <button onClick={()=>setCalAno(a=>a-1)} style={{ padding:"4px 8px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#18181f",color:"#6e6e88",cursor:"pointer",fontSize:"13px",fontWeight:700,lineHeight:1 }}>‹</button>
+          <span style={{ padding:"4px 14px",borderRadius:"8px",background:"#18181f",border:"1px solid #2a2a3a",fontSize:"13px",fontWeight:700,color:"#f0f0fa",minWidth:"62px",textAlign:"center" }}>{calAno}</span>
+          <button onClick={()=>setCalAno(a=>a+1)} style={{ padding:"4px 8px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#18181f",color:"#6e6e88",cursor:"pointer",fontSize:"13px",fontWeight:700,lineHeight:1 }}>›</button>
         </div>
       </div>
 
@@ -976,18 +976,18 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
 
         {/* ── CONSULTOR FILTER ── */}
         <div style={{ position:"relative" }}>
-          <button onClick={()=>{ setShowFilter(!showFilter); setShowClientFilter(false); }} style={{ padding:"7px 16px",borderRadius:"8px",border:"1px solid "+(showFilter?"#3b82f6":"#334155"),background:showFilter?"#1e3a5f":"#1e293b",color:showFilter?"#60a5fa":"#94a3b8",fontSize:"13px",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:"8px",whiteSpace:"nowrap" }}>
+          <button onClick={()=>{ setShowFilter(!showFilter); setShowClientFilter(false); }} style={{ padding:"7px 16px",borderRadius:"8px",border:"1px solid "+(showFilter?"#3b82f6":"#2a2a3a"),background:showFilter?"#16102a":"#18181f",color:showFilter?"#60a5fa":"#6e6e88",fontSize:"13px",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:"8px",whiteSpace:"nowrap" }}>
             👥 Consultores
             <span style={{ background:selectedConsultores.size<consultores.length?"#f59e0b":"#3b82f6",color:"#fff",borderRadius:"12px",padding:"1px 8px",fontSize:"11px",fontWeight:700 }}>{selectedConsultores.size}/{consultores.length}</span>
             <span style={{ fontSize:"10px" }}>{showFilter?"▲":"▼"}</span>
           </button>
           {showFilter && (
-            <div style={{ position:"absolute",top:"calc(100% + 8px)",left:0,background:"#1e293b",border:"1px solid #334155",borderRadius:"12px",padding:"16px",zIndex:500,minWidth:"300px",maxWidth:"440px",boxShadow:"0 12px 40px rgba(0,0,0,0.5)" }}>
+            <div style={{ position:"absolute",top:"calc(100% + 8px)",left:0,background:"#18181f",border:"1px solid #2a2a3a",borderRadius:"12px",padding:"16px",zIndex:500,minWidth:"300px",maxWidth:"440px",boxShadow:"0 12px 40px rgba(0,0,0,0.5)" }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px" }}>
-                <span style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>Filtrar consultores</span>
+                <span style={{ fontSize:"13px",fontWeight:700,color:"#f0f0fa" }}>Filtrar consultores</span>
                 <div style={{ display:"flex",gap:"6px" }}>
-                  <button onClick={selectAllConsultores} style={{ padding:"4px 10px",borderRadius:"6px",border:"none",background:"#3b82f622",color:"#60a5fa",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>Todos</button>
-                  <button onClick={clearAllConsultores} style={{ padding:"4px 10px",borderRadius:"6px",border:"none",background:"#33415522",color:"#94a3b8",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>Limpar</button>
+                  <button onClick={selectAllConsultores} style={{ padding:"4px 10px",borderRadius:"6px",border:"none",background:"#6c63ff22",color:"#60a5fa",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>Todos</button>
+                  <button onClick={clearAllConsultores} style={{ padding:"4px 10px",borderRadius:"6px",border:"none",background:"#2a2a3a22",color:"#6e6e88",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>Limpar</button>
                 </div>
               </div>
               <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px" }}>
@@ -995,13 +995,13 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                   const isSelected = selectedConsultores.has(name);
                   const hasData = allConsultoresWithData.includes(name);
                   return (
-                    <button key={name} onClick={()=>toggleConsultor(name)} style={{ display:"flex",alignItems:"center",gap:"8px",padding:"8px 12px",borderRadius:"8px",border:"1px solid "+(isSelected?"#3b82f6":"#334155"),background:isSelected?"#1e3a5f":"#0f172a",cursor:"pointer",textAlign:"left",opacity:hasData?1:0.45 }}>
+                    <button key={name} onClick={()=>toggleConsultor(name)} style={{ display:"flex",alignItems:"center",gap:"8px",padding:"8px 12px",borderRadius:"8px",border:"1px solid "+(isSelected?"#6c63ff":"#2a2a3a"),background:isSelected?"#16102a":"#0d0d14",cursor:"pointer",textAlign:"left",opacity:hasData?1:0.45 }}>
                       <div style={{ width:"26px",height:"26px",borderRadius:"50%",background:"hsl("+(i*29%360)+",65%,"+(isSelected?"55%":"30%")+")",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"9px",fontWeight:700,color:"#fff",flexShrink:0 }}>{getInitials(name)}</div>
                       <div style={{ flex:1,minWidth:0 }}>
-                        <div style={{ fontSize:"12px",fontWeight:600,color:isSelected?"#f1f5f9":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{name.trim().split(" ")[0]}</div>
-                        {!hasData && <div style={{ fontSize:"10px",color:"#475569" }}>sem dados</div>}
+                        <div style={{ fontSize:"12px",fontWeight:600,color:isSelected?"#f0f0fa":"#6e6e88",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{name.trim().split(" ")[0]}</div>
+                        {!hasData && <div style={{ fontSize:"10px",color:"#6e6e88" }}>sem dados</div>}
                       </div>
-                      {isSelected && <span style={{ color:"#3b82f6",fontSize:"14px",flexShrink:0 }}>✓</span>}
+                      {isSelected && <span style={{ color:"#6c63ff",fontSize:"14px",flexShrink:0 }}>✓</span>}
                     </button>
                   );
                 })}
@@ -1012,29 +1012,29 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
 
         {/* ── CLIENT FILTER ── */}
         <div style={{ position:"relative" }}>
-          <button onClick={()=>{ setShowClientFilter(!showClientFilter); setShowFilter(false); }} style={{ padding:"7px 16px",borderRadius:"8px",border:"1px solid "+(showClientFilter?"#f59e0b":clientFilterActive?"#f59e0b44":"#334155"),background:showClientFilter?"#1f1a0e":clientFilterActive?"#1f1a0e":"#1e293b",color:showClientFilter||clientFilterActive?"#f59e0b":"#94a3b8",fontSize:"13px",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:"8px",whiteSpace:"nowrap" }}>
+          <button onClick={()=>{ setShowClientFilter(!showClientFilter); setShowFilter(false); }} style={{ padding:"7px 16px",borderRadius:"8px",border:"1px solid "+(showClientFilter?"#f59e0b":clientFilterActive?"#f59e0b44":"#2a2a3a"),background:showClientFilter?"#1f1a0e":clientFilterActive?"#1f1a0e":"#18181f",color:showClientFilter||clientFilterActive?"#f59e0b":"#6e6e88",fontSize:"13px",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:"8px",whiteSpace:"nowrap" }}>
             🏢 Clientes
-            <span style={{ background:clientFilterActive?"#f59e0b":"#334155",color:clientFilterActive?"#000":"#64748b",borderRadius:"12px",padding:"1px 8px",fontSize:"11px",fontWeight:700 }}>{selectedClients.size}/{allClientsInMonth.length}</span>
+            <span style={{ background:clientFilterActive?"#f59e0b":"#2a2a3a",color:clientFilterActive?"#000":"#6e6e88",borderRadius:"12px",padding:"1px 8px",fontSize:"11px",fontWeight:700 }}>{selectedClients.size}/{allClientsInMonth.length}</span>
             <span style={{ fontSize:"10px" }}>{showClientFilter?"▲":"▼"}</span>
           </button>
           {showClientFilter && (
-            <div style={{ position:"absolute",top:"calc(100% + 8px)",left:0,background:"#1e293b",border:"1px solid #334155",borderRadius:"12px",padding:"16px",zIndex:500,minWidth:"280px",maxWidth:"400px",boxShadow:"0 12px 40px rgba(0,0,0,0.5)" }}>
+            <div style={{ position:"absolute",top:"calc(100% + 8px)",left:0,background:"#18181f",border:"1px solid #2a2a3a",borderRadius:"12px",padding:"16px",zIndex:500,minWidth:"280px",maxWidth:"400px",boxShadow:"0 12px 40px rgba(0,0,0,0.5)" }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px" }}>
-                <span style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>Filtrar por cliente</span>
+                <span style={{ fontSize:"13px",fontWeight:700,color:"#f0f0fa" }}>Filtrar por cliente</span>
                 <div style={{ display:"flex",gap:"6px" }}>
                   <button onClick={selectAllClients} style={{ padding:"4px 10px",borderRadius:"6px",border:"none",background:"#f59e0b22",color:"#f59e0b",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>Todos</button>
-                  <button onClick={clearAllClients} style={{ padding:"4px 10px",borderRadius:"6px",border:"none",background:"#33415522",color:"#94a3b8",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>Limpar</button>
+                  <button onClick={clearAllClients} style={{ padding:"4px 10px",borderRadius:"6px",border:"none",background:"#2a2a3a22",color:"#6e6e88",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>Limpar</button>
                 </div>
               </div>
               <div style={{ display:"flex",flexDirection:"column",gap:"5px",maxHeight:"280px",overflowY:"auto" }}>
-                {allClientsInMonth.length === 0 && <p style={{ color:"#475569",fontSize:"12px",textAlign:"center",padding:"12px 0" }}>Nenhum cliente neste mês</p>}
+                {allClientsInMonth.length === 0 && <p style={{ color:"#6e6e88",fontSize:"12px",textAlign:"center",padding:"12px 0" }}>Nenhum cliente neste mês</p>}
                 {allClientsInMonth.map(clientName=>{
                   const isSelected = selectedClients.has(clientName);
                   const color = getClientColor(clientName);
                   return (
-                    <button key={clientName} onClick={()=>toggleClient(clientName)} style={{ display:"flex",alignItems:"center",gap:"10px",padding:"8px 12px",borderRadius:"8px",border:"1px solid "+(isSelected?color+"66":"#334155"),background:isSelected?color+"18":"#0f172a",cursor:"pointer",textAlign:"left" }}>
-                      <div style={{ width:"10px",height:"10px",borderRadius:"3px",background:isSelected?color:"#475569",flexShrink:0,transition:"background 0.2s" }}/>
-                      <span style={{ fontSize:"13px",fontWeight:600,color:isSelected?color:"#64748b",flex:1 }}>{clientName}</span>
+                    <button key={clientName} onClick={()=>toggleClient(clientName)} style={{ display:"flex",alignItems:"center",gap:"10px",padding:"8px 12px",borderRadius:"8px",border:"1px solid "+(isSelected?color+"66":"#2a2a3a"),background:isSelected?color+"18":"#0d0d14",cursor:"pointer",textAlign:"left" }}>
+                      <div style={{ width:"10px",height:"10px",borderRadius:"3px",background:isSelected?color:"#6e6e88",flexShrink:0,transition:"background 0.2s" }}/>
+                      <span style={{ fontSize:"13px",fontWeight:600,color:isSelected?color:"#6e6e88",flex:1 }}>{clientName}</span>
                       {isSelected && <span style={{ color:color,fontSize:"14px" }}>✓</span>}
                     </button>
                   );
@@ -1063,46 +1063,46 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
 
       {/* LEGEND */}
       <div style={{ display:"flex",gap:"16px",marginBottom:"12px",flexWrap:"wrap",alignItems:"center" }}>
-        <div style={{ display:"flex",alignItems:"center",gap:"5px" }}><div style={{ width:"24px",height:"10px",borderRadius:"3px",background:"#1a2744" }}/><span style={{ fontSize:"11px",color:"#475569" }}>Fim de semana</span></div>
-        <div style={{ display:"flex",alignItems:"center",gap:"5px" }}><div style={{ width:"10px",height:"10px",borderRadius:"3px",background:"#ef4444" }}/><span style={{ fontSize:"11px",color:"#475569" }}>Feriado</span></div>
-        <div style={{ display:"flex",alignItems:"center",gap:"5px" }}><div style={{ width:"10px",height:"10px",borderRadius:"3px",background:"#22c55e" }}/><span style={{ fontSize:"11px",color:"#475569" }}>Férias</span></div>
-        <div style={{ display:"flex",alignItems:"center",gap:"5px" }}><div style={{ width:"10px",height:"10px",borderRadius:"3px",background:"#94a3b8" }}/><span style={{ fontSize:"11px",color:"#475569" }}>Reservado</span></div>
-        <div style={{ display:"flex",alignItems:"center",gap:"5px" }}><div style={{ width:"10px",height:"10px",borderRadius:"3px",background:"#475569" }}/><span style={{ fontSize:"11px",color:"#475569" }}>Bloqueado</span></div>
+        <div style={{ display:"flex",alignItems:"center",gap:"5px" }}><div style={{ width:"24px",height:"10px",borderRadius:"3px",background:"#1a2744" }}/><span style={{ fontSize:"11px",color:"#6e6e88" }}>Fim de semana</span></div>
+        <div style={{ display:"flex",alignItems:"center",gap:"5px" }}><div style={{ width:"10px",height:"10px",borderRadius:"3px",background:"#ef4444" }}/><span style={{ fontSize:"11px",color:"#6e6e88" }}>Feriado</span></div>
+        <div style={{ display:"flex",alignItems:"center",gap:"5px" }}><div style={{ width:"10px",height:"10px",borderRadius:"3px",background:"#22d3a0" }}/><span style={{ fontSize:"11px",color:"#6e6e88" }}>Férias</span></div>
+        <div style={{ display:"flex",alignItems:"center",gap:"5px" }}><div style={{ width:"10px",height:"10px",borderRadius:"3px",background:"#6e6e88" }}/><span style={{ fontSize:"11px",color:"#6e6e88" }}>Reservado</span></div>
+        <div style={{ display:"flex",alignItems:"center",gap:"5px" }}><div style={{ width:"10px",height:"10px",borderRadius:"3px",background:"#6e6e88" }}/><span style={{ fontSize:"11px",color:"#6e6e88" }}>Bloqueado</span></div>
       </div>
 
       {/* TABLE */}
-      <div style={{ overflowX:"auto",borderRadius:"12px",border:"1px solid #334155" }}>
+      <div style={{ overflowX:"auto",borderRadius:"12px",border:"1px solid #2a2a3a" }}>
         <table style={{ borderCollapse:"collapse",width:"100%",minWidth:(daysInMonth*34+160)+"px" }}>
           <thead>
             {/* Weekday row */}
-            <tr style={{ background:"#1e293b" }}>
-              <th style={{ padding:"8px 16px",textAlign:"left",fontSize:"11px",fontWeight:700,color:"#64748b",position:"sticky",left:0,background:"#1e293b",zIndex:2,minWidth:"150px",borderBottom:"1px solid #0f172a" }}>Consultor</th>
+            <tr style={{ background:"#18181f" }}>
+              <th style={{ padding:"8px 16px",textAlign:"left",fontSize:"11px",fontWeight:700,color:"#6e6e88",position:"sticky",left:0,background:"#18181f",zIndex:2,minWidth:"150px",borderBottom:"1px solid #0d0d14" }}>Consultor</th>
               {allDays.map(d=>{
                 const dow = getDayOfWeek(d);
                 const isWeekend = dow === 0 || dow === 6;
                 return (
-                  <th key={d} style={{ padding:"3px 2px",textAlign:"center",fontSize:"9px",fontWeight:600,color:isWeekend?"#475569":"#64748b",minWidth:"34px",maxWidth:"34px",background:isWeekend?"#0d1a30":"#1e293b",borderBottom:"1px solid #0f172a",borderLeft:"1px solid #0f172a" }}>
+                  <th key={d} style={{ padding:"3px 2px",textAlign:"center",fontSize:"9px",fontWeight:600,color:isWeekend?"#6e6e88":"#6e6e88",minWidth:"34px",maxWidth:"34px",background:isWeekend?"#0d1a30":"#18181f",borderBottom:"1px solid #0d0d14",borderLeft:"1px solid #0d0d14" }}>
                     {WEEKDAY_LABELS[dow]}
                   </th>
                 );
               })}
             </tr>
             {/* Day number row */}
-            <tr style={{ background:"#1e293b" }}>
-              <th style={{ padding:"4px 16px",position:"sticky",left:0,background:"#1e293b",zIndex:2,borderBottom:"1px solid #334155" }}></th>
+            <tr style={{ background:"#18181f" }}>
+              <th style={{ padding:"4px 16px",position:"sticky",left:0,background:"#18181f",zIndex:2,borderBottom:"1px solid #2a2a3a" }}></th>
               {allDays.map(d=>{
                 const dow = getDayOfWeek(d);
                 const isWeekend = dow === 0 || dow === 6;
                 return (
-                  <th key={d} style={{ padding:"4px 2px",textAlign:"center",fontSize:"11px",fontWeight:700,color:isWeekend?"#374151":"#94a3b8",minWidth:"34px",background:isWeekend?"#0d1a30":"#1e293b",borderBottom:"1px solid #334155",borderLeft:"1px solid #0f172a" }}>{d}</th>
+                  <th key={d} style={{ padding:"4px 2px",textAlign:"center",fontSize:"11px",fontWeight:700,color:isWeekend?"#374151":"#6e6e88",minWidth:"34px",background:isWeekend?"#0d1a30":"#18181f",borderBottom:"1px solid #2a2a3a",borderLeft:"1px solid #0d0d14" }}>{d}</th>
                 );
               })}
             </tr>
           </thead>
           <tbody>
             {activeConsultores.map((name)=>(
-              <tr key={name} style={{ borderTop:"1px solid #1e293b" }}>
-                <td style={{ padding:"6px 16px",fontSize:"12px",fontWeight:600,color:"#cbd5e1",position:"sticky",left:0,background:"#0f172a",zIndex:1,whiteSpace:"nowrap",borderRight:"1px solid #334155" }}>
+              <tr key={name} style={{ borderTop:"1px solid #18181f" }}>
+                <td style={{ padding:"6px 16px",fontSize:"12px",fontWeight:600,color:"#2a2a3a",position:"sticky",left:0,background:"#0d0d14",zIndex:1,whiteSpace:"nowrap",borderRight:"1px solid #2a2a3a" }}>
                   <div style={{ display:"flex",alignItems:"center",gap:"8px" }}>
                     <div style={{ width:"22px",height:"22px",borderRadius:"50%",background:"hsl("+(consultores.indexOf(name)*29%360)+",65%,50%)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"8px",fontWeight:700,color:"#fff",flexShrink:0 }}>{getInitials(name)}</div>
                     {name.trim().split(" ").slice(0,2).join(" ")}
@@ -1112,34 +1112,34 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                   const dow = getDayOfWeek(d);
                   const isWeekend = dow === 0 || dow === 6;
                   const entry = lookup[name]?.[d];
-                  const colBg = isWeekend ? "#0d1a30" : "#0f172a";
+                  const colBg = isWeekend ? "#0d1a30" : "#0d0d14";
 
                   const dayEntries = lookup[name]?.[d] || [];
                   if (dayEntries.length === 0) return (
-                    <td key={d} style={{ padding:"3px",borderLeft:"1px solid #1e293b",background:colBg }}
+                    <td key={d} style={{ padding:"3px",borderLeft:"1px solid #18181f",background:colBg }}
                       onClick={e=>{ if(readonly) return; e.stopPropagation(); onNewEntry({ consultor:name, month:calMes, day:d }); }}>
                       <div style={{ width:"28px",height:"28px",borderRadius:"4px",background:"transparent",border:"1px dashed transparent",margin:"0 auto",cursor:readonly?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s" }}
-                        onMouseEnter={e=>{ if(readonly) return; e.currentTarget.style.background="#22c55e18"; e.currentTarget.style.borderColor="#22c55e55"; e.currentTarget.querySelector("span").style.opacity="1"; }}
+                        onMouseEnter={e=>{ if(readonly) return; e.currentTarget.style.background="#22d3a018"; e.currentTarget.style.borderColor="#22c55e55"; e.currentTarget.querySelector("span").style.opacity="1"; }}
                         onMouseLeave={e=>{ if(readonly) return; e.currentTarget.style.background="transparent"; e.currentTarget.style.borderColor="transparent"; e.currentTarget.querySelector("span").style.opacity="0"; }}>
-                        <span style={{ fontSize:"13px",opacity:0,transition:"opacity 0.15s",userSelect:"none",color:"#22c55e" }}>＋</span>
+                        <span style={{ fontSize:"13px",opacity:0,transition:"opacity 0.15s",userSelect:"none",color:"#22d3a0" }}>＋</span>
                       </div>
                     </td>
                   );
                   const allFiltered = dayEntries.every(e=>e.type==="client"&&clientFilterActive&&!selectedClients.has(normalizeClient(e.client)));
                   return (
-                    <td key={d} style={{ padding:"2px",borderLeft:"1px solid #1e293b",background:colBg,verticalAlign:"top" }} onClick={e=>{e.stopPropagation();if(!allFiltered)openPopup({name,day:d,entries:dayEntries},e.clientX,e.clientY);}}>
+                    <td key={d} style={{ padding:"2px",borderLeft:"1px solid #18181f",background:colBg,verticalAlign:"top" }} onClick={e=>{e.stopPropagation();if(!allFiltered)openPopup({name,day:d,entries:dayEntries},e.clientX,e.clientY);}}>
                       <div style={{ width:"28px",minHeight:"28px",borderRadius:"4px",overflow:"hidden",margin:"0 auto",cursor:allFiltered?"default":"pointer",display:"flex",flexDirection:"column",gap:"1px" }}>
                         {dayEntries.slice(0,3).map((entry,ei)=>{
                           const color=getColor(entry);
                           const label=entry.type==="vacation"?"FÉR":entry.type==="holiday"?"FER":entry.type==="blocked"?"BLQ":entry.type==="reserved"?"RES":normalizeClient(entry.client).slice(0,3);
                           const filtered=entry.type==="client"&&clientFilterActive&&!selectedClients.has(normalizeClient(entry.client));
                           return (
-                            <div key={entry.id||ei} style={{ flex:1,background:filtered?"#1e293b":color,display:"flex",alignItems:"center",justifyContent:"center",minHeight:"8px",opacity:filtered?0.2:1 }}>
+                            <div key={entry.id||ei} style={{ flex:1,background:filtered?"#18181f":color,display:"flex",alignItems:"center",justifyContent:"center",minHeight:"8px",opacity:filtered?0.2:1 }}>
                               {!filtered&&dayEntries.length<=2&&<span style={{ fontSize:"6px",fontWeight:800,color:"#fff",letterSpacing:"-0.5px" }}>{label}</span>}
                             </div>
                           );
                         })}
-                        {dayEntries.length>3&&<div style={{ background:"#0f172a",display:"flex",alignItems:"center",justifyContent:"center",minHeight:"7px" }}><span style={{ fontSize:"6px",color:"#94a3b8",fontWeight:700 }}>+{dayEntries.length-3}</span></div>}
+                        {dayEntries.length>3&&<div style={{ background:"#0d0d14",display:"flex",alignItems:"center",justifyContent:"center",minHeight:"7px" }}><span style={{ fontSize:"6px",color:"#6e6e88",fontWeight:700 }}>+{dayEntries.length-3}</span></div>}
                       </div>
                     </td>
                   );
@@ -1149,19 +1149,19 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
           </tbody>
         </table>
       </div>
-      <p style={{ fontSize:"11px",color:"#475569",marginTop:"8px" }}>💡 Clique em célula colorida para editar/excluir · Clique em célula vazia para adicionar agenda · Colunas escuras = fim de semana</p>
+      <p style={{ fontSize:"11px",color:"#6e6e88",marginTop:"8px" }}>💡 Clique em célula colorida para editar/excluir · Clique em célula vazia para adicionar agenda · Colunas escuras = fim de semana</p>
       {popup && (
-        <div onClick={e=>e.stopPropagation()} style={{ position:"fixed",left:popupPos.x+"px",top:popupPos.y+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",zIndex:9000,width:"280px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",display:"flex",flexDirection:"column" }}>
+        <div onClick={e=>e.stopPropagation()} style={{ position:"fixed",left:popupPos.x+"px",top:popupPos.y+"px",background:"#18181f",border:"1px solid #6e6e88",borderRadius:"12px",zIndex:9000,width:"280px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",display:"flex",flexDirection:"column" }}>
           {/* Header fixo + drag */}
-          <div onMouseDown={startDrag} style={{ padding:"14px 16px 10px",borderBottom:"1px solid #334155",flexShrink:0,cursor:"grab",userSelect:"none" }}>
+          <div onMouseDown={startDrag} style={{ padding:"14px 16px 10px",borderBottom:"1px solid #2a2a3a",flexShrink:0,cursor:"grab",userSelect:"none" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
               <div>
-                <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>{popup.name.trim().split(" ")[0]}</div>
-                <div style={{ fontSize:"11px",color:"#64748b" }}>Dia {popup.day} · {calMes} {calAno} ({WEEKDAY_LABELS[getDayOfWeek(popup.day)]})</div>
+                <div style={{ fontSize:"13px",fontWeight:700,color:"#f0f0fa" }}>{popup.name.trim().split(" ")[0]}</div>
+                <div style={{ fontSize:"11px",color:"#6e6e88" }}>Dia {popup.day} · {calMes} {calAno} ({WEEKDAY_LABELS[getDayOfWeek(popup.day)]})</div>
               </div>
               <div style={{ display:"flex",gap:"6px",alignItems:"center" }}>
-                {!readonly && <button onMouseDown={e=>e.stopPropagation()} onClick={()=>{ onNewEntry({consultor:popup.name,month:calMes,day:popup.day}); setPopup(null); }} style={{ padding:"4px 8px",borderRadius:"6px",border:"1px solid #22c55e44",background:"#22c55e18",color:"#22c55e",fontSize:"11px",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap" }}>＋ Novo</button>}
-                <button onMouseDown={e=>e.stopPropagation()} onClick={()=>setPopup(null)} style={{ background:"#334155",border:"none",color:"#94a3b8",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
+                {!readonly && <button onMouseDown={e=>e.stopPropagation()} onClick={()=>{ onNewEntry({consultor:popup.name,month:calMes,day:popup.day}); setPopup(null); }} style={{ padding:"4px 8px",borderRadius:"6px",border:"1px solid #22c55e44",background:"#22d3a018",color:"#22d3a0",fontSize:"11px",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap" }}>＋ Novo</button>}
+                <button onMouseDown={e=>e.stopPropagation()} onClick={()=>setPopup(null)} style={{ background:"#2a2a3a",border:"none",color:"#6e6e88",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
               </div>
             </div>
           </div>
@@ -1171,7 +1171,7 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
               const color = getColor(entry);
               const TYPE_LABEL = {client:"👤 Cliente",vacation:"🏖 Férias",holiday:"🎉 Feriado",reserved:"🔒 Reservado",blocked:"⛔ Bloqueado"};
               return (
-                <div key={entry.id||ei} style={{ background:"#0f172a",borderRadius:"8px",border:"1px solid #334155",overflow:"hidden" }}>
+                <div key={entry.id||ei} style={{ background:"#0d0d14",borderRadius:"8px",border:"1px solid #2a2a3a",overflow:"hidden" }}>
                   {/* Entry header bar */}
                   <div style={{ background:color,padding:"4px 10px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                     <span style={{ fontSize:"11px",fontWeight:800,color:"#fff",letterSpacing:"0.3px" }}>{entry.client||TYPE_LABEL[entry.type]||entry.type}</span>
@@ -1181,22 +1181,22 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                     </div>
                   </div>
                   {entry.atividades && (
-                    <div style={{ padding:"6px 10px 0",fontSize:"11px",color:"#94a3b8",lineHeight:"1.5",whiteSpace:"pre-wrap",borderBottom:"1px solid #1e293b" }}>{entry.atividades}</div>
+                    <div style={{ padding:"6px 10px 0",fontSize:"11px",color:"#6e6e88",lineHeight:"1.5",whiteSpace:"pre-wrap",borderBottom:"1px solid #18181f" }}>{entry.atividades}</div>
                   )}
                   {/* History */}
                   <div style={{ padding:"8px 10px" }}>
                     {(entry.historico||[]).length>0 ? (
                       <div style={{ display:"flex",flexDirection:"column",gap:"4px" }}>
                         {entry.historico.map((h,hi)=>(
-                          <div key={hi} style={{ fontSize:"10px",color:"#64748b" }}>
+                          <div key={hi} style={{ fontSize:"10px",color:"#6e6e88" }}>
                             <span style={{ color:h.acao==="criado"?"#22c55e":h.acao==="alterado"?"#f59e0b":"#ef4444",marginRight:"4px" }}>{h.acao==="criado"?"＋":h.acao==="alterado"?"✎":"✕"}</span>
-                            <span style={{ color:"#94a3b8",fontWeight:600 }}>{h.por}</span>
-                            <span style={{ color:"#475569" }}> · {formatDateTime(h.em)}</span>
+                            <span style={{ color:"#6e6e88",fontWeight:600 }}>{h.por}</span>
+                            <span style={{ color:"#6e6e88" }}> · {formatDateTime(h.em)}</span>
                             {h.alteracoes&&h.alteracoes.length>0&&(
                               <div style={{ marginTop:"2px",paddingLeft:"14px" }}>
                                 {h.alteracoes.map((a,ai)=>(
-                                  <div key={ai} style={{ fontSize:"9px",color:"#64748b" }}>
-                                    <span style={{ color:"#94a3b8" }}>{a.campo}:</span> <span style={{ textDecoration:"line-through",color:"#ef444488" }}>{a.de}</span> → <span style={{ color:"#22c55e" }}>{a.para}</span>
+                                  <div key={ai} style={{ fontSize:"9px",color:"#6e6e88" }}>
+                                    <span style={{ color:"#6e6e88" }}>{a.campo}:</span> <span style={{ textDecoration:"line-through",color:"#ef444488" }}>{a.de}</span> → <span style={{ color:"#22d3a0" }}>{a.para}</span>
                                   </div>
                                 ))}
                               </div>
@@ -1205,12 +1205,12 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                         ))}
                       </div>
                     ) : (
-                      <span style={{ fontSize:"10px",color:"#475569",fontStyle:"italic" }}>Sem histórico</span>
+                      <span style={{ fontSize:"10px",color:"#6e6e88",fontStyle:"italic" }}>Sem histórico</span>
                     )}
                     {/* Actions */}
                     {!readonly && (
                       <div style={{ display:"flex",gap:"6px",marginTop:"8px" }}>
-                        <button onClick={()=>{ onEdit({...entry,consultor:popup.name,month:calMes}); setPopup(null); }} style={{ flex:1,padding:"5px",borderRadius:"5px",border:"none",background:"#3b82f6",color:"#fff",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>✏️ Editar</button>
+                        <button onClick={()=>{ onEdit({...entry,consultor:popup.name,month:calMes}); setPopup(null); }} style={{ flex:1,padding:"5px",borderRadius:"5px",border:"none",background:"#6c63ff",color:"#fff",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>✏️ Editar</button>
                         <button onClick={()=>{ onDelete(popup.name,entry.id); setPopup(null); }} style={{ padding:"5px 10px",borderRadius:"5px",border:"1px solid #ef4444",background:"transparent",color:"#ef4444",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>🗑</button>
                       </div>
                     )}
@@ -1235,28 +1235,37 @@ function ConsultorCard({ name, entries, idx, onClick, selected }) {
   const topClients = Object.entries(clientCounts).sort((a,b)=>b[1]-a[1]).slice(0,4);
   const total = clientEntries.length;
   const vacation = entries.filter(e=>e.type==="vacation").length;
+  const hue = (idx * 47) % 360;
+  const avatarGrad = `linear-gradient(135deg,hsl(${hue},65%,55%),hsl(${(hue+40)%360},70%,45%))`;
   return (
-    <div onClick={onClick} style={{ background:selected?"#1e3a5f":"#1e293b",border:"1px solid "+(selected?"#3b82f6":"#334155"),borderRadius:"12px",padding:"20px",cursor:"pointer",transition:"all 0.2s" }}>
-      <div style={{ display:"flex",alignItems:"center",gap:"12px",marginBottom:"16px" }}>
-        <div style={{ width:"42px",height:"42px",borderRadius:"50%",background:"hsl("+(idx*29%360)+",65%,50%)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:"14px",color:"#fff",flexShrink:0 }}>{getInitials(name)}</div>
-        <div>
-          <div style={{ fontWeight:600,fontSize:"15px",color:"#f1f5f9" }}>{name.trim()}</div>
-          <div style={{ fontSize:"12px",color:"#64748b" }}>{total} dias{vacation>0?" · "+vacation+" férias":""}</div>
+    <div onClick={onClick} className="card-hover" style={{ background:selected?"#16102a":"#111118",border:"1px solid "+(selected?"#6c63ff66":"#1f1f2e"),borderRadius:"16px",padding:"20px 22px",cursor:"pointer",position:"relative",overflow:"hidden" }}>
+      {selected && <div style={{ position:"absolute",inset:0,background:"linear-gradient(135deg,#6c63ff08,#a78bfa05)",pointerEvents:"none" }}/>}
+      {/* Accent line top */}
+      {selected && <div style={{ position:"absolute",top:0,left:0,right:0,height:"2px",background:"linear-gradient(90deg,#6c63ff,#a78bfa)" }}/>}
+      <div style={{ display:"flex",alignItems:"center",gap:"13px",marginBottom:"16px" }}>
+        <div style={{ width:"44px",height:"44px",borderRadius:"14px",background:avatarGrad,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:"14px",color:"#fff",flexShrink:0,boxShadow:`0 4px 12px hsl(${hue},60%,50%)44` }}>{getInitials(name)}</div>
+        <div style={{ flex:1,minWidth:0 }}>
+          <div style={{ fontWeight:700,fontSize:"15px",color:"#f0f0fa",letterSpacing:"-0.2px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{name.trim()}</div>
+          <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"3px",display:"flex",gap:"10px" }}>
+            <span style={{ display:"flex",alignItems:"center",gap:"4px" }}><span style={{ color:"#22d3a0",fontWeight:700 }}>{total}</span> dias cliente</span>
+            {vacation>0 && <span style={{ display:"flex",alignItems:"center",gap:"4px" }}><span style={{ color:"#a78bfa",fontWeight:700 }}>{vacation}</span> férias</span>}
+          </div>
         </div>
+        {selected && <div style={{ width:"8px",height:"8px",borderRadius:"50%",background:"#6c63ff",boxShadow:"0 0 8px #6c63ff" }}/>}
       </div>
       {topClients.length>0 && (
-        <div style={{ display:"flex",flexDirection:"column",gap:"6px" }}>
+        <div style={{ display:"flex",flexDirection:"column",gap:"7px" }}>
           {topClients.map(([client,count])=>{
             const pct = Math.round((count/total)*100);
             const color = getClientColor(client);
             return (
               <div key={client}>
-                <div style={{ display:"flex",justifyContent:"space-between",marginBottom:"3px" }}>
-                  <span style={{ fontSize:"11px",color:"#94a3b8",fontWeight:500 }}>{client}</span>
-                  <span style={{ fontSize:"11px",color:"#64748b" }}>{count}d · {pct}%</span>
+                <div style={{ display:"flex",justifyContent:"space-between",marginBottom:"4px",alignItems:"center" }}>
+                  <span style={{ fontSize:"11px",color:"#8888a8",fontWeight:500,letterSpacing:"0.2px" }}>{client}</span>
+                  <span style={{ fontSize:"10px",color:"#4e4e66",fontWeight:600 }}>{pct}%</span>
                 </div>
-                <div style={{ height:"5px",background:"#334155",borderRadius:"3px",overflow:"hidden" }}>
-                  <div style={{ height:"100%",width:pct+"%",background:color,borderRadius:"3px" }}/>
+                <div style={{ height:"4px",background:"#1f1f2e",borderRadius:"99px",overflow:"hidden" }}>
+                  <div style={{ height:"100%",width:pct+"%",background:`linear-gradient(90deg,${color},${color}bb)`,borderRadius:"99px",transition:"width .4s" }}/>
                 </div>
               </div>
             );
@@ -1315,39 +1324,39 @@ function CalendarView({ consultant, month, byDay }) {
   const lastDay = [...currentWeek].reverse().find(d => d !== null);
   const weekLabel = firstDay && lastDay ? firstDay === lastDay ? `Dia ${firstDay}` : `${firstDay} – ${lastDay} de ${month}` : month;
 
-  const getColor = e => e.type==="vacation"?"#22c55e":e.type==="holiday"?"#ef4444":e.type==="reserved"?"#94a3b8":e.type==="blocked"?"#475569":getClientColor(e.client);
+  const getColor = e => e.type==="vacation"?"#22c55e":e.type==="holiday"?"#ef4444":e.type==="reserved"?"#6e6e88":e.type==="blocked"?"#6e6e88":getClientColor(e.client);
 
   return (
     <div onClick={()=>setPopup(null)}>
       {/* Header */}
       <div style={{ display:"flex",alignItems:"center",gap:"16px",marginBottom:"20px",flexWrap:"wrap" }}>
-        <h2 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:"#f8fafc",margin:0 }}>📅 {consultant} — {month} {year}</h2>
-        <div style={{ display:"flex",alignItems:"center",gap:"6px",background:"#1e293b",borderRadius:"10px",padding:"4px 6px",border:"1px solid #334155" }}>
+        <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:"#f0f0fa",margin:0 }}>📅 {consultant} — {month} {year}</h2>
+        <div style={{ display:"flex",alignItems:"center",gap:"6px",background:"#18181f",borderRadius:"10px",padding:"4px 6px",border:"1px solid #2a2a3a" }}>
           <button onClick={()=>setWeekIdx(w=>Math.max(0,w-1))} disabled={wi===0}
-            style={{ background:"none",border:"none",color:wi===0?"#334155":"#94a3b8",cursor:wi===0?"default":"pointer",fontWeight:700,fontSize:"16px",padding:"2px 8px",lineHeight:1 }}>‹</button>
-          <span style={{ fontSize:"12px",fontWeight:600,color:"#94a3b8",minWidth:"120px",textAlign:"center" }}>{weekLabel}</span>
+            style={{ background:"none",border:"none",color:wi===0?"#2a2a3a":"#6e6e88",cursor:wi===0?"default":"pointer",fontWeight:700,fontSize:"16px",padding:"2px 8px",lineHeight:1 }}>‹</button>
+          <span style={{ fontSize:"12px",fontWeight:600,color:"#6e6e88",minWidth:"120px",textAlign:"center" }}>{weekLabel}</span>
           <button onClick={()=>setWeekIdx(w=>Math.min(totalWeeks-1,w+1))} disabled={wi===totalWeeks-1}
-            style={{ background:"none",border:"none",color:wi===totalWeeks-1?"#334155":"#94a3b8",cursor:wi===totalWeeks-1?"default":"pointer",fontWeight:700,fontSize:"16px",padding:"2px 8px",lineHeight:1 }}>›</button>
+            style={{ background:"none",border:"none",color:wi===totalWeeks-1?"#2a2a3a":"#6e6e88",cursor:wi===totalWeeks-1?"default":"pointer",fontWeight:700,fontSize:"16px",padding:"2px 8px",lineHeight:1 }}>›</button>
         </div>
-        <span style={{ fontSize:"12px",color:"#475569" }}>Semana {wi+1} de {totalWeeks}</span>
+        <span style={{ fontSize:"12px",color:"#6e6e88" }}>Semana {wi+1} de {totalWeeks}</span>
       </div>
 
       {/* Week grid */}
       <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"10px" }}>
         {wd.map((d,i)=>(
-          <div key={d} style={{ textAlign:"center",fontSize:"11px",fontWeight:700,color:"#64748b",padding:"8px 0",borderBottom:"1px solid #1e293b" }}>
+          <div key={d} style={{ textAlign:"center",fontSize:"11px",fontWeight:700,color:"#6e6e88",padding:"8px 0",borderBottom:"1px solid #18181f" }}>
             <div>{d}</div>
-            <div style={{ fontSize:"10px",fontWeight:400,color:"#334155",marginTop:"2px" }}>{WD_FULL[i]}</div>
+            <div style={{ fontSize:"10px",fontWeight:400,color:"#2a2a3a",marginTop:"2px" }}>{WD_FULL[i]}</div>
           </div>
         ))}
         {currentWeek.map((day,i)=>{
-          if (!day) return <div key={"e"+i} style={{ minHeight:"140px",borderRadius:"10px",background:"#0f172a44" }}/>;
+          if (!day) return <div key={"e"+i} style={{ minHeight:"140px",borderRadius:"10px",background:"#0d0d1444" }}/>;
           const entries = Array.isArray(byDay[day]) ? byDay[day] : (byDay[day] ? [byDay[day]] : []);
           const isToday = (() => { const t=new Date(); return t.getDate()===day && t.getMonth()===monthIdx && t.getFullYear()===year; })();
           return (
-            <div key={day} onClick={e=>e.stopPropagation()} style={{ minHeight:"140px",borderRadius:"10px",background:isToday?"#1e3a5f":"#1e293b",border:"1px solid "+(isToday?"#3b82f6":"#334155"),padding:"10px",display:"flex",flexDirection:"column",gap:"6px" }}>
-              <div style={{ fontSize:"18px",fontWeight:700,color:isToday?"#60a5fa":"#f1f5f9",marginBottom:"4px" }}>{day}</div>
-              {entries.length===0 && <div style={{ fontSize:"11px",color:"#334155",fontStyle:"italic" }}>—</div>}
+            <div key={day} onClick={e=>e.stopPropagation()} style={{ minHeight:"140px",borderRadius:"10px",background:isToday?"#16102a":"#18181f",border:"1px solid "+(isToday?"#3b82f6":"#2a2a3a"),padding:"10px",display:"flex",flexDirection:"column",gap:"6px" }}>
+              <div style={{ fontSize:"18px",fontWeight:700,color:isToday?"#60a5fa":"#f0f0fa",marginBottom:"4px" }}>{day}</div>
+              {entries.length===0 && <div style={{ fontSize:"11px",color:"#2a2a3a",fontStyle:"italic" }}>—</div>}
               {entries.map((entry,ei)=>{
                 const color = getColor(entry);
                 return (
@@ -1357,7 +1366,7 @@ function CalendarView({ consultant, month, byDay }) {
                     onMouseLeave={e=>e.currentTarget.style.filter=""}>
                     <div style={{ fontSize:"11px",fontWeight:700,color:color,lineHeight:1.3 }}>{entry.client||TYPE_LABEL[entry.type]||entry.type}</div>
                     {(entry.horaInicio||entry.horaFim) && (
-                      <div style={{ fontSize:"10px",color:"#64748b",marginTop:"2px" }}>{entry.horaInicio||""}{entry.horaFim?" – "+entry.horaFim:""}</div>
+                      <div style={{ fontSize:"10px",color:"#6e6e88",marginTop:"2px" }}>{entry.horaInicio||""}{entry.horaFim?" – "+entry.horaFim:""}</div>
                     )}
                   </div>
                 );
@@ -1370,15 +1379,15 @@ function CalendarView({ consultant, month, byDay }) {
       {/* POPUP — detail view on entry click */}
       {popup && (
         <div onClick={e=>e.stopPropagation()}
-          style={{ position:"fixed",left:popupPos.x+"px",top:popupPos.y+"px",background:"#1e293b",border:"1px solid #475569",borderRadius:"12px",zIndex:9000,width:"290px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",display:"flex",flexDirection:"column" }}>
+          style={{ position:"fixed",left:popupPos.x+"px",top:popupPos.y+"px",background:"#18181f",border:"1px solid #6e6e88",borderRadius:"12px",zIndex:9000,width:"290px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",maxHeight:"80vh",display:"flex",flexDirection:"column" }}>
           {/* Header fixo + drag */}
-          <div onMouseDown={startDrag} style={{ padding:"14px 16px 12px",borderBottom:"1px solid #334155",flexShrink:0,cursor:"grab",userSelect:"none" }}>
+          <div onMouseDown={startDrag} style={{ padding:"14px 16px 12px",borderBottom:"1px solid #2a2a3a",flexShrink:0,cursor:"grab",userSelect:"none" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
               <div>
-                <div style={{ fontSize:"13px",fontWeight:700,color:"#f1f5f9" }}>{consultant.trim().split(" ")[0]}</div>
-                <div style={{ fontSize:"11px",color:"#64748b" }}>Dia {popup.day} · {month} {year} ({WD_FULL[(new Date(year,monthIdx,popup.day).getDay()+6)%7]})</div>
+                <div style={{ fontSize:"13px",fontWeight:700,color:"#f0f0fa" }}>{consultant.trim().split(" ")[0]}</div>
+                <div style={{ fontSize:"11px",color:"#6e6e88" }}>Dia {popup.day} · {month} {year} ({WD_FULL[(new Date(year,monthIdx,popup.day).getDay()+6)%7]})</div>
               </div>
-              <button onMouseDown={e=>e.stopPropagation()} onClick={()=>setPopup(null)} style={{ background:"#334155",border:"none",color:"#94a3b8",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
+              <button onMouseDown={e=>e.stopPropagation()} onClick={()=>setPopup(null)} style={{ background:"#2a2a3a",border:"none",color:"#6e6e88",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
             </div>
           </div>
           {/* Entries com scroll */}
@@ -1386,7 +1395,7 @@ function CalendarView({ consultant, month, byDay }) {
             {(popup.entries||[]).map((entry,ei)=>{
               const color = getColor(entry);
               return (
-                <div key={entry.id||ei} style={{ background:"#0f172a",borderRadius:"8px",border:"1px solid #334155",overflow:"hidden" }}>
+                <div key={entry.id||ei} style={{ background:"#0d0d14",borderRadius:"8px",border:"1px solid #2a2a3a",overflow:"hidden" }}>
                   {/* Color bar header */}
                   <div style={{ background:color,padding:"6px 10px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                     <span style={{ fontSize:"12px",fontWeight:800,color:"#fff" }}>{entry.client||TYPE_LABEL[entry.type]||entry.type}</span>
@@ -1402,7 +1411,7 @@ function CalendarView({ consultant, month, byDay }) {
                   <div style={{ padding:"8px 10px",display:"flex",flexDirection:"column",gap:"6px" }}>
                     {/* Type badge + modalidade */}
                     <div style={{ display:"flex",alignItems:"center",gap:"8px" }}>
-                      <div style={{ fontSize:"11px",color:"#64748b" }}>{TYPE_LABEL[entry.type]||entry.type}</div>
+                      <div style={{ fontSize:"11px",color:"#6e6e88" }}>{TYPE_LABEL[entry.type]||entry.type}</div>
                       {entry.modalidade && (
                         <div style={{ fontSize:"11px",fontWeight:600,padding:"2px 8px",borderRadius:"20px",
                           background:entry.modalidade==="remoto"?"#6366f122":"#10b98122",
@@ -1412,33 +1421,33 @@ function CalendarView({ consultant, month, byDay }) {
                     </div>
                     {/* Horário detail */}
                     {(entry.horaInicio||entry.horaFim||entry.intervalo) && (
-                      <div style={{ background:"#1e293b",borderRadius:"6px",padding:"6px 8px",fontSize:"11px",color:"#94a3b8",display:"flex",gap:"12px",flexWrap:"wrap" }}>
-                        {entry.horaInicio && <span>🕐 Início: <strong style={{ color:"#f1f5f9" }}>{entry.horaInicio}</strong></span>}
-                        {entry.horaFim && <span>🕔 Fim: <strong style={{ color:"#f1f5f9" }}>{entry.horaFim}</strong></span>}
-                        {entry.intervalo && <span>☕ Intervalo: <strong style={{ color:"#f1f5f9" }}>{entry.intervalo}min</strong></span>}
+                      <div style={{ background:"#18181f",borderRadius:"6px",padding:"6px 8px",fontSize:"11px",color:"#6e6e88",display:"flex",gap:"12px",flexWrap:"wrap" }}>
+                        {entry.horaInicio && <span>🕐 Início: <strong style={{ color:"#f0f0fa" }}>{entry.horaInicio}</strong></span>}
+                        {entry.horaFim && <span>🕔 Fim: <strong style={{ color:"#f0f0fa" }}>{entry.horaFim}</strong></span>}
+                        {entry.intervalo && <span>☕ Intervalo: <strong style={{ color:"#f0f0fa" }}>{entry.intervalo}min</strong></span>}
                       </div>
                     )}
                     {/* Atividades */}
                     {entry.atividades && (
-                      <div style={{ background:"#1e293b",borderRadius:"6px",padding:"6px 8px" }}>
-                        <div style={{ fontSize:"10px",fontWeight:700,color:"#64748b",marginBottom:"3px",textTransform:"uppercase",letterSpacing:"0.5px" }}>Atividades</div>
-                        <div style={{ fontSize:"11px",color:"#94a3b8",lineHeight:"1.6",whiteSpace:"pre-wrap" }}>{entry.atividades}</div>
+                      <div style={{ background:"#18181f",borderRadius:"6px",padding:"6px 8px" }}>
+                        <div style={{ fontSize:"10px",fontWeight:700,color:"#6e6e88",marginBottom:"3px",textTransform:"uppercase",letterSpacing:"0.5px" }}>Atividades</div>
+                        <div style={{ fontSize:"11px",color:"#6e6e88",lineHeight:"1.6",whiteSpace:"pre-wrap" }}>{entry.atividades}</div>
                       </div>
                     )}
                     {/* Histórico */}
                     {(entry.historico||[]).length>0 && (
-                      <div style={{ borderTop:"1px solid #1e293b",paddingTop:"6px" }}>
-                        <div style={{ fontSize:"10px",fontWeight:700,color:"#64748b",marginBottom:"4px",textTransform:"uppercase",letterSpacing:"0.5px" }}>Histórico</div>
+                      <div style={{ borderTop:"1px solid #18181f",paddingTop:"6px" }}>
+                        <div style={{ fontSize:"10px",fontWeight:700,color:"#6e6e88",marginBottom:"4px",textTransform:"uppercase",letterSpacing:"0.5px" }}>Histórico</div>
                         {entry.historico.map((h,hi)=>(
-                          <div key={hi} style={{ fontSize:"10px",color:"#64748b",marginBottom:"3px" }}>
+                          <div key={hi} style={{ fontSize:"10px",color:"#6e6e88",marginBottom:"3px" }}>
                             <span style={{ color:h.acao==="criado"?"#22c55e":h.acao==="alterado"?"#f59e0b":"#ef4444",marginRight:"4px" }}>{h.acao==="criado"?"＋":h.acao==="alterado"?"✎":"✕"}</span>
-                            <span style={{ color:"#94a3b8",fontWeight:600 }}>{h.por}</span>
-                            <span style={{ color:"#475569" }}> · {formatDateTime(h.em)}</span>
+                            <span style={{ color:"#6e6e88",fontWeight:600 }}>{h.por}</span>
+                            <span style={{ color:"#6e6e88" }}> · {formatDateTime(h.em)}</span>
                             {h.alteracoes&&h.alteracoes.length>0&&(
                               <div style={{ marginTop:"2px",paddingLeft:"14px" }}>
                                 {h.alteracoes.map((a,ai)=>(
-                                  <div key={ai} style={{ fontSize:"9px",color:"#64748b" }}>
-                                    <span style={{ color:"#94a3b8" }}>{a.campo}:</span> <span style={{ textDecoration:"line-through",color:"#ef444488" }}>{a.de}</span> → <span style={{ color:"#22c55e" }}>{a.para}</span>
+                                  <div key={ai} style={{ fontSize:"9px",color:"#6e6e88" }}>
+                                    <span style={{ color:"#6e6e88" }}>{a.campo}:</span> <span style={{ textDecoration:"line-through",color:"#ef444488" }}>{a.de}</span> → <span style={{ color:"#22d3a0" }}>{a.para}</span>
                                   </div>
                                 ))}
                               </div>
@@ -1476,14 +1485,14 @@ function TimelineView({ data, months }) {
       <table style={{ borderCollapse:"collapse",minWidth:"900px",width:"100%" }}>
         <thead>
           <tr>
-            <th style={{ padding:"10px 16px",textAlign:"left",fontSize:"12px",fontWeight:700,color:"#64748b",position:"sticky",left:0,background:"#0f172a",zIndex:1 }}>Consultor</th>
-            {displayMonths.map(m=><th key={m} style={{ padding:"10px 8px",textAlign:"center",fontSize:"11px",fontWeight:600,color:"#64748b",minWidth:"80px" }}>{m.slice(0,3)}</th>)}
+            <th style={{ padding:"10px 16px",textAlign:"left",fontSize:"12px",fontWeight:700,color:"#6e6e88",position:"sticky",left:0,background:"#0d0d14",zIndex:1 }}>Consultor</th>
+            {displayMonths.map(m=><th key={m} style={{ padding:"10px 8px",textAlign:"center",fontSize:"11px",fontWeight:600,color:"#6e6e88",minWidth:"80px" }}>{m.slice(0,3)}</th>)}
           </tr>
         </thead>
         <tbody>
           {consultores.map((name,idx)=>(
-            <tr key={name} style={{ borderTop:"1px solid #1e293b" }}>
-              <td style={{ padding:"10px 16px",fontSize:"13px",fontWeight:600,color:"#cbd5e1",position:"sticky",left:0,background:"#0f172a",zIndex:1,whiteSpace:"nowrap" }}>
+            <tr key={name} style={{ borderTop:"1px solid #18181f" }}>
+              <td style={{ padding:"10px 16px",fontSize:"13px",fontWeight:600,color:"#2a2a3a",position:"sticky",left:0,background:"#0d0d14",zIndex:1,whiteSpace:"nowrap" }}>
                 <div style={{ display:"flex",alignItems:"center",gap:"8px" }}>
                   <div style={{ width:"28px",height:"28px",borderRadius:"50%",background:"hsl("+(idx*29%360)+",65%,50%)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10px",fontWeight:700,color:"#fff",flexShrink:0 }}>{getInitials(name)}</div>
                   {name.trim().split(" ").slice(0,2).join(" ")}
@@ -1491,10 +1500,10 @@ function TimelineView({ data, months }) {
               </td>
               {displayMonths.map(m=>{
                 const {total,top,vacation} = getMonthSummary(name,m);
-                if (vacation>0&&total===0) return <td key={m} style={{ padding:"4px" }}><div style={{ background:"#22c55e22",border:"1px solid #22c55e44",borderRadius:"6px",padding:"6px 4px",textAlign:"center" }}><div style={{ fontSize:"10px",color:"#22c55e",fontWeight:600 }}>FÉRIAS</div></div></td>;
-                if (!total) return <td key={m} style={{ padding:"4px" }}><div style={{ height:"36px",borderRadius:"6px",background:"#1e293b44" }}/></td>;
+                if (vacation>0&&total===0) return <td key={m} style={{ padding:"4px" }}><div style={{ background:"#22c55e22",border:"1px solid #22c55e44",borderRadius:"6px",padding:"6px 4px",textAlign:"center" }}><div style={{ fontSize:"10px",color:"#22d3a0",fontWeight:600 }}>FÉRIAS</div></div></td>;
+                if (!total) return <td key={m} style={{ padding:"4px" }}><div style={{ height:"36px",borderRadius:"6px",background:"#18181f44" }}/></td>;
                 const color = top ? getClientColor(top[0]) : "#3b82f6";
-                return <td key={m} style={{ padding:"4px" }}><div style={{ background:color+"22",border:"1px solid "+color+"44",borderRadius:"6px",padding:"6px 4px",textAlign:"center" }}><div style={{ fontSize:"9px",color:color,fontWeight:700,lineHeight:1.2 }}>{top?.[0]?.slice(0,7)||""}</div><div style={{ fontSize:"10px",color:"#64748b",marginTop:"1px" }}>{total}d</div></div></td>;
+                return <td key={m} style={{ padding:"4px" }}><div style={{ background:color+"22",border:"1px solid "+color+"44",borderRadius:"6px",padding:"6px 4px",textAlign:"center" }}><div style={{ fontSize:"9px",color:color,fontWeight:700,lineHeight:1.2 }}>{top?.[0]?.slice(0,7)||""}</div><div style={{ fontSize:"10px",color:"#6e6e88",marginTop:"1px" }}>{total}d</div></div></td>;
               })}
             </tr>
           ))}
@@ -1511,8 +1520,8 @@ function StatsView({ stats }) {
   const maxDays = Math.max(...stats.consultorStats.map(c=>c.working),1);
   return (
     <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"24px" }}>
-      <div style={{ background:"#1e293b",borderRadius:"12px",padding:"24px",border:"1px solid #334155" }}>
-        <h3 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"15px",fontWeight:700,color:"#f8fafc",marginTop:0,marginBottom:"20px" }}>🏆 Top Clientes por Dias</h3>
+      <div style={{ background:"#18181f",borderRadius:"12px",padding:"24px",border:"1px solid #2a2a3a" }}>
+        <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"15px",fontWeight:700,color:"#f0f0fa",marginTop:0,marginBottom:"20px" }}>🏆 Top Clientes por Dias</h3>
         <div style={{ display:"flex",flexDirection:"column",gap:"12px" }}>
           {stats.topClients.map(([client,days],i)=>{
             const color = getClientColor(client);
@@ -1520,10 +1529,10 @@ function StatsView({ stats }) {
             return (
               <div key={client}>
                 <div style={{ display:"flex",justifyContent:"space-between",marginBottom:"4px" }}>
-                  <span style={{ fontSize:"13px",color:"#cbd5e1",fontWeight:500 }}><span style={{ color:"#64748b",marginRight:"8px" }}>#{i+1}</span>{client}</span>
+                  <span style={{ fontSize:"13px",color:"#2a2a3a",fontWeight:500 }}><span style={{ color:"#6e6e88",marginRight:"8px" }}>#{i+1}</span>{client}</span>
                   <span style={{ fontSize:"13px",color:color,fontWeight:700 }}>{days} dias</span>
                 </div>
-                <div style={{ height:"6px",background:"#334155",borderRadius:"3px",overflow:"hidden" }}>
+                <div style={{ height:"6px",background:"#2a2a3a",borderRadius:"3px",overflow:"hidden" }}>
                   <div style={{ height:"100%",width:pct+"%",background:color,borderRadius:"3px" }}/>
                 </div>
               </div>
@@ -1531,8 +1540,8 @@ function StatsView({ stats }) {
           })}
         </div>
       </div>
-      <div style={{ background:"#1e293b",borderRadius:"12px",padding:"24px",border:"1px solid #334155" }}>
-        <h3 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"15px",fontWeight:700,color:"#f8fafc",marginTop:0,marginBottom:"20px" }}>👥 Produtividade por Consultor</h3>
+      <div style={{ background:"#18181f",borderRadius:"12px",padding:"24px",border:"1px solid #2a2a3a" }}>
+        <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"15px",fontWeight:700,color:"#f0f0fa",marginTop:0,marginBottom:"20px" }}>👥 Produtividade por Consultor</h3>
         <div style={{ display:"flex",flexDirection:"column",gap:"10px" }}>
           {stats.consultorStats.filter(c=>c.working>0).map((c,i)=>{
             const pct = Math.round((c.working/maxDays)*100);
@@ -1540,13 +1549,13 @@ function StatsView({ stats }) {
             return (
               <div key={c.name}>
                 <div style={{ display:"flex",justifyContent:"space-between",marginBottom:"3px" }}>
-                  <span style={{ fontSize:"12px",color:"#cbd5e1" }}>{c.name.trim().split(" ").slice(0,2).join(" ")}</span>
+                  <span style={{ fontSize:"12px",color:"#2a2a3a" }}>{c.name.trim().split(" ").slice(0,2).join(" ")}</span>
                   <div style={{ display:"flex",gap:"8px" }}>
-                    <span style={{ fontSize:"12px",color:"#94a3b8" }}>{c.working}d</span>
-                    {c.vacation>0&&<span style={{ fontSize:"12px",color:"#22c55e" }}>🏖 {c.vacation}d</span>}
+                    <span style={{ fontSize:"12px",color:"#6e6e88" }}>{c.working}d</span>
+                    {c.vacation>0&&<span style={{ fontSize:"12px",color:"#22d3a0" }}>🏖 {c.vacation}d</span>}
                   </div>
                 </div>
-                <div style={{ height:"5px",background:"#334155",borderRadius:"3px",overflow:"hidden" }}>
+                <div style={{ height:"5px",background:"#2a2a3a",borderRadius:"3px",overflow:"hidden" }}>
                   <div style={{ height:"100%",width:pct+"%",background:"hsl("+hue+",65%,55%)",borderRadius:"3px" }}/>
                 </div>
               </div>
@@ -1564,8 +1573,8 @@ function StatsView({ stats }) {
 
 const ROLE_BADGES = {
   admin:     { label:"Admin",         color:"#a855f7", bg:"#a855f718" },
-  editor:    { label:"Editor",        color:"#3b82f6", bg:"#3b82f618" },
-  viewer:    { label:"Visualizador",  color:"#64748b", bg:"#64748b18" },
+  editor:    { label:"Editor",        color:"#6c63ff", bg:"#3b82f618" },
+  viewer:    { label:"Visualizador",  color:"#6e6e88", bg:"#6e6e8818" },
   consultor: { label:"Consultor",     color:"#f59e0b", bg:"#f59e0b18" },
 };
 
@@ -1602,63 +1611,94 @@ function LoginScreen({ onLogin }) {
     if (!resetEmail.trim()) { setResetMsg("⚠️ Digite seu e-mail."); return; }
     try {
       await sendPasswordResetEmail(auth, resetEmail.trim());
-      setResetMsg("✅ E-mail de recuperação enviado! Verifique sua caixa de entrada.");
+      setResetMsg("✅ E-mail de recuperação enviado!");
     } catch(e) {
       setResetMsg("⚠️ E-mail não encontrado ou erro ao enviar.");
     }
   };
 
-  const inp = { padding:"11px 14px", borderRadius:"8px", border:"1px solid #334155", background:"#0f172a", color:"#e2e8f0", fontSize:"14px", width:"100%", boxSizing:"border-box", outline:"none" };
+  const inp = { padding:"12px 16px", borderRadius:"12px", border:"1px solid #2a2a3a", background:"#0d0d14", color:"#c8c8d8", fontSize:"14px", width:"100%", boxSizing:"border-box", outline:"none", fontFamily:"inherit", transition:"border-color .15s,box-shadow .15s" };
 
   return (
-    <div style={{ fontFamily:"'DM Sans',sans-serif", background:"#0f172a", minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
-      <div style={{ width:"100%", maxWidth:"420px" }}>
+    <div style={{ fontFamily:"'Outfit',sans-serif", background:"#09090f", minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"20px", position:"relative", overflow:"hidden" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Cabinet+Grotesk:wght@700;900&display=swap" rel="stylesheet"/>
+      <style>{`
+        @keyframes float{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-10px) rotate(2deg)}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes orb{0%,100%{transform:scale(1) translate(0,0)}50%{transform:scale(1.1) translate(10px,-10px)}}
+        .login-inp:focus{border-color:#6c63ff!important;box-shadow:0 0 0 3px #6c63ff20!important;}
+        .login-btn:hover:not(:disabled){filter:brightness(1.1);transform:translateY(-1px);box-shadow:0 8px 32px #6c63ff55!important;}
+        .login-btn{transition:all .2s cubic-bezier(.4,0,.2,1);}
+      `}</style>
+
+      {/* Background orbs */}
+      <div style={{ position:"absolute",top:"-160px",left:"-160px",width:"500px",height:"500px",borderRadius:"50%",background:"radial-gradient(circle,#6c63ff1a 0%,transparent 65%)",pointerEvents:"none",animation:"orb 8s ease-in-out infinite" }}/>
+      <div style={{ position:"absolute",bottom:"-120px",right:"-100px",width:"400px",height:"400px",borderRadius:"50%",background:"radial-gradient(circle,#a78bfa14 0%,transparent 65%)",pointerEvents:"none",animation:"orb 10s ease-in-out infinite reverse" }}/>
+      <div style={{ position:"absolute",top:"40%",right:"10%",width:"200px",height:"200px",borderRadius:"50%",background:"radial-gradient(circle,#22d3a00e 0%,transparent 70%)",pointerEvents:"none" }}/>
+
+      <div style={{ width:"100%", maxWidth:"420px", animation:"fadeUp .45s cubic-bezier(.4,0,.2,1)" }}>
+        {/* Logo */}
         <div style={{ textAlign:"center", marginBottom:"40px" }}>
-          <div style={{ fontSize:"48px", marginBottom:"16px" }}>📅</div>
-          <h1 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:"26px", fontWeight:700, color:"#f8fafc", margin:"0 0 6px" }}>Agenda de Consultores</h1>
-          <p style={{ color:"#475569", fontSize:"14px", margin:0 }}>Faça login para continuar</p>
+          <div style={{ display:"inline-flex",alignItems:"center",justifyContent:"center",width:"68px",height:"68px",borderRadius:"20px",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",marginBottom:"22px",boxShadow:"0 0 48px #6c63ff55",animation:"float 5s ease-in-out infinite",fontSize:"30px" }}>◈</div>
+          <h1 style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"26px", fontWeight:900, color:"#f0f0fa", margin:"0 0 8px", letterSpacing:"-0.7px" }}>Agenda de Consultores</h1>
+          <p style={{ color:"#3e3e55", fontSize:"13px", margin:0, fontWeight:500 }}>Acesse sua conta para continuar</p>
         </div>
 
         {!showReset ? (
-          <div style={{ background:"#1e293b", borderRadius:"16px", padding:"32px", border:"1px solid #334155", boxShadow:"0 20px 60px rgba(0,0,0,0.4)" }}>
-            <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
+          <div style={{ background:"#111118", borderRadius:"22px", padding:"34px", border:"1px solid #1f1f2e", boxShadow:"0 32px 80px rgba(0,0,0,0.7)" }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:"18px" }}>
               <div>
-                <label style={{ fontSize:"12px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"6px" }}>E-mail</label>
-                <input type="email" value={email} onChange={e=>{ setEmail(e.target.value); setError(""); }} onKeyDown={e=>e.key==="Enter"&&handleSubmit()} placeholder="seu@email.com" style={inp} autoFocus />
+                <label style={{ fontSize:"11px", color:"#3e3e55", fontWeight:700, display:"block", marginBottom:"8px", letterSpacing:"1px", textTransform:"uppercase" }}>E-mail</label>
+                <input className="login-inp" type="email" value={email} onChange={e=>{ setEmail(e.target.value); setError(""); }} onKeyDown={e=>e.key==="Enter"&&handleSubmit()} placeholder="seu@email.com" style={inp} autoFocus />
               </div>
               <div>
-                <label style={{ fontSize:"12px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"6px" }}>Senha</label>
+                <label style={{ fontSize:"11px", color:"#3e3e55", fontWeight:700, display:"block", marginBottom:"8px", letterSpacing:"1px", textTransform:"uppercase" }}>Senha</label>
                 <div style={{ position:"relative" }}>
-                  <input type={showPass?"text":"password"} value={password} onChange={e=>{ setPassword(e.target.value); setError(""); }} onKeyDown={e=>e.key==="Enter"&&handleSubmit()} placeholder="Digite sua senha..." style={{...inp, paddingRight:"44px"}} />
-                  <button onClick={()=>setShowPass(!showPass)} style={{ position:"absolute", right:"12px", top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"#64748b", cursor:"pointer", fontSize:"16px", padding:"0" }}>{showPass?"🙈":"👁"}</button>
+                  <input className="login-inp" type={showPass?"text":"password"} value={password} onChange={e=>{ setPassword(e.target.value); setError(""); }} onKeyDown={e=>e.key==="Enter"&&handleSubmit()} placeholder="••••••••" style={{...inp, paddingRight:"46px"}} />
+                  <button onClick={()=>setShowPass(!showPass)} style={{ position:"absolute", right:"14px", top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"#3e3e55", cursor:"pointer", fontSize:"15px", padding:0 }}>{showPass?"🙈":"👁"}</button>
                 </div>
               </div>
-              {error && <div style={{ padding:"10px 14px", borderRadius:"8px", background:"#ef444422", border:"1px solid #ef444444", color:"#ef4444", fontSize:"13px" }}>⚠️ {error}</div>}
-              <button onClick={handleSubmit} disabled={loading} style={{ padding:"12px", borderRadius:"8px", border:"none", background:loading?"#334155":"#3b82f6", color:loading?"#64748b":"#fff", fontWeight:700, fontSize:"15px", cursor:loading?"not-allowed":"pointer", transition:"background 0.2s" }}>
-                {loading ? "Verificando..." : "Entrar →"}
+              {error && (
+                <div style={{ padding:"11px 14px", borderRadius:"11px", background:"#f04f5e12", border:"1px solid #f04f5e30", color:"#f87171", fontSize:"13px", display:"flex",alignItems:"center",gap:"8px" }}>
+                  <span>⚠️</span>{error}
+                </div>
+              )}
+              <button className="login-btn" onClick={handleSubmit} disabled={loading}
+                style={{ padding:"14px", borderRadius:"12px", border:"none", background:loading?"#1f1f2e":`linear-gradient(135deg,#6c63ff,#a78bfa)`, color:loading?"#3e3e55":"#fff", fontWeight:700, fontSize:"14px", cursor:loading?"not-allowed":"pointer", boxShadow:loading?"none":"0 4px 24px #6c63ff44", marginTop:"4px", fontFamily:"inherit", letterSpacing:"0.3px" }}>
+                {loading ? "⏳ Verificando..." : "Entrar →"}
               </button>
-              <button onClick={()=>{ setShowReset(true); setResetEmail(email); }} style={{ background:"none", border:"none", color:"#64748b", fontSize:"13px", cursor:"pointer", textDecoration:"underline", padding:0, textAlign:"center" }}>
+              <button onClick={()=>{ setShowReset(true); setResetEmail(email); }}
+                style={{ background:"none", border:"none", color:"#3e3e55", fontSize:"12px", cursor:"pointer", padding:0, textAlign:"center", fontFamily:"inherit" }}>
                 Esqueci minha senha
               </button>
             </div>
           </div>
         ) : (
-          <div style={{ background:"#1e293b", borderRadius:"16px", padding:"32px", border:"1px solid #334155", boxShadow:"0 20px 60px rgba(0,0,0,0.4)" }}>
-            <h2 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:"18px", fontWeight:700, color:"#f8fafc", marginTop:0, marginBottom:"8px" }}>🔑 Recuperar senha</h2>
-            <p style={{ fontSize:"13px", color:"#64748b", marginBottom:"20px" }}>Digite seu e-mail e enviaremos um link para redefinir sua senha.</p>
+          <div style={{ background:"#111118", borderRadius:"22px", padding:"34px", border:"1px solid #1f1f2e", boxShadow:"0 32px 80px rgba(0,0,0,0.7)" }}>
+            <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"18px", fontWeight:900, color:"#f0f0fa", marginTop:0, marginBottom:"8px", letterSpacing:"-0.3px" }}>Recuperar senha</h2>
+            <p style={{ fontSize:"13px", color:"#3e3e55", marginBottom:"22px", lineHeight:"1.6" }}>Digite seu e-mail e enviaremos um link para redefinir sua senha.</p>
             <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
-              <input type="email" value={resetEmail} onChange={e=>setResetEmail(e.target.value)} placeholder="seu@email.com" style={inp} autoFocus />
-              {resetMsg && <div style={{ padding:"10px 14px", borderRadius:"8px", background:resetMsg.startsWith("✅")?"#22c55e22":"#ef444422", border:"1px solid "+(resetMsg.startsWith("✅")?"#22c55e44":"#ef444444"), color:resetMsg.startsWith("✅")?"#22c55e":"#ef4444", fontSize:"13px" }}>{resetMsg}</div>}
-              <button onClick={handleReset} style={{ padding:"12px", borderRadius:"8px", border:"none", background:"#3b82f6", color:"#fff", fontWeight:700, fontSize:"14px", cursor:"pointer" }}>
-                📧 Enviar e-mail de recuperação
+              <input className="login-inp" type="email" value={resetEmail} onChange={e=>setResetEmail(e.target.value)} placeholder="seu@email.com" style={inp} autoFocus />
+              {resetMsg && (
+                <div style={{ padding:"11px 14px", borderRadius:"11px", background:resetMsg.startsWith("✅")?"#22d3a015":"#f04f5e12", border:"1px solid "+(resetMsg.startsWith("✅")?"#22d3a030":"#f04f5e30"), color:resetMsg.startsWith("✅")?"#34d399":"#f87171", fontSize:"13px" }}>
+                  {resetMsg}
+                </div>
+              )}
+              <button className="login-btn" onClick={handleReset}
+                style={{ padding:"13px", borderRadius:"12px", border:"none", background:"linear-gradient(135deg,#6c63ff,#a78bfa)", color:"#fff", fontWeight:700, fontSize:"13px", cursor:"pointer", fontFamily:"inherit", boxShadow:"0 4px 24px #6c63ff44" }}>
+                📧 Enviar link de recuperação
               </button>
-              <button onClick={()=>{ setShowReset(false); setResetMsg(""); }} style={{ background:"none", border:"none", color:"#64748b", fontSize:"13px", cursor:"pointer", textDecoration:"underline", padding:0, textAlign:"center" }}>
+              <button onClick={()=>{ setShowReset(false); setResetMsg(""); }}
+                style={{ background:"none", border:"none", color:"#3e3e55", fontSize:"12px", cursor:"pointer", padding:0, textAlign:"center", fontFamily:"inherit" }}>
                 ← Voltar ao login
               </button>
             </div>
           </div>
         )}
+
+        <p style={{ textAlign:"center", fontSize:"11px", color:"#1f1f2e", marginTop:"24px", letterSpacing:"0.3px" }}>
+          Desenvolvido por Marcelo Alexandre · Todos os direitos reservados
+        </p>
       </div>
     </div>
   );
@@ -1775,50 +1815,50 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
     }
   };
 
-  const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #334155", background:"#0f172a", color:"#e2e8f0", fontSize:"13px", width:"100%", boxSizing:"border-box" };
+  const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #2a2a3a", background:"#0d0d14", color:"#c8c8d8", fontSize:"13px", width:"100%", boxSizing:"border-box" };
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}>
-      <div style={{ background:"#1e293b", borderRadius:"16px", padding:"28px", width:"100%", maxWidth:"660px", border:"1px solid #334155", maxHeight:"90vh", overflowY:"auto", boxShadow:"0 20px 60px rgba(0,0,0,0.5)" }}>
+      <div style={{ background:"#18181f", borderRadius:"16px", padding:"28px", width:"100%", maxWidth:"660px", border:"1px solid #2a2a3a", maxHeight:"90vh", overflowY:"auto", boxShadow:"0 20px 60px rgba(0,0,0,0.5)" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"24px" }}>
-          <h2 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:"18px", fontWeight:700, color:"#f8fafc", margin:0 }}>👥 Gerenciar Usuários</h2>
-          <button onClick={onClose} style={{ background:"#334155", border:"none", color:"#94a3b8", borderRadius:"8px", width:"32px", height:"32px", cursor:"pointer", fontSize:"16px" }}>✕</button>
+          <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"18px", fontWeight:700, color:"#f0f0fa", margin:0 }}>👥 Gerenciar Usuários</h2>
+          <button onClick={onClose} style={{ background:"#2a2a3a", border:"none", color:"#6e6e88", borderRadius:"8px", width:"32px", height:"32px", cursor:"pointer", fontSize:"16px" }}>✕</button>
         </div>
 
         {/* Lista de usuários */}
         <div style={{ marginBottom:"24px" }}>
-          <h3 style={{ fontSize:"13px", fontWeight:700, color:"#94a3b8", marginBottom:"10px", textTransform:"uppercase", letterSpacing:"0.05em" }}>Usuários cadastrados</h3>
-          {loading ? <p style={{ color:"#475569", fontSize:"13px" }}>Carregando...</p> : (
+          <h3 style={{ fontSize:"13px", fontWeight:700, color:"#6e6e88", marginBottom:"10px", textTransform:"uppercase", letterSpacing:"0.05em" }}>Usuários cadastrados</h3>
+          {loading ? <p style={{ color:"#6e6e88", fontSize:"13px" }}>Carregando...</p> : (
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
               {usuarios.map(u => {
                 const badge = ROLE_BADGES[u.role] || ROLE_BADGES.viewer;
                 const isEditing = editId === u.id;
                 return (
-                  <div key={u.id} style={{ background:"#0f172a", borderRadius:"10px", border:"1px solid " + (isEditing ? "#3b82f6" : "#1e293b"), overflow:"hidden" }}>
+                  <div key={u.id} style={{ background:"#0d0d14", borderRadius:"10px", border:"1px solid " + (isEditing ? "#3b82f6" : "#18181f"), overflow:"hidden" }}>
                     {/* Linha principal */}
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px" }}>
                       <div>
-                        <div style={{ fontSize:"13px", fontWeight:600, color:"#f1f5f9" }}>{u.nome} <span style={{ fontSize:"11px", color:"#475569" }}>· {u.email}</span></div>
+                        <div style={{ fontSize:"13px", fontWeight:600, color:"#f0f0fa" }}>{u.nome} <span style={{ fontSize:"11px", color:"#6e6e88" }}>· {u.email}</span></div>
                         <div style={{ display:"flex", gap:"8px", marginTop:"3px" }}>
                           <span style={{ fontSize:"11px", fontWeight:700, color:badge.color, background:badge.bg, padding:"1px 8px", borderRadius:"10px" }}>{badge.label}</span>
-                          {u.consultorName && <span style={{ fontSize:"11px", color:"#64748b" }}>{u.consultorName}</span>}
+                          {u.consultorName && <span style={{ fontSize:"11px", color:"#6e6e88" }}>{u.consultorName}</span>}
                         </div>
                       </div>
                       <div style={{ display:"flex", gap:"6px" }}>
-                        <button onClick={()=>isEditing ? setEditId(null) : handleEditStart(u)} style={{ background:isEditing?"#334155":"#3b82f622", border:"1px solid "+(isEditing?"#475569":"#3b82f644"), color:isEditing?"#94a3b8":"#3b82f6", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"12px", fontWeight:600 }}>{isEditing ? "✕" : "✏️ Editar"}</button>
+                        <button onClick={()=>isEditing ? setEditId(null) : handleEditStart(u)} style={{ background:isEditing?"#2a2a3a":"#6c63ff22", border:"1px solid "+(isEditing?"#6e6e88":"#6c63ff44"), color:isEditing?"#6e6e88":"#3b82f6", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"12px", fontWeight:600 }}>{isEditing ? "✕" : "✏️ Editar"}</button>
                         <button onClick={()=>handleDelete(u.id, u.email)} style={{ background:"#ef444422", border:"1px solid #ef444444", color:"#ef4444", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"12px", fontWeight:600 }}>🗑</button>
                       </div>
                     </div>
                     {/* Painel de edição inline */}
                     {isEditing && (
-                      <div style={{ padding:"14px", borderTop:"1px solid #1e293b", background:"#0a1628" }}>
+                      <div style={{ padding:"14px", borderTop:"1px solid #18181f", background:"#0a1628" }}>
                         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"10px" }}>
                           <div>
-                            <label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"4px" }}>Nome</label>
+                            <label style={{ fontSize:"11px", color:"#6e6e88", fontWeight:600, display:"block", marginBottom:"4px" }}>Nome</label>
                             <input value={editFields.nome} onChange={e=>setEditFields(f=>({...f,nome:e.target.value}))} style={inp} />
                           </div>
                           <div>
-                            <label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"4px" }}>Perfil</label>
+                            <label style={{ fontSize:"11px", color:"#6e6e88", fontWeight:600, display:"block", marginBottom:"4px" }}>Perfil</label>
                             <select value={editFields.role} onChange={e=>setEditFields(f=>({...f,role:e.target.value}))} style={inp}>
                               <option value="admin">Admin</option>
                               <option value="editor">Editor</option>
@@ -1828,7 +1868,7 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
                           </div>
                           {editFields.role === "consultor" && (
                             <div style={{ gridColumn:"1/-1" }}>
-                              <label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"4px" }}>Consultor vinculado</label>
+                              <label style={{ fontSize:"11px", color:"#6e6e88", fontWeight:600, display:"block", marginBottom:"4px" }}>Consultor vinculado</label>
                               <select value={editFields.consultorName} onChange={e=>setEditFields(f=>({...f,consultorName:e.target.value}))} style={inp}>
                                 <option value="">Selecione...</option>
                                 {consultores.map(c=><option key={c} value={c}>{c}</option>)}
@@ -1837,9 +1877,9 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
                           )}
                         </div>
                         <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
-                          <button onClick={()=>handleEditSave(u)} disabled={editSaving} style={{ padding:"7px 16px", borderRadius:"8px", border:"none", background:"#22c55e", color:"#fff", fontWeight:700, fontSize:"12px", cursor:"pointer" }}>{editSaving ? "Salvando..." : "💾 Salvar"}</button>
-                          <button onClick={()=>handleSendReset(u.email)} style={{ padding:"7px 16px", borderRadius:"8px", border:"1px solid #3b82f644", background:"#3b82f622", color:"#3b82f6", fontWeight:600, fontSize:"12px", cursor:"pointer" }}>🔑 Reset de senha</button>
-                          <button onClick={()=>setEditId(null)} style={{ padding:"7px 16px", borderRadius:"8px", border:"1px solid #334155", background:"transparent", color:"#64748b", fontWeight:600, fontSize:"12px", cursor:"pointer" }}>Cancelar</button>
+                          <button onClick={()=>handleEditSave(u)} disabled={editSaving} style={{ padding:"7px 16px", borderRadius:"8px", border:"none", background:"#22d3a0", color:"#fff", fontWeight:700, fontSize:"12px", cursor:"pointer" }}>{editSaving ? "Salvando..." : "💾 Salvar"}</button>
+                          <button onClick={()=>handleSendReset(u.email)} style={{ padding:"7px 16px", borderRadius:"8px", border:"1px solid #3b82f644", background:"#6c63ff22", color:"#6c63ff", fontWeight:600, fontSize:"12px", cursor:"pointer" }}>🔑 Reset de senha</button>
+                          <button onClick={()=>setEditId(null)} style={{ padding:"7px 16px", borderRadius:"8px", border:"1px solid #2a2a3a", background:"transparent", color:"#6e6e88", fontWeight:600, fontSize:"12px", cursor:"pointer" }}>Cancelar</button>
                         </div>
                       </div>
                     )}
@@ -1851,13 +1891,13 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
         </div>
 
         {/* Adicionar novo usuário */}
-        <div style={{ borderTop:"1px solid #334155", paddingTop:"20px" }}>
-          <h3 style={{ fontSize:"13px", fontWeight:700, color:"#94a3b8", marginBottom:"14px", textTransform:"uppercase", letterSpacing:"0.05em" }}>➕ Novo usuário</h3>
+        <div style={{ borderTop:"1px solid #2a2a3a", paddingTop:"20px" }}>
+          <h3 style={{ fontSize:"13px", fontWeight:700, color:"#6e6e88", marginBottom:"14px", textTransform:"uppercase", letterSpacing:"0.05em" }}>➕ Novo usuário</h3>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px", marginBottom:"12px" }}>
-            <div><label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"5px" }}>Nome *</label><input value={novoNome} onChange={e=>setNovoNome(e.target.value)} placeholder="Nome completo" style={inp}/></div>
-            <div><label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"5px" }}>E-mail *</label><input type="email" value={novoEmail} onChange={e=>setNovoEmail(e.target.value)} placeholder="email@exemplo.com" style={inp}/></div>
-            <div><label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"5px" }}>Senha (mín. 6 caracteres)</label><input type="password" value={novaSenha} onChange={e=>setNovaSenha(e.target.value)} placeholder="••••••••" style={inp}/></div>
-            <div><label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"5px" }}>Perfil *</label>
+            <div><label style={{ fontSize:"11px", color:"#6e6e88", fontWeight:600, display:"block", marginBottom:"5px" }}>Nome *</label><input value={novoNome} onChange={e=>setNovoNome(e.target.value)} placeholder="Nome completo" style={inp}/></div>
+            <div><label style={{ fontSize:"11px", color:"#6e6e88", fontWeight:600, display:"block", marginBottom:"5px" }}>E-mail *</label><input type="email" value={novoEmail} onChange={e=>setNovoEmail(e.target.value)} placeholder="email@exemplo.com" style={inp}/></div>
+            <div><label style={{ fontSize:"11px", color:"#6e6e88", fontWeight:600, display:"block", marginBottom:"5px" }}>Senha (mín. 6 caracteres)</label><input type="password" value={novaSenha} onChange={e=>setNovaSenha(e.target.value)} placeholder="••••••••" style={inp}/></div>
+            <div><label style={{ fontSize:"11px", color:"#6e6e88", fontWeight:600, display:"block", marginBottom:"5px" }}>Perfil *</label>
               <select value={novoRole} onChange={e=>setNovoRole(e.target.value)} style={inp}>
                 <option value="admin">Admin</option>
                 <option value="editor">Editor</option>
@@ -1866,7 +1906,7 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
               </select>
             </div>
             {novoRole === "consultor" && (
-              <div style={{ gridColumn:"1/-1" }}><label style={{ fontSize:"11px", color:"#64748b", fontWeight:600, display:"block", marginBottom:"5px" }}>Consultor vinculado *</label>
+              <div style={{ gridColumn:"1/-1" }}><label style={{ fontSize:"11px", color:"#6e6e88", fontWeight:600, display:"block", marginBottom:"5px" }}>Consultor vinculado *</label>
                 <select value={novoConsultor} onChange={e=>setNovoConsultor(e.target.value)} style={inp}>
                   <option value="">Selecione o consultor...</option>
                   {consultores.map(c=><option key={c} value={c}>{c}</option>)}
@@ -1875,8 +1915,8 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
             )}
           </div>
           {error && <div style={{ padding:"8px 12px", borderRadius:"8px", background:"#ef444422", border:"1px solid #ef444444", color:"#ef4444", fontSize:"12px", marginBottom:"10px" }}>⚠️ {error}</div>}
-          {success && <div style={{ padding:"8px 12px", borderRadius:"8px", background:"#22c55e22", border:"1px solid #22c55e44", color:"#22c55e", fontSize:"12px", marginBottom:"10px" }}>{success}</div>}
-          <button onClick={handleAdd} disabled={salvando} style={{ width:"100%", padding:"11px", borderRadius:"8px", border:"none", background:salvando?"#334155":"#22c55e", color:salvando?"#64748b":"#fff", fontWeight:700, fontSize:"14px", cursor:salvando?"not-allowed":"pointer" }}>
+          {success && <div style={{ padding:"8px 12px", borderRadius:"8px", background:"#22c55e22", border:"1px solid #22c55e44", color:"#22d3a0", fontSize:"12px", marginBottom:"10px" }}>{success}</div>}
+          <button onClick={handleAdd} disabled={salvando} style={{ width:"100%", padding:"11px", borderRadius:"8px", border:"none", background:salvando?"#2a2a3a":"#22c55e", color:salvando?"#6e6e88":"#fff", fontWeight:700, fontSize:"14px", cursor:salvando?"not-allowed":"pointer" }}>
             {salvando ? "Criando usuário..." : "✅ Criar usuário"}
           </button>
         </div>
@@ -1903,12 +1943,12 @@ export default function ConsultorDashboard() {
   }, []);
 
   if (!authChecked) return (
-    <div style={{ fontFamily:"'DM Sans',sans-serif", background:"#0f172a", minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"20px" }}>
+    <div style={{ fontFamily:"'DM Sans',sans-serif", background:"#0d0d14", minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"20px" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet"/>
       <div style={{ fontSize:"48px" }}>📅</div>
-      <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:"20px", fontWeight:700, color:"#f8fafc" }}>Agenda de Consultores</div>
-      <div style={{ display:"flex", alignItems:"center", gap:"12px", color:"#64748b", fontSize:"14px" }}>
-        <div style={{ width:"20px", height:"20px", border:"3px solid #334155", borderTop:"3px solid #3b82f6", borderRadius:"50%", animation:"spin 0.8s linear infinite" }}/>
+      <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"20px", fontWeight:700, color:"#f0f0fa" }}>Agenda de Consultores</div>
+      <div style={{ display:"flex", alignItems:"center", gap:"12px", color:"#6e6e88", fontSize:"14px" }}>
+        <div style={{ width:"20px", height:"20px", border:"3px solid #2a2a3a", borderTop:"3px solid #3b82f6", borderRadius:"50%", animation:"spin 0.8s linear infinite" }}/>
         Verificando sessão...
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -1953,23 +1993,35 @@ function Dashboard({ currentUser, onLogout }) {
 
   const isDark = theme === "dark";
   const T = {
-    bg: isDark ? "#0f172a" : "#f1f5f9",
-    surface: isDark ? "#1e293b" : "#ffffff",
-    surface2: isDark ? "#0f172a" : "#f8fafc",
-    border: isDark ? "#1e293b" : "#e2e8f0",
-    border2: isDark ? "#334155" : "#cbd5e1",
-    text: isDark ? "#e2e8f0" : "#1e293b",
-    text2: isDark ? "#94a3b8" : "#64748b",
-    text3: isDark ? "#64748b" : "#94a3b8",
-    heading: isDark ? "#f8fafc" : "#0f172a",
-    headerBg: isDark ? "linear-gradient(135deg,#1e293b 0%,#0f172a 100%)" : "linear-gradient(135deg,#ffffff 0%,#f1f5f9 100%)",
-    headerBorder: isDark ? "#1e293b" : "#e2e8f0",
-    btnInactive: isDark ? "#1e293b" : "#e2e8f0",
-    btnInactiveText: isDark ? "#94a3b8" : "#475569",
-    filterBg: isDark ? "#1e293b" : "#ffffff",
-    inputBg: isDark ? "#0f172a" : "#f8fafc",
-    inputColor: isDark ? "#e2e8f0" : "#1e293b",
-    cardBg: isDark ? "#1e293b" : "#ffffff",
+    bg:              isDark ? "#09090f"   : "#f5f5f7",
+    surface:         isDark ? "#111118"   : "#ffffff",
+    surface2:        isDark ? "#0d0d14"   : "#fafafa",
+    surfaceHover:    isDark ? "#18181f"   : "#f0f0f5",
+    border:          isDark ? "#1f1f2e"   : "#e4e4ea",
+    border2:         isDark ? "#2a2a3a"   : "#d0d0da",
+    text:            isDark ? "#c8c8d8"   : "#222233",
+    text2:           isDark ? "#6e6e88"   : "#666677",
+    text3:           isDark ? "#3e3e55"   : "#aaaabc",
+    heading:         isDark ? "#f0f0fa"   : "#09090f",
+    accent:          "#6c63ff",
+    accentAlt:       "#a78bfa",
+    accentHover:     "#5a52ee",
+    accentGlow:      isDark ? "0 0 28px #6c63ff44" : "0 4px 16px #6c63ff33",
+    success:         "#22d3a0",
+    warning:         "#f5a623",
+    danger:          "#f04f5e",
+    headerBg:        isDark ? "#0c0c14"   : "#ffffff",
+    headerBorder:    isDark ? "#1a1a28"   : "#e0e0ea",
+    btnInactive:     isDark ? "#111118"   : "#f0f0f5",
+    btnInactiveText: isDark ? "#6e6e88"   : "#555566",
+    filterBg:        isDark ? "#111118"   : "#ffffff",
+    inputBg:         isDark ? "#0d0d14"   : "#fafafa",
+    inputBorder:     isDark ? "#2a2a3a"   : "#d0d0da",
+    inputColor:      isDark ? "#c8c8d8"   : "#222233",
+    cardBg:          isDark ? "#111118"   : "#ffffff",
+    cardBorder:      isDark ? "#1f1f2e"   : "#e4e4ea",
+    shadow:          isDark ? "0 2px 16px rgba(0,0,0,0.6)" : "0 2px 16px rgba(0,0,0,0.07)",
+    shadowLg:        isDark ? "0 8px 48px rgba(0,0,0,0.8)" : "0 8px 48px rgba(0,0,0,0.12)",
   };
 
   // ── Carregar dados do Firestore na inicialização ──
@@ -2188,17 +2240,17 @@ function Dashboard({ currentUser, onLogout }) {
       ["Agendado por", nomeUsuario],
     ];
     const tbody = rows.map(([k,v],i) =>
-      `<tr style="background:${i%2===0?'#f8fafc':'#ffffff'}"><td style="padding:10px 14px;font-weight:600;color:#475569;width:130px;border-right:1px solid #e2e8f0">${k}</td><td style="padding:10px 14px;color:#1e293b">${v}</td></tr>`
+      `<tr style="background:${i%2===0?'#f0f0fa':'#ffffff'}"><td style="padding:10px 14px;font-weight:600;color:#6e6e88;width:130px;border-right:1px solid #c8c8d8">${k}</td><td style="padding:10px 14px;color:#18181f">${v}</td></tr>`
     ).join('');
     const corpo = `
-<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
-  <div style="background:linear-gradient(135deg,#1e3a5f,#0f172a);padding:20px 24px">
-    <h2 style="color:#f8fafc;margin:0;font-size:18px">📅 Agenda de Consultores</h2>
-    <p style="color:#94a3b8;margin:4px 0 0;font-size:13px">Notificação automática — agenda <strong style="color:#60a5fa">${acao}</strong></p>
+<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;border:1px solid #c8c8d8;border-radius:10px;overflow:hidden">
+  <div style="background:linear-gradient(135deg,#1e3a5f,#0d0d14);padding:20px 24px">
+    <h2 style="color:#f0f0fa;margin:0;font-size:18px">📅 Agenda de Consultores</h2>
+    <p style="color:#6e6e88;margin:4px 0 0;font-size:13px">Notificação automática — agenda <strong style="color:#60a5fa">${acao}</strong></p>
   </div>
   <table style="width:100%;border-collapse:collapse;font-size:14px">${tbody}</table>
-  <div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0">
-    <p style="margin:0;font-size:11px;color:#94a3b8">Esta mensagem foi enviada automaticamente pelo sistema Agenda de Consultores.</p>
+  <div style="padding:14px 24px;background:#f0f0fa;border-top:1px solid #c8c8d8">
+    <p style="margin:0;font-size:11px;color:#6e6e88">Esta mensagem foi enviada automaticamente pelo sistema Agenda de Consultores.</p>
   </div>
 </div>`.trim();
 
@@ -2395,63 +2447,113 @@ function Dashboard({ currentUser, onLogout }) {
 
   // Tela de carregamento enquanto busca dados do Firestore
   if (!dbLoaded) return (
-    <div style={{ fontFamily:"'DM Sans',sans-serif", background:"#0f172a", minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"20px" }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet"/>
-      <div style={{ fontSize:"48px" }}>📅</div>
-      <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:"20px", fontWeight:700, color:"#f8fafc" }}>Agenda de Consultores</div>
-      <div style={{ display:"flex", alignItems:"center", gap:"12px", color:"#64748b", fontSize:"14px" }}>
-        <div style={{ width:"20px", height:"20px", border:"3px solid #334155", borderTop:"3px solid #3b82f6", borderRadius:"50%", animation:"spin 0.8s linear infinite" }}/>
+    <div style={{ fontFamily:"'Outfit',sans-serif", background:"#09090f", minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"20px" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&family=Cabinet+Grotesk:wght@900&display=swap" rel="stylesheet"/>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
+      <div style={{ width:"54px",height:"54px",borderRadius:"16px",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"26px",boxShadow:"0 0 40px #6c63ff55" }}>◈</div>
+      <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"20px", fontWeight:900, color:"#f0f0fa", letterSpacing:"-0.5px" }}>Agenda de Consultores</div>
+      <div style={{ display:"flex", alignItems:"center", gap:"10px", color:"#3e3e55", fontSize:"13px" }}>
+        <div style={{ width:"16px", height:"16px", border:"2px solid #1f1f2e", borderTop:"2px solid #6c63ff", borderRadius:"50%", animation:"spin 0.7s linear infinite" }}/>
         Carregando dados...
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 
   return (
-    <div style={{ fontFamily:"'DM Sans',sans-serif",background:T.bg,minHeight:"100vh",color:T.text }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+    <div style={{ fontFamily:"'Outfit',sans-serif",background:T.bg,minHeight:"100vh",color:T.text,display:"flex",flexDirection:"column" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Cabinet+Grotesk:wght@700;800;900&display=swap" rel="stylesheet"/>
+      <style>{`
+        *{box-sizing:border-box;margin:0;padding:0;}
+        ::-webkit-scrollbar{width:4px;height:4px;}
+        ::-webkit-scrollbar-track{background:transparent;}
+        ::-webkit-scrollbar-thumb{background:${T.border2};border-radius:99px;}
+        ::-webkit-scrollbar-thumb:hover{background:${T.accent};}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+        .nav-btn{transition:all .2s cubic-bezier(.4,0,.2,1);position:relative;}
+        .nav-btn:hover{color:${T.heading}!important;}
+        .nav-btn.active{background:${T.accent}!important;color:#fff!important;box-shadow:${T.accentGlow};}
+        .action-btn{transition:all .2s cubic-bezier(.4,0,.2,1);}
+        .action-btn:hover{filter:brightness(1.1);transform:translateY(-1px);}
+        .card-hover{transition:box-shadow .25s,transform .25s,border-color .25s;}
+        .card-hover:hover{box-shadow:${T.shadowLg};transform:translateY(-3px);border-color:${T.accent}44!important;}
+        input,select,textarea{outline:none;transition:border-color .15s,box-shadow .15s;font-family:inherit;}
+        input:focus,select:focus,textarea:focus{border-color:${T.accent}!important;box-shadow:0 0 0 3px ${T.accent}20!important;}
+        .pill-tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600;letter-spacing:.3px;}
+        .fade-up{animation:fadeUp .3s cubic-bezier(.4,0,.2,1) both;}
+      `}</style>
 
-      {/* HEADER */}
-      <div style={{ background:T.headerBg,borderBottom:"1px solid "+T.headerBorder,padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"12px" }}>
-        <div>
-          <h1 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:T.heading,margin:0 }}>📅 Agenda de Consultores</h1>
-          <p style={{ margin:"3px 0 0",fontSize:"12px",color:T.text2 }}>
-            {consultores.length} consultores · {Object.values(scheduleData).flat().filter(e=>e.type==="client").length} dias agendados
-            {canManage && ` · ${clientList.length} clientes · ${projects.length} projetos`}
-          </p>
-          <p style={{ margin:"4px 0 0",fontSize:"10px",color:T.text3,fontStyle:"italic" }}>Desenvolvido por Marcelo Alexandre · Todos os direitos reservados</p>
-        </div>
-        <div style={{ display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"center" }}>
-          {/* New agenda button — only for editors/admins */}
-          {canEdit && (
-            <button onClick={()=>{setEditEntry(null);setShowModal(true);}} style={{ padding:"8px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:700,fontSize:"13px",background:"#22c55e",color:"#fff" }}>➕ Nova Agenda</button>
-          )}
-          {canEdit && (
-            <button onClick={handleExportExcel} title="Exportar agendas para Excel" style={{ padding:"8px 16px",borderRadius:"8px",border:"1px solid "+T.border2,cursor:"pointer",fontWeight:600,fontSize:"13px",background:T.btnInactive,color:T.btnInactiveText }}>📊 Exportar Excel</button>
-          )}
-          {canManage && (
-            <button onClick={()=>setShowUserMgmt(true)} style={{ padding:"8px 16px",borderRadius:"8px",border:"1px solid "+T.border2,cursor:"pointer",fontWeight:600,fontSize:"13px",background:T.btnInactive,color:T.btnInactiveText }}>👥 Usuários</button>
-          )}
-          {VIEWS.map(v=>(
-            <button key={v} onClick={()=>setView(v)} style={{ padding:"8px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"13px",background:view===v?"#3b82f6":T.btnInactive,color:view===v?"#fff":T.btnInactiveText }}>{VIEW_LABELS[v]}</button>
-          ))}
-          {/* Theme toggle */}
-          <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} title={isDark?"Tema claro":"Tema escuro"} style={{ padding:"8px 12px",borderRadius:"8px",border:"1px solid "+T.border2,cursor:"pointer",fontWeight:600,fontSize:"16px",background:T.btnInactive,color:T.btnInactiveText,lineHeight:1 }}>{isDark?"☀️":"🌙"}</button>
-          {/* User badge + logout */}
-          <div style={{ display:"flex",alignItems:"center",gap:"8px",padding:"6px 12px",borderRadius:"8px",background:T.surface2,border:"1px solid "+T.border,marginLeft:"4px" }}>
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontSize:"13px",fontWeight:700,color:T.heading }}>{currentUser.consultorName || currentUser.username}</div>
-              <div style={{ display:"inline-block",fontSize:"10px",fontWeight:700,color:badge.color,background:badge.bg,padding:"1px 8px",borderRadius:"10px",marginTop:"2px" }}>{badge.label}</div>
-            </div>
-            <button onClick={onLogout} title="Sair" style={{ background:T.btnInactive,border:"1px solid "+T.border2,color:T.text2,borderRadius:"8px",width:"32px",height:"32px",cursor:"pointer",fontSize:"16px",display:"flex",alignItems:"center",justifyContent:"center" }}>⎋</button>
+      {/* ── TOP HEADER ── */}
+      <header style={{ background:T.headerBg,borderBottom:"1px solid "+T.headerBorder,padding:"0 32px",display:"flex",alignItems:"center",justifyContent:"space-between",height:"60px",flexShrink:0,position:"sticky",top:0,zIndex:200,backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)" }}>
+        {/* Logo */}
+        <div style={{ display:"flex",alignItems:"center",gap:"10px",flexShrink:0 }}>
+          <div style={{ width:"32px",height:"32px",borderRadius:"9px",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"15px",boxShadow:T.accentGlow,flexShrink:0 }}>◈</div>
+          <div>
+            <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"16px",fontWeight:900,color:T.heading,letterSpacing:"-0.5px",lineHeight:1 }}>Agenda</div>
+            <div style={{ fontSize:"9px",color:T.text3,fontWeight:600,letterSpacing:"1.5px",marginTop:"2px",textTransform:"uppercase" }}>Consultores</div>
           </div>
         </div>
-      </div>
+
+        {/* NAV VIEWS */}
+        <nav style={{ display:"flex",gap:"1px",background:T.btnInactive,borderRadius:"12px",padding:"3px",border:"1px solid "+T.border }}>
+          {VIEWS.map(v=>(
+            <button key={v} onClick={()=>setView(v)} className={"nav-btn"+(view===v?" active":"")}
+              style={{ padding:"6px 16px",borderRadius:"9px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"12px",background:view===v?T.accent:"transparent",color:view===v?"#fff":T.text2,whiteSpace:"nowrap",letterSpacing:"0.1px" }}>
+              {VIEW_LABELS[v]}
+            </button>
+          ))}
+        </nav>
+
+        {/* RIGHT ACTIONS */}
+        <div style={{ display:"flex",gap:"8px",alignItems:"center" }}>
+          {canEdit && (
+            <button onClick={()=>{setEditEntry(null);setShowModal(true);}} className="action-btn"
+              style={{ padding:"8px 18px",borderRadius:"10px",border:"none",cursor:"pointer",fontWeight:700,fontSize:"12px",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,color:"#fff",display:"flex",alignItems:"center",gap:"7px",boxShadow:T.accentGlow,letterSpacing:"0.2px" }}>
+              <span style={{ fontSize:"16px",lineHeight:1,marginTop:"-1px" }}>+</span> Nova Agenda
+            </button>
+          )}
+          {canEdit && (
+            <button onClick={handleExportExcel} className="action-btn" title="Exportar Excel"
+              style={{ padding:"8px 12px",borderRadius:"10px",border:"1px solid "+T.border2,cursor:"pointer",fontSize:"13px",background:T.btnInactive,color:T.text2,display:"flex",alignItems:"center",gap:"5px" }}>
+              <span>📊</span>
+            </button>
+          )}
+          {canManage && (
+            <button onClick={()=>setShowUserMgmt(true)} className="action-btn" title="Gerenciar Usuários"
+              style={{ padding:"8px 12px",borderRadius:"10px",border:"1px solid "+T.border2,cursor:"pointer",fontSize:"13px",background:T.btnInactive,color:T.text2 }}>
+              👥
+            </button>
+          )}
+          <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} className="action-btn" title={isDark?"Tema claro":"Tema escuro"}
+            style={{ padding:"8px 12px",borderRadius:"10px",border:"1px solid "+T.border2,cursor:"pointer",fontSize:"13px",background:T.btnInactive,color:T.text2 }}>
+            {isDark?"☀️":"🌙"}
+          </button>
+          {/* User pill */}
+          <div style={{ display:"flex",alignItems:"center",gap:"9px",padding:"5px 12px 5px 5px",borderRadius:"99px",background:T.surface,border:"1px solid "+T.border,boxShadow:T.shadow }}>
+            <div style={{ width:"28px",height:"28px",borderRadius:"50%",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10px",fontWeight:800,color:"#fff",flexShrink:0 }}>
+              {getInitials(currentUser.consultorName||currentUser.username||"??")}
+            </div>
+            <div>
+              <div style={{ fontSize:"12px",fontWeight:700,color:T.heading,lineHeight:1 }}>{(currentUser.consultorName||currentUser.username||"").split(" ")[0]}</div>
+              <div style={{ fontSize:"9px",fontWeight:700,color:badge.color,lineHeight:1,marginTop:"3px",letterSpacing:"0.5px",textTransform:"uppercase" }}>{badge.label}</div>
+            </div>
+            <button onClick={onLogout} title="Sair"
+              style={{ background:"transparent",border:"none",color:T.text3,cursor:"pointer",fontSize:"14px",padding:"2px 0 2px 4px",display:"flex",alignItems:"center",opacity:0.7 }}>⎋</button>
+          </div>
+        </div>
+      </header>
 
       {/* TOAST */}
-      {toast && <div style={{ position:"fixed",top:"20px",right:"20px",background:toast.color,color:"#fff",padding:"12px 20px",borderRadius:"10px",fontWeight:600,fontSize:"14px",zIndex:9999,boxShadow:"0 4px 20px rgba(0,0,0,0.3)" }}>{toast.msg}</div>}
+      {toast && (
+        <div style={{ position:"fixed",bottom:"24px",right:"24px",background:isDark?"#18181f":"#ffffff",color:T.heading,padding:"12px 18px",borderRadius:"14px",fontWeight:600,fontSize:"13px",zIndex:9999,boxShadow:"0 8px 40px rgba(0,0,0,0.5)",animation:"fadeUp .25s cubic-bezier(.4,0,.2,1)",display:"flex",alignItems:"center",gap:"10px",maxWidth:"360px",border:"1px solid "+(isDark?"#2a2a3a":"#e4e4ea"),borderLeft:"3px solid "+(toast.color||"#6c63ff") }}>
+          <div style={{ width:"8px",height:"8px",borderRadius:"50%",background:toast.color||"#6c63ff",flexShrink:0 }}/>
+          {toast.msg}
+        </div>
+      )}
 
-      {/* MODAL — only for editors/admins */}
+      {/* MODAL */}
       {showModal && canEdit && (
         <AgendaModal
           consultores={consultores}
@@ -2463,55 +2565,68 @@ function Dashboard({ currentUser, onLogout }) {
         />
       )}
 
-      {/* READONLY BANNER for viewer/consultor */}
+      {/* READONLY BANNER */}
       {(isViewer || isConsultor) && (
-        <div style={{ background:isDark?"#1f1a0e":"#fffbeb",borderBottom:"1px solid "+isDark?"#f59e0b33":"#fcd34d",padding:"8px 32px",display:"flex",alignItems:"center",gap:"10px" }}>
-          <span style={{ fontSize:"14px" }}>🔒</span>
-          <span style={{ fontSize:"13px",color:"#f59e0b",fontWeight:500 }}>
+        <div style={{ background:isDark?"#f5a62308":"#fffbeb",borderBottom:"1px solid "+(isDark?"#f5a62320":"#fcd34d"),padding:"6px 32px",display:"flex",alignItems:"center",gap:"8px" }}>
+          <span style={{ fontSize:"11px" }}>🔒</span>
+          <span style={{ fontSize:"11px",color:"#f5a623",fontWeight:600,letterSpacing:"0.1px" }}>
             {isConsultor
-              ? `Acesso restrito — você está visualizando apenas a agenda de ${currentUser.consultorName}.`
-              : "Modo visualização — você não tem permissão para editar agendas."}
+              ? `Acesso restrito — visualizando apenas a agenda de ${currentUser.consultorName}.`
+              : "Modo visualização — sem permissão para editar agendas."}
           </span>
         </div>
       )}
 
-      {/* FILTERS — consultor sees only their own, no toggle */}
+      {/* FILTERS */}
       {view !== "cadastros" && (
-        <div style={{ background:T.filterBg,padding:"12px 32px",display:"flex",gap:"16px",flexWrap:"wrap",alignItems:"center",borderBottom:"1px solid "+T.border2 }}>
+        <div style={{ background:T.surface,padding:"10px 32px",display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"center",borderBottom:"1px solid "+T.border }}>
           {!isConsultor && (
-            <select
-              value={selectedConsultor || ""}
-              onChange={e => setSelectedConsultor(e.target.value || null)}
-              style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid "+T.border2,background:T.inputBg,color:T.inputColor,fontSize:"13px",cursor:"pointer",minWidth:"180px" }}
-            >
+            <select value={selectedConsultor||""} onChange={e=>setSelectedConsultor(e.target.value||null)}
+              style={{ padding:"7px 12px",borderRadius:"10px",border:"1px solid "+T.inputBorder,background:T.inputBg,color:T.inputColor,fontSize:"12px",cursor:"pointer",minWidth:"168px",fontFamily:"inherit",fontWeight:500 }}>
               <option value="">Todos os consultores</option>
-              {consultores.map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
+              {consultores.map(c=><option key={c} value={c}>{c}</option>)}
             </select>
           )}
           {isConsultor && (
-            <div style={{ display:"flex",alignItems:"center",gap:"10px" }}>
-              <div style={{ width:"32px",height:"32px",borderRadius:"50%",background:"hsl("+(consultores.indexOf(currentUser.consultorName)*29%360)+",65%,55%)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:700,color:"#fff" }}>{getInitials(currentUser.consultorName||"")}</div>
-              <span style={{ fontSize:"14px",fontWeight:600,color:T.heading }}>{currentUser.consultorName}</span>
+            <div style={{ display:"flex",alignItems:"center",gap:"8px",padding:"5px 12px 5px 8px",borderRadius:"99px",background:T.btnInactive,border:"1px solid "+T.border }}>
+              <div style={{ width:"22px",height:"22px",borderRadius:"50%",background:`linear-gradient(135deg,#6c63ff,#a78bfa)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"9px",fontWeight:800,color:"#fff" }}>{getInitials(currentUser.consultorName||"")}</div>
+              <span style={{ fontSize:"12px",fontWeight:600,color:T.heading }}>{currentUser.consultorName}</span>
             </div>
           )}
-          <select value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid "+T.border2,background:T.inputBg,color:T.inputColor,fontSize:"13px",cursor:"pointer" }}>
+          <select value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)}
+            style={{ padding:"7px 12px",borderRadius:"10px",border:"1px solid "+T.inputBorder,background:T.inputBg,color:T.inputColor,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",fontWeight:500 }}>
             {allMonths.map(m=><option key={m} value={m}>{m}</option>)}
           </select>
-          <input placeholder="🔍 Buscar cliente..." value={searchClient} onChange={e=>setSearchClient(e.target.value)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid "+T.border2,background:T.inputBg,color:T.inputColor,fontSize:"13px",minWidth:"180px" }}/>
-          {/* Semanal / Mensal toggle — shown when a consultant is selected */}
+          <div style={{ position:"relative",display:"flex",alignItems:"center" }}>
+            <span style={{ position:"absolute",left:"10px",fontSize:"12px",color:T.text3,pointerEvents:"none" }}>🔍</span>
+            <input placeholder="Buscar cliente..." value={searchClient} onChange={e=>setSearchClient(e.target.value)}
+              style={{ padding:"7px 12px 7px 30px",borderRadius:"10px",border:"1px solid "+T.inputBorder,background:T.inputBg,color:T.inputColor,fontSize:"12px",minWidth:"160px",fontFamily:"inherit" }}/>
+          </div>
           {selectedConsultor && (
-            <div style={{ display:"flex",gap:"4px",marginLeft:"auto",background:T.surface2,borderRadius:"10px",padding:"3px",border:"1px solid "+T.border2 }}>
-              <button onClick={()=>setConsultorViewMode("semanal")} style={{ padding:"6px 14px",borderRadius:"7px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"12px",background:consultorViewMode==="semanal"?"#3b82f6":"transparent",color:consultorViewMode==="semanal"?"#fff":T.btnInactiveText,transition:"all .15s" }}>📅 Semanal</button>
-              <button onClick={()=>setConsultorViewMode("mensal")} style={{ padding:"6px 14px",borderRadius:"7px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"12px",background:consultorViewMode==="mensal"?"#3b82f6":"transparent",color:consultorViewMode==="mensal"?"#fff":T.btnInactiveText,transition:"all .15s" }}>🗓 Mensal</button>
+            <div style={{ display:"flex",gap:"2px",background:T.btnInactive,borderRadius:"10px",padding:"2px",border:"1px solid "+T.border }}>
+              <button onClick={()=>setConsultorViewMode("semanal")} className="nav-btn"
+                style={{ padding:"5px 14px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"11px",background:consultorViewMode==="semanal"?T.accent:"transparent",color:consultorViewMode==="semanal"?"#fff":T.text2 }}>📅 Semanal</button>
+              <button onClick={()=>setConsultorViewMode("mensal")} className="nav-btn"
+                style={{ padding:"5px 14px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"11px",background:consultorViewMode==="mensal"?T.accent:"transparent",color:consultorViewMode==="mensal"?"#fff":T.text2 }}>🗓 Mensal</button>
             </div>
           )}
+          {/* Stats */}
+          <div style={{ marginLeft:"auto",display:"flex",gap:"16px",alignItems:"center" }}>
+            <div style={{ fontSize:"11px",color:T.text3,display:"flex",alignItems:"center",gap:"5px" }}>
+              <span style={{ width:"6px",height:"6px",borderRadius:"50%",background:"#6c63ff",display:"inline-block" }}/>
+              <span style={{ fontWeight:700,color:T.text2 }}>{consultores.length}</span> consultores
+            </div>
+            <div style={{ width:"1px",height:"12px",background:T.border }}/>
+            <div style={{ fontSize:"11px",color:T.text3,display:"flex",alignItems:"center",gap:"5px" }}>
+              <span style={{ width:"6px",height:"6px",borderRadius:"50%",background:"#22d3a0",display:"inline-block" }}/>
+              <span style={{ fontWeight:700,color:T.text2 }}>{Object.values(scheduleData).flat().filter(e=>e.type==="client").length}</span> dias agendados
+            </div>
+          </div>
         </div>
       )}
 
       {/* CONTENT */}
-      <div style={{ padding:"24px 32px" }}>
+      <div style={{ padding:"24px 32px",flex:1 }}>
         {view==="grid" && (
           selectedConsultor
             ? consultorViewMode==="semanal"
