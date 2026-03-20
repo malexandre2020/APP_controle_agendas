@@ -611,6 +611,129 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// VISUALIZAÇÃO SEMANAL GLOBAL (todos os consultores, semana a semana)
+// ─────────────────────────────────────────────────────────────────────────────
+function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEdit, onEdit, onNewEntry, theme: T }) {
+  const { days, consultores, monday } = weeklyData;
+  const WD_SHORT = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+  const WD_COLOR = ["#1e293b","#1e293b","#1e293b","#1e293b","#1e293b","#0f172a","#0f172a"];
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Formata o range da semana ex: "17 - 23 Mar 2026"
+  const fmtRange = () => {
+    const start = days[0], end = days[6];
+    const fmt = (d) => d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}).replace(".","");
+    return `${fmt(start)} – ${fmt(end)} ${end.getFullYear()}`;
+  };
+
+  const getColor = (entry) => {
+    if (!entry) return "#6b7280";
+    if (entry.type==="vacation") return "#0891b2";
+    if (entry.type==="holiday") return "#d97706";
+    if (entry.type==="blocked") return "#374151";
+    if (entry.type==="reserved") return "#6366f1";
+    const key = clientColorMap && Object.keys(clientColorMap).find(k => (entry.client||"").toUpperCase().includes(k));
+    return key ? clientColorMap[key] : CLIENT_COLORS.default;
+  };
+
+  return (
+    <div>
+      {/* Navegação da semana */}
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"20px",flexWrap:"wrap",gap:"10px" }}>
+        <div style={{ display:"flex",alignItems:"center",gap:"10px" }}>
+          <button onClick={()=>setOffset(o=>o-1)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid #334155",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:"18px",lineHeight:1 }}>‹</button>
+          <div style={{ textAlign:"center" }}>
+            <div style={{ fontSize:"16px",fontWeight:700,color:"#f1f5f9" }}>{fmtRange()}</div>
+            {offset!==0 && <div style={{ fontSize:"11px",color:"#64748b",marginTop:"2px" }}>{offset>0?`+${offset}`:`${offset}`} semana{Math.abs(offset)>1?"s":""} da atual</div>}
+          </div>
+          <button onClick={()=>setOffset(o=>o+1)} style={{ padding:"8px 14px",borderRadius:"8px",border:"1px solid #334155",background:"#1e293b",color:"#94a3b8",cursor:"pointer",fontSize:"18px",lineHeight:1 }}>›</button>
+        </div>
+        <button onClick={()=>setOffset(0)} style={{ padding:"7px 16px",borderRadius:"8px",border:"1px solid #3b82f644",background:"#3b82f618",color:"#3b82f6",cursor:"pointer",fontSize:"12px",fontWeight:700,opacity:offset===0?0.4:1 }} disabled={offset===0}>
+          📍 Semana atual
+        </button>
+      </div>
+
+      {/* Tabela */}
+      <div style={{ overflowX:"auto" }}>
+        <table style={{ width:"100%",borderCollapse:"collapse",tableLayout:"fixed",minWidth:"700px" }}>
+          <colgroup>
+            <col style={{ width:"130px" }}/>
+            {days.map((_,i)=><col key={i}/>)}
+          </colgroup>
+          <thead>
+            <tr>
+              <th style={{ padding:"8px 12px",textAlign:"left",fontSize:"11px",color:"#64748b",fontWeight:700,background:"#0f172a",borderBottom:"2px solid #334155" }}>Consultor</th>
+              {days.map((d,i)=>{
+                const isToday = d.getTime()===today.getTime();
+                const isWknd = i>=5;
+                return (
+                  <th key={i} style={{ padding:"8px 6px",textAlign:"center",fontSize:"11px",fontWeight:700,background:isWknd?"#0a0f1a":"#0f172a",borderBottom:"2px solid "+(isToday?"#3b82f6":"#334155"),color:isToday?"#3b82f6":isWknd?"#475569":"#94a3b8",minWidth:"90px" }}>
+                    <div>{WD_SHORT[i]}</div>
+                    <div style={{ fontSize:"16px",fontWeight:800,color:isToday?"#3b82f6":isWknd?"#374151":"#e2e8f0",marginTop:"2px" }}>{d.getDate()}</div>
+                    <div style={{ fontSize:"10px",color:"#475569",marginTop:"1px" }}>{d.toLocaleDateString("pt-BR",{month:"short"}).replace(".","")}</div>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {consultores.map(({name, cells},ri)=>(
+              <tr key={name} style={{ borderBottom:"1px solid #1e293b" }}>
+                {/* Nome do consultor */}
+                <td style={{ padding:"8px 10px",verticalAlign:"middle",background:"#0f172a",borderRight:"2px solid #1e293b" }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:"8px" }}>
+                    <div style={{ width:"26px",height:"26px",borderRadius:"50%",background:"hsl("+(ri*37%360)+",55%,48%)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10px",fontWeight:800,color:"#fff",flexShrink:0 }}>
+                      {name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+                    </div>
+                    <span style={{ fontSize:"11px",fontWeight:600,color:"#e2e8f0",lineHeight:1.3 }}>{name.split(" ")[0]}</span>
+                  </div>
+                </td>
+                {/* Células dos dias */}
+                {cells.map((entries,ci)=>{
+                  const d = days[ci];
+                  const isToday = d.getTime()===today.getTime();
+                  const isWknd = ci>=5;
+                  const mName = MONTHS_ORDER[d.getMonth()];
+                  const yr = d.getFullYear();
+                  return (
+                    <td key={ci}
+                      onClick={()=>{ if(canEdit&&!isWknd&&onNewEntry&&entries.length===0) onNewEntry({consultor:name,month:mName,day:d.getDate(),year:yr}); }}
+                      style={{ padding:"4px",verticalAlign:"top",background:isToday?"#1e3a5f22":isWknd?"#0a0f1a":"transparent",borderLeft:"1px solid #1e293b",cursor:(canEdit&&!isWknd&&entries.length===0)?"pointer":"default",minHeight:"60px" }}>
+                      {entries.length===0 && !isWknd && canEdit && (
+                        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"52px",opacity:0.15,fontSize:"18px",color:"#64748b" }}>+</div>
+                      )}
+                      {entries.map((entry,ei)=>{
+                        const color = getColor(entry);
+                        return (
+                          <div key={entry.id||ei}
+                            onClick={e=>{e.stopPropagation();if(canEdit&&onEdit)onEdit(entry,name);}}
+                            style={{ background:color,borderRadius:"6px",padding:"4px 6px",marginBottom:"3px",cursor:canEdit?"pointer":"default",transition:"opacity .15s" }}
+                            onMouseEnter={e=>e.currentTarget.style.opacity="0.85"}
+                            onMouseLeave={e=>e.currentTarget.style.opacity="1"}
+                          >
+                            <div style={{ fontSize:"10px",fontWeight:800,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
+                              {entry.modalidade==="remoto"?"💻 ":entry.modalidade==="presencial"?"🏢 ":""}{entry.client||entry.type}
+                            </div>
+                            {(entry.horaInicio||entry.horaFim) && (
+                              <div style={{ fontSize:"9px",color:"rgba(255,255,255,0.8)",marginTop:"1px" }}>{entry.horaInicio||""}{entry.horaFim?"→"+entry.horaFim:""}</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p style={{ fontSize:"11px",color:"#475569",marginTop:"10px" }}>💡 Clique em célula vazia para adicionar · Clique em agenda para editar · Colunas escuras = fim de semana</p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CALENDÁRIO MENSAL
 // ─────────────────────────────────────────────────────────────────────────────
 function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientColors, onEdit, onDelete, onNewEntry, readonly }) {
@@ -1696,7 +1819,11 @@ function Dashboard({ currentUser, onLogout }) {
   const [projects, setProjects] = useState([]);
   const [dbLoaded, setDbLoaded] = useState(false);
   const [selectedConsultor, setSelectedConsultor] = useState(isConsultor ? currentUser.consultorName : null);
-  const [selectedMonth, setSelectedMonth] = useState("Todos");
+  const [selectedMonth, setSelectedMonth] = useState(()=>{
+    if (isConsultor) return "Todos";
+    return MONTHS_ORDER[new Date().getMonth()];
+  });
+  const [selectedWeekOffset, setSelectedWeekOffset] = useState(0); // semanas a partir da semana atual
   const [searchClient, setSearchClient] = useState("");
   const [view, setView] = useState("calendario");
   const [showModal, setShowModal] = useState(false);
@@ -2090,10 +2217,38 @@ function Dashboard({ currentUser, onLogout }) {
     return byDay;
   },[selectedConsultor,selectedMonth,filteredData]);
 
-  const VIEWS = canManage
-    ? ["grid","calendario","timeline","stats","cadastros"]
-    : ["grid","calendario","timeline","stats"];
-  const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros" };
+  // ── Dados da semana global (view semanal) ──
+  const weeklyData = useMemo(()=>{
+    const today = new Date();
+    // Segunda-feira da semana atual + offset
+    const dow = (today.getDay()+6)%7; // 0=seg
+    const monday = new Date(today); monday.setDate(today.getDate() - dow + selectedWeekOffset*7);
+    monday.setHours(0,0,0,0);
+    const days = Array.from({length:7},(_,i)=>{ const d=new Date(monday); d.setDate(monday.getDate()+i); return d; });
+    const WD = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+    const result = { days, consultores: [] };
+    const consultoresList = isConsultor ? [currentUser.consultorName] : consultores;
+    for (const name of consultoresList) {
+      const entries = (scheduleData[name]||[]);
+      const row = { name, cells: days.map(d=>{
+        const mName = MONTHS_ORDER[d.getMonth()];
+        const dayNum = d.getDate();
+        const yr = d.getFullYear();
+        return entries.filter(e => {
+          const em = e.month ? e.month.charAt(0).toUpperCase()+e.month.slice(1).toLowerCase() : "";
+          const mn = mName.charAt(0).toUpperCase()+mName.slice(1).toLowerCase();
+          return em===mn && e.day===dayNum && (e.year===yr || !e.year);
+        });
+      })};
+      result.consultores.push(row);
+    }
+    return { ...result, monday };
+  },[selectedWeekOffset, scheduleData, consultores, isConsultor, currentUser]);
+
+
+    ? ["grid","calendario","semanal","timeline","stats","cadastros"]
+    : ["grid","calendario","semanal","timeline","stats"];
+  const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", semanal:"📅 Semanal", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros" };
 
   const badge = ROLE_BADGES[currentUser.role];
 
@@ -2260,6 +2415,7 @@ function Dashboard({ currentUser, onLogout }) {
                 onNewEntry={canEdit ? ({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); } : null}
               />
         )}
+        {view==="semanal" && <WeeklyGlobalView weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={canEdit} onEdit={(entry,name)=>{setEditEntry({...entry,consultor:name});setShowModal(true);}} onNewEntry={canEdit?({consultor,month,day,year})=>{setEditEntry({consultor,month,day,year,prefill:true});setShowModal(true);}:null} theme={T}/>}
         {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
         {view==="stats" && <StatsView stats={stats}/>}
 
