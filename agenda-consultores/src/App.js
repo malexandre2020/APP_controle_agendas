@@ -467,89 +467,179 @@ function EmailConfigTab({ emailConfig, onSave }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // MÓDULO DE CADASTROS (Consultores, Clientes, Projetos)
 // ─────────────────────────────────────────────────────────────────────────────
-function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemoveConsultor, onAddClient, onRemoveClient, onAddProject, onRemoveProject, emailConfig, onSaveEmailConfig }) {
+function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemoveConsultor, onUpdateConsultor, onAddClient, onRemoveClient, onUpdateClient, onAddProject, onRemoveProject, onUpdateProject, emailConfig, onSaveEmailConfig }) {
   const [tab, setTab] = useState("consultores");
-  const [newConsultor, setNewConsultor] = useState("");
-  const [newClient, setNewClient] = useState("");
-  const [newClientColor, setNewClientColor] = useState("#3b82f6");
-  const [newProject, setNewProject] = useState({ name:"", client:"", description:"" });
 
-  const inp = { padding:"8px 12px",borderRadius:"8px",border:"1px solid #334155",background:"#0f172a",color:"#e2e8f0",fontSize:"13px" };
+  // ── Consultor form ──
+  const [newC, setNewC] = useState({ name:"", codigo:"", email:"" });
+  const [editC, setEditC] = useState(null); // { idx, name, codigo, email }
+
+  // ── Cliente form ──
+  const [newCl, setNewCl] = useState({ name:"", codigo:"", email:"", color:"#3b82f6" });
+  const [editCl, setEditCl] = useState(null);
+
+  // ── Projeto form ──
+  const [newP, setNewP] = useState({ name:"", codigo:"", client:"", description:"" });
+  const [editP, setEditP] = useState(null);
+
+  const inp = { padding:"8px 12px",borderRadius:"8px",border:"1px solid #334155",background:"#0f172a",color:"#e2e8f0",fontSize:"13px",width:"100%",boxSizing:"border-box" };
+  const lbl = { fontSize:"12px",color:"#64748b",fontWeight:600,display:"block",marginBottom:"6px" };
   const card = { background:"#1e293b",borderRadius:"12px",padding:"20px",border:"1px solid #334155" };
+  const btnGreen = { padding:"10px",borderRadius:"8px",border:"none",background:"#22c55e",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"13px",width:"100%" };
+  const btnBlue  = { padding:"10px",borderRadius:"8px",border:"none",background:"#3b82f6",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"13px",width:"100%" };
+  const btnRed   = { background:"#ef444422",border:"1px solid #ef444444",color:"#ef4444",borderRadius:"6px",padding:"5px 10px",cursor:"pointer",fontSize:"12px",fontWeight:600 };
+  const btnEdit  = { background:"#3b82f622",border:"1px solid #3b82f644",color:"#3b82f6",borderRadius:"6px",padding:"5px 10px",cursor:"pointer",fontSize:"12px",fontWeight:600 };
 
   const tabs = [["consultores","👥 Consultores"],["clientes","🏢 Clientes"],["projetos","📋 Projetos"],["email","📧 E-mail"]];
+
+  // Enriquece consultores com meta se disponível
+  const consultoresMeta = (window.__consultoresMeta||[]);
+  const getMeta = (name) => consultoresMeta.find(c=>c.name===name) || { name, codigo:"", email:"" };
 
   return (
     <div>
       <h2 style={{ fontFamily:"'Space Grotesk',sans-serif",fontSize:"20px",fontWeight:700,color:"#f8fafc",marginBottom:"20px" }}>🗂 Cadastros</h2>
-      <div style={{ display:"flex",gap:"8px",marginBottom:"24px" }}>
+      <div style={{ display:"flex",gap:"8px",marginBottom:"24px",flexWrap:"wrap" }}>
         {tabs.map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)} style={{ padding:"8px 20px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"13px",background:tab===id?"#3b82f6":"#1e293b",color:tab===id?"#fff":"#64748b" }}>{label}</button>
         ))}
       </div>
 
-      {/* ─ CONSULTORES ─ */}
+      {/* ─────────── CONSULTORES ─────────── */}
       {tab==="consultores" && (
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"24px" }}>
+          {/* Formulário */}
           <div style={card}>
-            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>➕ Novo Consultor</h3>
+            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>
+              {editC ? "✏️ Editar Consultor" : "➕ Novo Consultor"}
+            </h3>
             <div style={{ display:"flex",flexDirection:"column",gap:"12px" }}>
-              <div>
-                <label style={{ fontSize:"12px",color:"#64748b",fontWeight:600,display:"block",marginBottom:"6px" }}>Nome completo</label>
-                <input value={newConsultor} onChange={e=>setNewConsultor(e.target.value)} placeholder="Ex: João Silva" style={{...inp,width:"100%",boxSizing:"border-box"}} />
+              <div style={{ display:"grid",gridTemplateColumns:"2fr 1fr",gap:"10px" }}>
+                <div>
+                  <label style={lbl}>Nome completo</label>
+                  <input value={editC?editC.name:newC.name} onChange={e=>editC?setEditC(v=>({...v,name:e.target.value})):setNewC(v=>({...v,name:e.target.value}))} placeholder="Ex: João Silva" style={inp}/>
+                </div>
+                <div>
+                  <label style={lbl}>Código</label>
+                  <input value={editC?editC.codigo:newC.codigo} onChange={e=>editC?setEditC(v=>({...v,codigo:e.target.value})):setNewC(v=>({...v,codigo:e.target.value}))} placeholder="Ex: C001" style={inp}/>
+                </div>
               </div>
-              <button onClick={()=>{ if(newConsultor.trim()){ onAddConsultor(newConsultor.trim()); setNewConsultor(""); }}} style={{ padding:"10px",borderRadius:"8px",border:"none",background:"#22c55e",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"13px" }}>✅ Cadastrar Consultor</button>
+              <div>
+                <label style={lbl}>E-mail</label>
+                <input type="email" value={editC?editC.email:newC.email} onChange={e=>editC?setEditC(v=>({...v,email:e.target.value})):setNewC(v=>({...v,email:e.target.value}))} placeholder="consultor@empresa.com" style={inp}/>
+              </div>
+              <div style={{ display:"flex",gap:"8px" }}>
+                {editC ? (
+                  <>
+                    <button onClick={()=>{ if(!editC.name.trim()) return; onUpdateConsultor(editC._orig, editC); setEditC(null); }} style={btnBlue}>💾 Salvar alterações</button>
+                    <button onClick={()=>setEditC(null)} style={{ ...btnBlue,background:"#334155",width:"auto",padding:"10px 16px" }}>Cancelar</button>
+                  </>
+                ) : (
+                  <button onClick={()=>{ if(!newC.name.trim()) return; onAddConsultor(newC); setNewC({name:"",codigo:"",email:""}); }} style={btnGreen}>✅ Cadastrar Consultor</button>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Lista */}
           <div style={card}>
             <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>👥 Consultores Cadastrados ({consultores.length})</h3>
-            <div style={{ display:"flex",flexDirection:"column",gap:"8px",maxHeight:"300px",overflowY:"auto" }}>
-              {consultores.map((c,i)=>(
-                <div key={c} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"#0f172a",borderRadius:"8px",border:"1px solid #1e293b" }}>
-                  <div style={{ display:"flex",alignItems:"center",gap:"10px" }}>
-                    <div style={{ width:"32px",height:"32px",borderRadius:"50%",background:"hsl("+(i*29%360)+",65%,50%)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:700,color:"#fff" }}>{getInitials(c)}</div>
-                    <span style={{ fontSize:"13px",color:"#e2e8f0",fontWeight:500 }}>{c}</span>
+            <div style={{ display:"flex",flexDirection:"column",gap:"8px",maxHeight:"360px",overflowY:"auto" }}>
+              {consultores.map((c,i)=>{
+                const meta = getMeta(c);
+                return (
+                  <div key={c} style={{ padding:"10px 12px",background:"#0f172a",borderRadius:"8px",border:"1px solid #1e293b" }}>
+                    <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                      <div style={{ display:"flex",alignItems:"center",gap:"10px",minWidth:0 }}>
+                        <div style={{ width:"32px",height:"32px",borderRadius:"50%",background:"hsl("+(i*29%360)+",65%,50%)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:700,color:"#fff",flexShrink:0 }}>{getInitials(c)}</div>
+                        <div style={{ minWidth:0 }}>
+                          <div style={{ fontSize:"13px",color:"#e2e8f0",fontWeight:600,display:"flex",alignItems:"center",gap:"6px" }}>
+                            {c}
+                            {meta.codigo && <span style={{ fontSize:"10px",background:"#334155",color:"#94a3b8",padding:"1px 6px",borderRadius:"10px" }}>{meta.codigo}</span>}
+                          </div>
+                          {meta.email && <div style={{ fontSize:"11px",color:"#64748b",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>✉️ {meta.email}</div>}
+                        </div>
+                      </div>
+                      <div style={{ display:"flex",gap:"6px",flexShrink:0,marginLeft:"8px" }}>
+                        <button onClick={()=>setEditC({...meta,_orig:c})} style={btnEdit}>✏️</button>
+                        <button onClick={()=>{ if(window.confirm("Remover "+c+"? Todos os agendamentos serão perdidos.")) onRemoveConsultor(c); }} style={btnRed}>🗑</button>
+                      </div>
+                    </div>
                   </div>
-                  <button onClick={()=>{ if(window.confirm("Remover "+c+"? Todos os agendamentos serão perdidos.")) onRemoveConsultor(c); }} style={{ background:"#ef444422",border:"1px solid #ef444444",color:"#ef4444",borderRadius:"6px",padding:"4px 10px",cursor:"pointer",fontSize:"12px",fontWeight:600 }}>🗑</button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* ─ CLIENTES ─ */}
+      {/* ─────────── CLIENTES ─────────── */}
       {tab==="clientes" && (
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"24px" }}>
+          {/* Formulário */}
           <div style={card}>
-            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>➕ Novo Cliente</h3>
+            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>
+              {editCl ? "✏️ Editar Cliente" : "➕ Novo Cliente"}
+            </h3>
             <div style={{ display:"flex",flexDirection:"column",gap:"12px" }}>
-              <div>
-                <label style={{ fontSize:"12px",color:"#64748b",fontWeight:600,display:"block",marginBottom:"6px" }}>Nome do cliente</label>
-                <input value={newClient} onChange={e=>setNewClient(e.target.value.toUpperCase())} placeholder="Ex: EMPRESA SA" style={{...inp,width:"100%",boxSizing:"border-box"}} />
+              <div style={{ display:"grid",gridTemplateColumns:"2fr 1fr",gap:"10px" }}>
+                <div>
+                  <label style={lbl}>Nome do cliente</label>
+                  <input value={editCl?editCl.name:newCl.name} onChange={e=>{ const v=e.target.value.toUpperCase(); editCl?setEditCl(x=>({...x,name:v})):setNewCl(x=>({...x,name:v})); }} placeholder="Ex: EMPRESA SA" style={inp}/>
+                </div>
+                <div>
+                  <label style={lbl}>Código</label>
+                  <input value={editCl?editCl.codigo:newCl.codigo} onChange={e=>editCl?setEditCl(x=>({...x,codigo:e.target.value})):setNewCl(x=>({...x,codigo:e.target.value}))} placeholder="Ex: CLI01" style={inp}/>
+                </div>
               </div>
               <div>
-                <label style={{ fontSize:"12px",color:"#64748b",fontWeight:600,display:"block",marginBottom:"6px" }}>Cor identificadora</label>
+                <label style={lbl}>E-mail</label>
+                <input type="email" value={editCl?editCl.email:newCl.email} onChange={e=>editCl?setEditCl(x=>({...x,email:e.target.value})):setNewCl(x=>({...x,email:e.target.value}))} placeholder="contato@cliente.com" style={inp}/>
+              </div>
+              <div>
+                <label style={lbl}>Cor identificadora</label>
                 <div style={{ display:"flex",alignItems:"center",gap:"12px" }}>
-                  <input type="color" value={newClientColor} onChange={e=>setNewClientColor(e.target.value)} style={{ width:"48px",height:"36px",borderRadius:"8px",border:"1px solid #334155",background:"#0f172a",cursor:"pointer" }} />
-                  <div style={{ flex:1,height:"36px",borderRadius:"8px",background:newClientColor,display:"flex",alignItems:"center",justifyContent:"center" }}>
-                    <span style={{ fontSize:"12px",fontWeight:700,color:"#fff",textShadow:"0 1px 3px rgba(0,0,0,0.5)" }}>{newClient||"PRÉVIA"}</span>
+                  <input type="color" value={editCl?editCl.color:newCl.color} onChange={e=>editCl?setEditCl(x=>({...x,color:e.target.value})):setNewCl(x=>({...x,color:e.target.value}))} style={{ width:"48px",height:"36px",borderRadius:"8px",border:"1px solid #334155",background:"#0f172a",cursor:"pointer" }}/>
+                  <div style={{ flex:1,height:"36px",borderRadius:"8px",background:editCl?editCl.color:newCl.color,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                    <span style={{ fontSize:"12px",fontWeight:700,color:"#fff",textShadow:"0 1px 3px rgba(0,0,0,0.5)" }}>{(editCl?editCl.name:newCl.name)||"PRÉVIA"}</span>
                   </div>
                 </div>
               </div>
-              <button onClick={()=>{ if(newClient.trim()){ onAddClient(newClient.trim(), newClientColor); setNewClient(""); }}} style={{ padding:"10px",borderRadius:"8px",border:"none",background:"#22c55e",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"13px" }}>✅ Cadastrar Cliente</button>
+              <div style={{ display:"flex",gap:"8px" }}>
+                {editCl ? (
+                  <>
+                    <button onClick={()=>{ if(!editCl.name.trim()) return; onUpdateClient(editCl._orig, editCl); setEditCl(null); }} style={btnBlue}>💾 Salvar alterações</button>
+                    <button onClick={()=>setEditCl(null)} style={{ ...btnBlue,background:"#334155",width:"auto",padding:"10px 16px" }}>Cancelar</button>
+                  </>
+                ) : (
+                  <button onClick={()=>{ if(!newCl.name.trim()) return; onAddClient(newCl); setNewCl({name:"",codigo:"",email:"",color:"#3b82f6"}); }} style={btnGreen}>✅ Cadastrar Cliente</button>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Lista */}
           <div style={card}>
             <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>🏢 Clientes Cadastrados ({clients.length})</h3>
-            <div style={{ display:"flex",flexDirection:"column",gap:"8px",maxHeight:"300px",overflowY:"auto" }}>
+            <div style={{ display:"flex",flexDirection:"column",gap:"8px",maxHeight:"380px",overflowY:"auto" }}>
               {clients.map(c=>(
-                <div key={c.name} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"#0f172a",borderRadius:"8px",border:"1px solid #1e293b" }}>
-                  <div style={{ display:"flex",alignItems:"center",gap:"10px" }}>
-                    <div style={{ width:"12px",height:"12px",borderRadius:"3px",background:c.color,flexShrink:0 }} />
-                    <span style={{ fontSize:"13px",color:"#e2e8f0",fontWeight:600 }}>{c.name}</span>
+                <div key={c.name} style={{ padding:"10px 12px",background:"#0f172a",borderRadius:"8px",border:"1px solid #1e293b" }}>
+                  <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                    <div style={{ display:"flex",alignItems:"center",gap:"10px",minWidth:0 }}>
+                      <div style={{ width:"14px",height:"14px",borderRadius:"3px",background:c.color,flexShrink:0 }}/>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontSize:"13px",color:"#e2e8f0",fontWeight:600,display:"flex",alignItems:"center",gap:"6px" }}>
+                          {c.name}
+                          {c.codigo && <span style={{ fontSize:"10px",background:"#334155",color:"#94a3b8",padding:"1px 6px",borderRadius:"10px" }}>{c.codigo}</span>}
+                        </div>
+                        {c.email && <div style={{ fontSize:"11px",color:"#64748b",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>✉️ {c.email}</div>}
+                      </div>
+                    </div>
+                    <div style={{ display:"flex",gap:"6px",flexShrink:0,marginLeft:"8px" }}>
+                      <button onClick={()=>setEditCl({...c,_orig:c.name})} style={btnEdit}>✏️</button>
+                      <button onClick={()=>onRemoveClient(c.name)} style={btnRed}>🗑</button>
+                    </div>
                   </div>
-                  <button onClick={()=>onRemoveClient(c.name)} style={{ background:"#ef444422",border:"1px solid #ef444444",color:"#ef4444",borderRadius:"6px",padding:"4px 10px",cursor:"pointer",fontSize:"12px",fontWeight:600 }}>🗑</button>
                 </div>
               ))}
             </div>
@@ -557,43 +647,69 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
         </div>
       )}
 
-      {/* ─ PROJETOS ─ */}
+      {/* ─────────── PROJETOS ─────────── */}
       {tab==="projetos" && (
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"24px" }}>
+          {/* Formulário */}
           <div style={card}>
-            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>➕ Novo Projeto</h3>
+            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>
+              {editP ? "✏️ Editar Projeto" : "➕ Novo Projeto"}
+            </h3>
             <div style={{ display:"flex",flexDirection:"column",gap:"12px" }}>
-              <div>
-                <label style={{ fontSize:"12px",color:"#64748b",fontWeight:600,display:"block",marginBottom:"6px" }}>Nome do projeto</label>
-                <input value={newProject.name} onChange={e=>setNewProject(p=>({...p,name:e.target.value}))} placeholder="Ex: Implantação Módulo Fiscal" style={{...inp,width:"100%",boxSizing:"border-box"}} />
+              <div style={{ display:"grid",gridTemplateColumns:"2fr 1fr",gap:"10px" }}>
+                <div>
+                  <label style={lbl}>Nome do projeto</label>
+                  <input value={editP?editP.name:newP.name} onChange={e=>editP?setEditP(v=>({...v,name:e.target.value})):setNewP(v=>({...v,name:e.target.value}))} placeholder="Ex: Implantação Módulo Fiscal" style={inp}/>
+                </div>
+                <div>
+                  <label style={lbl}>Código</label>
+                  <input value={editP?editP.codigo:newP.codigo} onChange={e=>editP?setEditP(v=>({...v,codigo:e.target.value})):setNewP(v=>({...v,codigo:e.target.value}))} placeholder="Ex: P001" style={inp}/>
+                </div>
               </div>
               <div>
-                <label style={{ fontSize:"12px",color:"#64748b",fontWeight:600,display:"block",marginBottom:"6px" }}>Cliente</label>
-                <select value={newProject.client} onChange={e=>setNewProject(p=>({...p,client:e.target.value}))} style={{...inp,width:"100%",boxSizing:"border-box"}}>
+                <label style={lbl}>Cliente</label>
+                <select value={editP?editP.client:newP.client} onChange={e=>editP?setEditP(v=>({...v,client:e.target.value})):setNewP(v=>({...v,client:e.target.value}))} style={inp}>
                   <option value="">Selecione o cliente...</option>
                   {clients.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize:"12px",color:"#64748b",fontWeight:600,display:"block",marginBottom:"6px" }}>Descrição (opcional)</label>
-                <input value={newProject.description} onChange={e=>setNewProject(p=>({...p,description:e.target.value}))} placeholder="Breve descrição do projeto..." style={{...inp,width:"100%",boxSizing:"border-box"}} />
+                <label style={lbl}>Descrição (opcional)</label>
+                <input value={editP?editP.description:newP.description} onChange={e=>editP?setEditP(v=>({...v,description:e.target.value})):setNewP(v=>({...v,description:e.target.value}))} placeholder="Breve descrição do projeto..." style={inp}/>
               </div>
-              <button onClick={()=>{ if(newProject.name.trim()&&newProject.client){ onAddProject({...newProject}); setNewProject({name:"",client:"",description:""}); }}} style={{ padding:"10px",borderRadius:"8px",border:"none",background:"#22c55e",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"13px" }}>✅ Cadastrar Projeto</button>
+              <div style={{ display:"flex",gap:"8px" }}>
+                {editP ? (
+                  <>
+                    <button onClick={()=>{ if(!editP.name.trim()||!editP.client) return; onUpdateProject(editP._idx,editP); setEditP(null); }} style={btnBlue}>💾 Salvar alterações</button>
+                    <button onClick={()=>setEditP(null)} style={{ ...btnBlue,background:"#334155",width:"auto",padding:"10px 16px" }}>Cancelar</button>
+                  </>
+                ) : (
+                  <button onClick={()=>{ if(!newP.name.trim()||!newP.client) return; onAddProject({...newP}); setNewP({name:"",codigo:"",client:"",description:""}); }} style={btnGreen}>✅ Cadastrar Projeto</button>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Lista */}
           <div style={card}>
             <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f1f5f9",marginTop:0,marginBottom:"16px" }}>📋 Projetos Cadastrados ({projects.length})</h3>
-            <div style={{ display:"flex",flexDirection:"column",gap:"8px",maxHeight:"300px",overflowY:"auto" }}>
-              {projects.length === 0 && <p style={{ color:"#475569",fontSize:"13px",textAlign:"center",padding:"20px" }}>Nenhum projeto cadastrado ainda.</p>}
+            <div style={{ display:"flex",flexDirection:"column",gap:"8px",maxHeight:"380px",overflowY:"auto" }}>
+              {projects.length===0 && <p style={{ color:"#475569",fontSize:"13px",textAlign:"center",padding:"20px" }}>Nenhum projeto cadastrado ainda.</p>}
               {projects.map((p,i)=>(
                 <div key={i} style={{ padding:"10px 14px",background:"#0f172a",borderRadius:"8px",border:"1px solid #1e293b" }}>
-                  <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
-                    <div>
-                      <div style={{ fontSize:"13px",color:"#f1f5f9",fontWeight:700 }}>{p.name}</div>
-                      <div style={{ fontSize:"11px",color:getClientColor(p.client),fontWeight:600,marginTop:"2px" }}>{p.client}</div>
+                  <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px" }}>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:"13px",color:"#f1f5f9",fontWeight:700,display:"flex",alignItems:"center",gap:"6px" }}>
+                        {p.name}
+                        {p.codigo && <span style={{ fontSize:"10px",background:"#334155",color:"#94a3b8",padding:"1px 6px",borderRadius:"10px" }}>{p.codigo}</span>}
+                      </div>
+                      <div style={{ fontSize:"11px",color:getClientColor(p.client),fontWeight:600,marginTop:"3px" }}>{p.client}</div>
                       {p.description && <div style={{ fontSize:"11px",color:"#64748b",marginTop:"4px" }}>{p.description}</div>}
                     </div>
-                    <button onClick={()=>onRemoveProject(i)} style={{ background:"#ef444422",border:"1px solid #ef444444",color:"#ef4444",borderRadius:"6px",padding:"4px 10px",cursor:"pointer",fontSize:"12px",fontWeight:600,flexShrink:0 }}>🗑</button>
+                    <div style={{ display:"flex",gap:"6px",flexShrink:0 }}>
+                      <button onClick={()=>setEditP({...p,_idx:i})} style={btnEdit}>✏️</button>
+                      <button onClick={()=>onRemoveProject(i)} style={btnRed}>🗑</button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -602,7 +718,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
         </div>
       )}
 
-      {/* ─ E-MAIL ─ */}
+      {/* ─────────── E-MAIL ─────────── */}
       {tab==="email" && (
         <EmailConfigTab emailConfig={emailConfig||{}} onSave={onSaveEmailConfig}/>
       )}
@@ -1867,6 +1983,9 @@ function Dashboard({ currentUser, onLogout }) {
       setScheduleData(ensureIds(sd));
       setClientList(cl);
       setProjects(pj);
+      // Carregar metadados de consultores (código, email)
+      const cm = await loadFromFirestore("consultores_meta", []);
+      window.__consultoresMeta = cm || [];
       // Carregar usuários para notificações de e-mail
       try {
         const uSnap = await getDocs(collection(db, "usuarios"));
@@ -1978,23 +2097,50 @@ function Dashboard({ currentUser, onLogout }) {
     showToast("✅ Configuração de e-mail salva!", "#22c55e");
   };
 
-  const handleAddConsultor = (name) => {
-    if (scheduleData[name]) { showToast("Consultor já existe","#ef4444"); return; }
-    setScheduleData(prev=>({...prev,[name]:[]}));
-    showToast("👤 Consultor "+name+" cadastrado!");
+  const handleAddConsultor = (consultor) => {
+    if (scheduleData[consultor.name]) { showToast("Consultor já existe","#ef4444"); return; }
+    setScheduleData(prev=>({...prev,[consultor.name]:[]}));
+    setClientList(prev=>{
+      // armazena metadados do consultor junto à lista de "consultores-meta"
+      return prev;
+    });
+    // salvar metadados separados
+    saveToFirestore("consultores_meta", [...(window.__consultoresMeta||[]).filter(c=>c.name!==consultor.name), consultor]);
+    window.__consultoresMeta = [...(window.__consultoresMeta||[]).filter(c=>c.name!==consultor.name), consultor];
+    showToast("👤 Consultor "+consultor.name+" cadastrado!");
   };
   const handleRemoveConsultor = (name) => {
     setScheduleData(prev=>{ const u={...prev}; delete u[name]; return u; });
+    window.__consultoresMeta = (window.__consultoresMeta||[]).filter(c=>c.name!==name);
+    saveToFirestore("consultores_meta", window.__consultoresMeta);
     showToast("🗑 Consultor removido","#ef4444");
   };
-  const handleAddClient = (name,color) => {
-    if (clientList.find(c=>c.name===name)) { showToast("Cliente já existe","#ef4444"); return; }
-    setClientList(prev=>[...prev,{name,color}]);
-    showToast("🏢 Cliente "+name+" cadastrado!");
+  const handleUpdateConsultor = (oldName, updated) => {
+    // atualiza metadados
+    window.__consultoresMeta = [...(window.__consultoresMeta||[]).filter(c=>c.name!==oldName), updated];
+    saveToFirestore("consultores_meta", window.__consultoresMeta);
+    // se o nome mudou, renomear no scheduleData
+    if (oldName !== updated.name) {
+      setScheduleData(prev=>{ const u={...prev}; u[updated.name]=u[oldName]||[]; delete u[oldName]; return u; });
+    }
+    showToast("✅ Consultor atualizado!");
+  };
+  const handleAddClient = (client) => {
+    if (clientList.find(c=>c.name===client.name)) { showToast("Cliente já existe","#ef4444"); return; }
+    setClientList(prev=>[...prev,client]);
+    showToast("🏢 Cliente "+client.name+" cadastrado!");
   };
   const handleRemoveClient = (name) => { setClientList(prev=>prev.filter(c=>c.name!==name)); showToast("🗑 Cliente removido","#ef4444"); };
+  const handleUpdateClient = (oldName, updated) => {
+    setClientList(prev=>prev.map(c=>c.name===oldName?{...c,...updated}:c));
+    showToast("✅ Cliente atualizado!");
+  };
   const handleAddProject = (project) => { setProjects(prev=>[...prev,project]); showToast("📋 Projeto "+project.name+" cadastrado!"); };
   const handleRemoveProject = (idx) => { setProjects(prev=>prev.filter((_,i)=>i!==idx)); showToast("🗑 Projeto removido","#ef4444"); };
+  const handleUpdateProject = (idx, updated) => {
+    setProjects(prev=>prev.map((p,i)=>i===idx?{...p,...updated}:p));
+    showToast("✅ Projeto atualizado!");
+  };
 
   // ── Enviar notificação por e-mail (EmailJS) ──
   const sendAgendaEmail = async ({ action, consultor, client, month, year, days, horaInicio, horaFim, intervalo, atividades, criadoPor, nomeUsuario }) => {
@@ -2422,9 +2568,9 @@ function Dashboard({ currentUser, onLogout }) {
         {view==="cadastros" && canManage && (
           <CadastrosView
             consultores={consultores} clients={clientList} projects={projects}
-            onAddConsultor={handleAddConsultor} onRemoveConsultor={handleRemoveConsultor}
-            onAddClient={handleAddClient} onRemoveClient={handleRemoveClient}
-            onAddProject={handleAddProject} onRemoveProject={handleRemoveProject}
+            onAddConsultor={handleAddConsultor} onRemoveConsultor={handleRemoveConsultor} onUpdateConsultor={handleUpdateConsultor}
+            onAddClient={handleAddClient} onRemoveClient={handleRemoveClient} onUpdateClient={handleUpdateClient}
+            onAddProject={handleAddProject} onRemoveProject={handleRemoveProject} onUpdateProject={handleUpdateProject}
             emailConfig={emailConfig} onSaveEmailConfig={handleSaveEmailConfig}
           />
         )}
