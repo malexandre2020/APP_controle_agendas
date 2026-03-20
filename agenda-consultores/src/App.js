@@ -124,6 +124,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
   const [year, setYear] = useState(editEntry?.year || new Date().getFullYear());
   const [client, setClient] = useState(editEntry?.client || "");
   const [type, setType] = useState(editEntry?.type || "client");
+  const [modalidade, setModalidade] = useState(editEntry?.modalidade || "presencial");
   const [horaInicio, setHoraInicio] = useState(editEntry?.horaInicio || "08:00");
   const [horaFim, setHoraFim] = useState(editEntry?.horaFim || "17:00");
   const [intervalo, setIntervalo] = useState(editEntry?.intervalo || "");
@@ -145,7 +146,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
     else if (dayMode === "range") { for (let d=Number(dayFrom);d<=Number(dayTo);d++) days.push(d); }
     else { days = selectedDays; }
     if (days.length === 0) { setError("Selecione ao menos um dia."); return; }
-    onSave({ id: editEntry?.id, consultor, month, year: Number(year), days, client: client.trim(), type, horaInicio, horaFim, intervalo, atividades: atividades.trim(), notifyEmail });
+    onSave({ id: editEntry?.id, consultor, month, year: Number(year), days, client: client.trim(), type, modalidade, horaInicio, horaFim, intervalo, atividades: atividades.trim(), notifyEmail });
   };
 
   const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #334155", background:"#0f172a", color:"#e2e8f0", fontSize:"13px", width:"100%", boxSizing:"border-box" };
@@ -186,6 +187,18 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
           <div style={{ display:"flex",gap:"6px",flexWrap:"wrap" }}>
             {[["client","👤 Cliente"],["vacation","🏖 Férias"],["holiday","🎉 Feriado"],["reserved","🔒 Reservado"],["blocked","⛔ Bloqueado"]].map(([val,lab])=>(
               <button key={val} onClick={()=>setType(val)} style={{ padding:"6px 12px",borderRadius:"20px",border:"none",cursor:"pointer",fontSize:"12px",fontWeight:600,background:type===val?"#3b82f6":"#334155",color:type===val?"#fff":"#94a3b8" }}>{lab}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ marginBottom:"16px" }}>
+          <label style={lbl}>Modalidade</label>
+          <div style={{ display:"flex", gap:"8px" }}>
+            {[["presencial","🏢 Presencial"],["remoto","💻 Remoto"]].map(([val,lab])=>(
+              <button key={val} onClick={()=>setModalidade(val)} style={{ flex:1, padding:"10px 16px", borderRadius:"10px", border:"2px solid", cursor:"pointer", fontSize:"13px", fontWeight:700, transition:"all .15s",
+                borderColor: modalidade===val ? (val==="presencial"?"#10b981":"#6366f1") : "#334155",
+                background: modalidade===val ? (val==="presencial"?"#10b98122":"#6366f122") : "#0f172a",
+                color: modalidade===val ? (val==="presencial"?"#10b981":"#818cf8") : "#475569"
+              }}>{lab}</button>
             ))}
           </div>
         </div>
@@ -904,7 +917,10 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                   {/* Entry header bar */}
                   <div style={{ background:color,padding:"4px 10px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                     <span style={{ fontSize:"11px",fontWeight:800,color:"#fff",letterSpacing:"0.3px" }}>{entry.client||TYPE_LABEL[entry.type]||entry.type}</span>
-                    {(entry.horaInicio||entry.horaFim) && <span style={{ fontSize:"10px",color:"rgba(255,255,255,0.85)",fontWeight:600 }}>{entry.horaInicio||""}{entry.horaFim?" → "+entry.horaFim:""}{entry.intervalo?" ☕"+entry.intervalo+"m":""}</span>}
+                    <div style={{ display:"flex",alignItems:"center",gap:"6px" }}>
+                      {entry.modalidade && <span title={entry.modalidade==="presencial"?"Presencial":"Remoto"} style={{ fontSize:"11px" }}>{entry.modalidade==="remoto"?"💻":"🏢"}</span>}
+                      {(entry.horaInicio||entry.horaFim) && <span style={{ fontSize:"10px",color:"rgba(255,255,255,0.85)",fontWeight:600 }}>{entry.horaInicio||""}{entry.horaFim?" → "+entry.horaFim:""}{entry.intervalo?" ☕"+entry.intervalo+"m":""}</span>}
+                    </div>
                   </div>
                   {entry.atividades && (
                     <div style={{ padding:"6px 10px 0",fontSize:"11px",color:"#94a3b8",lineHeight:"1.5",whiteSpace:"pre-wrap",borderBottom:"1px solid #1e293b" }}>{entry.atividades}</div>
@@ -1101,15 +1117,26 @@ function CalendarView({ consultant, month, byDay }) {
                   {/* Color bar header */}
                   <div style={{ background:color,padding:"6px 10px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                     <span style={{ fontSize:"12px",fontWeight:800,color:"#fff" }}>{entry.client||TYPE_LABEL[entry.type]||entry.type}</span>
-                    {(entry.horaInicio||entry.horaFim) && (
-                      <span style={{ fontSize:"10px",color:"rgba(255,255,255,0.85)",fontWeight:600 }}>
-                        {entry.horaInicio||""}{entry.horaFim?" → "+entry.horaFim:""}{entry.intervalo?" ☕"+entry.intervalo+"m":""}
-                      </span>
-                    )}
+                    <div style={{ display:"flex",alignItems:"center",gap:"6px" }}>
+                      {entry.modalidade && <span title={entry.modalidade==="presencial"?"Presencial":"Remoto"} style={{ fontSize:"12px" }}>{entry.modalidade==="remoto"?"💻":"🏢"}</span>}
+                      {(entry.horaInicio||entry.horaFim) && (
+                        <span style={{ fontSize:"10px",color:"rgba(255,255,255,0.85)",fontWeight:600 }}>
+                          {entry.horaInicio||""}{entry.horaFim?" → "+entry.horaFim:""}{entry.intervalo?" ☕"+entry.intervalo+"m":""}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div style={{ padding:"8px 10px",display:"flex",flexDirection:"column",gap:"6px" }}>
-                    {/* Type badge */}
-                    <div style={{ fontSize:"11px",color:"#64748b" }}>{TYPE_LABEL[entry.type]||entry.type}</div>
+                    {/* Type badge + modalidade */}
+                    <div style={{ display:"flex",alignItems:"center",gap:"8px" }}>
+                      <div style={{ fontSize:"11px",color:"#64748b" }}>{TYPE_LABEL[entry.type]||entry.type}</div>
+                      {entry.modalidade && (
+                        <div style={{ fontSize:"11px",fontWeight:600,padding:"2px 8px",borderRadius:"20px",
+                          background:entry.modalidade==="remoto"?"#6366f122":"#10b98122",
+                          color:entry.modalidade==="remoto"?"#818cf8":"#10b981"
+                        }}>{entry.modalidade==="remoto"?"💻 Remoto":"🏢 Presencial"}</div>
+                      )}
+                    </div>
                     {/* Horário detail */}
                     {(entry.horaInicio||entry.horaFim||entry.intervalo) && (
                       <div style={{ background:"#1e293b",borderRadius:"6px",padding:"6px 8px",fontSize:"11px",color:"#94a3b8",display:"flex",gap:"12px",flexWrap:"wrap" }}>
@@ -1717,7 +1744,7 @@ function Dashboard({ currentUser, onLogout }) {
   const showToast = (msg,color) => { setToast({msg,color:color||"#22c55e"}); setTimeout(()=>setToast(null),3000); };
 
   const handleSaveEntry = (entry) => {
-    const {id, consultor, month, year, days, client, type, horaInicio, horaFim, intervalo, atividades, notifyEmail} = entry;
+    const {id, consultor, month, year, days, client, type, modalidade, horaInicio, horaFim, intervalo, atividades, notifyEmail} = entry;
     const agora = new Date().toISOString();
     const nomeUsuario = currentUser.nome || currentUser.email;
 
@@ -1745,12 +1772,12 @@ function Dashboard({ currentUser, onLogout }) {
             if ((old.intervalo||"") !== (intervalo||"")) alteracoes.push({campo:"intervalo", de:old.intervalo||"-", para:intervalo||"-"});
             const hist = [...(old.historico||[{acao:"criado",por:old.criadoPor||"?",em:old.criadoEm||agora}]), {acao:"alterado",por:nomeUsuario,em:agora,alteracoes}];
             if ((old.atividades||'') !== (atividades||'')) alteracoes.push({campo:'atividades', de:old.atividades||'-', para:atividades||'-'});
-            list[idx]={...old,client,type,horaInicio,horaFim,intervalo,atividades,alteradoPor:nomeUsuario,alteradoEm:agora,historico:hist};
+            list[idx]={...old,client,type,modalidade,horaInicio,horaFim,intervalo,atividades,alteradoPor:nomeUsuario,alteradoEm:agora,historico:hist};
           }
         } else {
           // Nova entrada
           const newId = genId();
-          list.push({id:newId,month,year,day,weekday:"-",client,type,horaInicio,horaFim,intervalo,atividades,criadoPor:nomeUsuario,criadoEm:agora,historico:[{acao:"criado",por:nomeUsuario,em:agora}]});
+          list.push({id:newId,month,year,day,weekday:"-",client,type,modalidade,horaInicio,horaFim,intervalo,atividades,criadoPor:nomeUsuario,criadoEm:agora,historico:[{acao:"criado",por:nomeUsuario,em:agora}]});
         }
       });
       list.sort((a,b)=>{
@@ -1771,7 +1798,7 @@ function Dashboard({ currentUser, onLogout }) {
       sendAgendaEmail({
         action:      id ? 'alterada' : 'nova',
         consultor, client, month, year, days,
-        horaInicio, horaFim, intervalo, atividades,
+        horaInicio, horaFim, intervalo, atividades, modalidade,
         criadoPor:   criadoPorOriginal,
         nomeUsuario,
       });
