@@ -1727,7 +1727,7 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
       const ref = await addDoc(collection(db, "usuarios"), perfil);
       setUsuarios(prev => [...prev, { id: ref.id, ...perfil }]);
       if (novoRole === "consultor" && novoConsultor && !consultores.includes(novoConsultor)) {
-        onAddConsultor && onAddConsultor(novoConsultor);
+        onAddConsultor && onAddConsultor({ name: novoConsultor, codigo:"", email: novoEmail.trim() });
       }
       setNovoEmail(""); setNovaSenha(""); setNovoNome(""); setNovoConsultor(""); setNovoRole("viewer");
       setSuccess("✅ Usuário criado com sucesso!" + aviso + (novoRole === "consultor" ? " Consultor " + novoConsultor + " vinculado à agenda." : ""));
@@ -1756,7 +1756,7 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
       await setDoc(doc(db, "usuarios", u.id), { ...u, ...editFields }, { merge: true });
       setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, ...editFields } : x));
       if (editFields.role === "consultor" && editFields.consultorName && !consultores.includes(editFields.consultorName)) {
-        onAddConsultor && onAddConsultor(editFields.consultorName);
+        onAddConsultor && onAddConsultor({ name: editFields.consultorName, codigo:"", email:"" });
       }
       setEditId(null);
       setSuccess("✅ Usuário atualizado com sucesso!");
@@ -2100,13 +2100,8 @@ function Dashboard({ currentUser, onLogout }) {
   const handleAddConsultor = (consultor) => {
     if (scheduleData[consultor.name]) { showToast("Consultor já existe","#ef4444"); return; }
     setScheduleData(prev=>({...prev,[consultor.name]:[]}));
-    setClientList(prev=>{
-      // armazena metadados do consultor junto à lista de "consultores-meta"
-      return prev;
-    });
-    // salvar metadados separados
-    saveToFirestore("consultores_meta", [...(window.__consultoresMeta||[]).filter(c=>c.name!==consultor.name), consultor]);
     window.__consultoresMeta = [...(window.__consultoresMeta||[]).filter(c=>c.name!==consultor.name), consultor];
+    saveToFirestore("consultores_meta", window.__consultoresMeta);
     showToast("👤 Consultor "+consultor.name+" cadastrado!");
   };
   const handleRemoveConsultor = (name) => {
@@ -2391,7 +2386,7 @@ function Dashboard({ currentUser, onLogout }) {
     return { ...result, monday };
   },[selectedWeekOffset, scheduleData, consultores, isConsultor, currentUser]);
 
-
+  const VIEWS = canManage
     ? ["grid","calendario","semanal","timeline","stats","cadastros"]
     : ["grid","calendario","semanal","timeline","stats"];
   const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", semanal:"📅 Semanal", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros" };
