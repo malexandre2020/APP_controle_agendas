@@ -3111,7 +3111,7 @@ function Dashboard({ currentUser, onLogout }) {
   }, [projects, dbLoaded]);
 
 
-  const consultores = Object.keys(scheduleData);
+  const consultores = Object.keys(scheduleData).sort((a,b)=>a.localeCompare(b,"pt-BR"));
   const clientColorMap = useMemo(()=>{ const m={}; clientList.forEach(c=>{ m[c.name]=c.color; }); return m; },[clientList]);
 
   const showToast = (msg,color) => { setToast({msg,color:color||"#22c55e"}); setTimeout(()=>setToast(null),3000); };
