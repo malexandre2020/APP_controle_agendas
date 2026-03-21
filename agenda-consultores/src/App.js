@@ -3809,10 +3809,7 @@ function Dashboard({ currentUser, onLogout }) {
   const [projects, setProjects] = useState([]);
   const [dbLoaded, setDbLoaded] = useState(false);
   const [selectedConsultor, setSelectedConsultor] = useState(isConsultor ? currentUser.consultorName : null);
-  const [selectedMonth, setSelectedMonth] = useState(()=>{
-    if (isConsultor) return "Todos";
-    return MONTHS_ORDER[new Date().getMonth()];
-  });
+  const [selectedMonth, setSelectedMonth] = useState(()=> MONTHS_ORDER[new Date().getMonth()]);
   const [selectedWeekOffset, setSelectedWeekOffset] = useState(0); // semanas a partir da semana atual
   const [searchClient, setSearchClient] = useState("");
   const [view, setView] = useState("calendario");
@@ -4315,7 +4312,9 @@ function Dashboard({ currentUser, onLogout }) {
   const MODULES_CONSULTOR= ALL_MODULES_CONSULTOR.filter(m=> !modulosHabilitados || modulosHabilitados.includes(m.id));
   const MODULES = isConsultor ? MODULES_CONSULTOR : MODULES_ADMIN;
 
-  const SIDEBAR_W = 220;
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const SIDEBAR_W     = sidebarCollapsed ? 60 : 220;
+  const SIDEBAR_TRANS = "width .22s cubic-bezier(.4,0,.2,1)";
 
   return (
     <div style={{ fontFamily:"'Outfit',sans-serif",background:T.bg,minHeight:"100vh",color:T.text,display:"flex",flexDirection:"row" }}>
@@ -4343,82 +4342,103 @@ function Dashboard({ currentUser, onLogout }) {
       `}</style>
 
       {/* ── SIDEBAR ── */}
-      <aside style={{ width:SIDEBAR_W+"px",minHeight:"100vh",background:T.headerBg,borderRight:"1px solid "+T.headerBorder,display:"flex",flexDirection:"column",position:"fixed",top:0,left:0,zIndex:100,flexShrink:0 }}>
-        {/* Logo */}
-        <div style={{ padding:"20px 16px 16px",borderBottom:"1px solid "+T.border }}>
-          <div style={{ display:"flex",alignItems:"center",gap:"10px" }}>
+      <aside style={{ width:SIDEBAR_W+"px",minHeight:"100vh",background:T.headerBg,borderRight:"1px solid "+T.headerBorder,display:"flex",flexDirection:"column",position:"fixed",top:0,left:0,zIndex:100,flexShrink:0,transition:SIDEBAR_TRANS,overflow:"hidden" }}>
+        {/* Logo + toggle */}
+        <div style={{ padding:"14px 12px",borderBottom:"1px solid "+T.border,flexShrink:0 }}>
+          <div style={{ display:"flex",alignItems:"center",gap:"10px",minWidth:0 }}>
             <div style={{ width:"34px",height:"34px",borderRadius:"10px",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"16px",boxShadow:T.accentGlow,flexShrink:0 }}>◈</div>
-            <div>
-              <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"15px",fontWeight:900,color:T.heading,letterSpacing:"-0.5px",lineHeight:1 }}>GSC</div>
-              <div style={{ fontSize:"9px",color:T.text3,fontWeight:600,letterSpacing:"1.5px",marginTop:"2px",textTransform:"uppercase" }}>Gestão de Serviços</div>
-            </div>
+            {!sidebarCollapsed && (
+              <div style={{ flex:1,minWidth:0 }}>
+                <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"15px",fontWeight:900,color:T.heading,letterSpacing:"-0.5px",lineHeight:1 }}>GSC</div>
+                <div style={{ fontSize:"9px",color:T.text3,fontWeight:600,letterSpacing:"1.5px",marginTop:"2px",textTransform:"uppercase" }}>Gestão de Serviços</div>
+              </div>
+            )}
+            <button onClick={()=>setSidebarCollapsed(c=>!c)} title={sidebarCollapsed?"Expandir menu":"Recolher menu"}
+              style={{ marginLeft:"auto",background:"transparent",border:"1px solid "+T.border,color:T.text3,borderRadius:"7px",width:"26px",height:"26px",cursor:"pointer",fontSize:"12px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s" }}>
+              {sidebarCollapsed?"›":"‹"}
+            </button>
           </div>
         </div>
 
         {/* Nav */}
-        <nav style={{ flex:1,padding:"12px 10px",display:"flex",flexDirection:"column",gap:"2px",overflowY:"auto" }}>
-          <div style={{ fontSize:"9px",color:T.text3,fontWeight:700,letterSpacing:"1.2px",textTransform:"uppercase",padding:"8px 8px 6px" }}>Módulos</div>
+        <nav style={{ flex:1,padding:"10px 8px",display:"flex",flexDirection:"column",gap:"2px",overflowY:"auto",overflowX:"hidden" }}>
+          {!sidebarCollapsed && <div style={{ fontSize:"9px",color:T.text3,fontWeight:700,letterSpacing:"1.2px",textTransform:"uppercase",padding:"8px 8px 6px" }}>Módulos</div>}
           {MODULES.map(m=>{
             const active = activeModule===m.id;
             return (
-              <div key={m.id} className="side-item" onClick={()=>setActiveModule(m.id)}
-                style={{ padding:"10px 12px",display:"flex",alignItems:"center",gap:"10px",background:active?`${T.accent}18`:"transparent",border:active?`1px solid ${T.accent}33`:"1px solid transparent" }}>
-                <span style={{ fontSize:"16px",lineHeight:1,width:"20px",textAlign:"center" }}>{m.icon}</span>
-                <div>
-                  <div style={{ fontSize:"13px",fontWeight:active?700:500,color:active?T.accent:T.text }}>{m.label}</div>
-                  <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px" }}>{m.desc}</div>
-                </div>
-                {active && <div style={{ marginLeft:"auto",width:"4px",height:"20px",borderRadius:"2px",background:T.accent }}/>}
+              <div key={m.id} className="side-item" onClick={()=>setActiveModule(m.id)} title={sidebarCollapsed?m.label:""}
+                style={{ padding:sidebarCollapsed?"10px":"10px 12px",display:"flex",alignItems:"center",gap:"10px",justifyContent:sidebarCollapsed?"center":"flex-start",background:active?`${T.accent}18`:"transparent",border:active?`1px solid ${T.accent}33`:"1px solid transparent",minWidth:0 }}>
+                <span style={{ fontSize:"18px",lineHeight:1,flexShrink:0 }}>{m.icon}</span>
+                {!sidebarCollapsed && (
+                  <>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:"13px",fontWeight:active?700:500,color:active?T.accent:T.text,whiteSpace:"nowrap" }}>{m.label}</div>
+                      <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px",whiteSpace:"nowrap" }}>{m.desc}</div>
+                    </div>
+                    {active && <div style={{ marginLeft:"auto",width:"4px",height:"20px",borderRadius:"2px",background:T.accent,flexShrink:0 }}/>}
+                  </>
+                )}
               </div>
             );
           })}
 
           {canManage && (
             <>
-              <div style={{ fontSize:"9px",color:T.text3,fontWeight:700,letterSpacing:"1.2px",textTransform:"uppercase",padding:"16px 8px 6px" }}>Administração</div>
-              <div className="side-item" onClick={()=>setActiveModule("cadastros")}
-                style={{ padding:"10px 12px",display:"flex",alignItems:"center",gap:"10px",background:activeModule==="cadastros"?`${T.accent}18`:"transparent",border:activeModule==="cadastros"?`1px solid ${T.accent}33`:"1px solid transparent" }}>
-                <span style={{ fontSize:"16px",lineHeight:1,width:"20px",textAlign:"center" }}>🗂</span>
-                <div>
-                  <div style={{ fontSize:"13px",fontWeight:activeModule==="cadastros"?700:500,color:activeModule==="cadastros"?T.accent:T.text }}>Cadastros</div>
-                  <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px" }}>Dados do sistema</div>
-                </div>
-                {activeModule==="cadastros" && <div style={{ marginLeft:"auto",width:"4px",height:"20px",borderRadius:"2px",background:T.accent }}/>}
+              {!sidebarCollapsed && <div style={{ fontSize:"9px",color:T.text3,fontWeight:700,letterSpacing:"1.2px",textTransform:"uppercase",padding:"16px 8px 6px" }}>Administração</div>}
+              {sidebarCollapsed && <div style={{ height:"10px" }}/>}
+              <div className="side-item" onClick={()=>setActiveModule("cadastros")} title={sidebarCollapsed?"Cadastros":""}
+                style={{ padding:sidebarCollapsed?"10px":"10px 12px",display:"flex",alignItems:"center",gap:"10px",justifyContent:sidebarCollapsed?"center":"flex-start",background:activeModule==="cadastros"?`${T.accent}18`:"transparent",border:activeModule==="cadastros"?`1px solid ${T.accent}33`:"1px solid transparent" }}>
+                <span style={{ fontSize:"18px",lineHeight:1,flexShrink:0 }}>🗂</span>
+                {!sidebarCollapsed && (
+                  <>
+                    <div>
+                      <div style={{ fontSize:"13px",fontWeight:activeModule==="cadastros"?700:500,color:activeModule==="cadastros"?T.accent:T.text }}>Cadastros</div>
+                      <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px" }}>Dados do sistema</div>
+                    </div>
+                    {activeModule==="cadastros" && <div style={{ marginLeft:"auto",width:"4px",height:"20px",borderRadius:"2px",background:T.accent }}/>}
+                  </>
+                )}
               </div>
-              <div className="side-item" onClick={()=>setShowUserMgmt(true)}
-                style={{ padding:"10px 12px",display:"flex",alignItems:"center",gap:"10px",background:"transparent",border:"1px solid transparent" }}>
-                <span style={{ fontSize:"16px",lineHeight:1,width:"20px",textAlign:"center" }}>👥</span>
-                <div>
-                  <div style={{ fontSize:"13px",fontWeight:500,color:T.text }}>Usuários</div>
-                  <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px" }}>Gerenciar acessos</div>
-                </div>
+              <div className="side-item" onClick={()=>setShowUserMgmt(true)} title={sidebarCollapsed?"Usuários":""}
+                style={{ padding:sidebarCollapsed?"10px":"10px 12px",display:"flex",alignItems:"center",gap:"10px",justifyContent:sidebarCollapsed?"center":"flex-start",background:"transparent",border:"1px solid transparent" }}>
+                <span style={{ fontSize:"18px",lineHeight:1,flexShrink:0 }}>👥</span>
+                {!sidebarCollapsed && (
+                  <div>
+                    <div style={{ fontSize:"13px",fontWeight:500,color:T.text }}>Usuários</div>
+                    <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px" }}>Gerenciar acessos</div>
+                  </div>
+                )}
               </div>
             </>
           )}
         </nav>
 
         {/* User footer */}
-        <div style={{ padding:"12px 14px",borderTop:"1px solid "+T.border }}>
-          <div style={{ display:"flex",alignItems:"center",gap:"9px" }}>
+        <div style={{ padding:"12px",borderTop:"1px solid "+T.border,flexShrink:0 }}>
+          <div style={{ display:"flex",alignItems:"center",gap:"8px",justifyContent:sidebarCollapsed?"center":"flex-start" }}>
             <div style={{ width:"30px",height:"30px",borderRadius:"9px",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:800,color:"#fff",flexShrink:0 }}>
               {getInitials(currentUser.consultorName||currentUser.username||"??")}
             </div>
-            <div style={{ flex:1,minWidth:0 }}>
-              <div style={{ fontSize:"12px",fontWeight:700,color:T.heading,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{(currentUser.consultorName||currentUser.username||"").split(" ")[0]}</div>
-              <div style={{ fontSize:"9px",fontWeight:700,color:badge.color,marginTop:"2px",letterSpacing:"0.5px",textTransform:"uppercase" }}>{badge.label}</div>
-            </div>
-            <div style={{ display:"flex",gap:"4px" }}>
-              <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} title={isDark?"Tema claro":"Tema escuro"}
-                style={{ background:"transparent",border:"none",color:T.text3,cursor:"pointer",fontSize:"13px",padding:"4px",borderRadius:"6px" }}>{isDark?"☀️":"🌙"}</button>
-              <button onClick={onLogout} title="Sair"
-                style={{ background:"transparent",border:"none",color:T.text3,cursor:"pointer",fontSize:"13px",padding:"4px",borderRadius:"6px" }}>⎋</button>
-            </div>
+            {!sidebarCollapsed && (
+              <>
+                <div style={{ flex:1,minWidth:0 }}>
+                  <div style={{ fontSize:"12px",fontWeight:700,color:T.heading,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{(currentUser.consultorName||currentUser.username||"").split(" ")[0]}</div>
+                  <div style={{ fontSize:"9px",fontWeight:700,color:badge.color,marginTop:"2px",letterSpacing:"0.5px",textTransform:"uppercase" }}>{badge.label}</div>
+                </div>
+                <div style={{ display:"flex",gap:"4px",flexShrink:0 }}>
+                  <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} title={isDark?"Tema claro":"Tema escuro"}
+                    style={{ background:"transparent",border:"none",color:T.text3,cursor:"pointer",fontSize:"13px",padding:"4px",borderRadius:"6px" }}>{isDark?"☀️":"🌙"}</button>
+                  <button onClick={onLogout} title="Sair"
+                    style={{ background:"transparent",border:"none",color:T.text3,cursor:"pointer",fontSize:"13px",padding:"4px",borderRadius:"6px" }}>⎋</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </aside>
 
       {/* ── MAIN CONTENT ── */}
-      <div style={{ marginLeft:SIDEBAR_W+"px",flex:1,display:"flex",flexDirection:"column",minHeight:"100vh" }}>
+      <div style={{ marginLeft:SIDEBAR_W+"px",flex:1,display:"flex",flexDirection:"column",minHeight:"100vh",transition:SIDEBAR_TRANS }}>
 
         {/* Top bar */}
         <header style={{ background:T.headerBg,borderBottom:"1px solid "+T.headerBorder,padding:"0 28px",height:"56px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50,backdropFilter:"blur(12px)" }}>
