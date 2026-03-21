@@ -1686,6 +1686,21 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
   const chipActive = { padding:"5px 12px",borderRadius:"99px",border:"1px solid #6c63ff",background:"#6c63ff22",color:"#a78bfa",fontSize:"12px",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap" };
   const chipInactive = { padding:"5px 12px",borderRadius:"99px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",fontSize:"12px",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap" };
 
+  // Popup de detalhe (para visualização e edição)
+  const [popup, setPopup] = React.useState(null); // { entry, name, x, y }
+  const [popupPos, setPopupPos] = React.useState({x:0,y:0});
+  const startDragPopup = React.useCallback((e) => {
+    e.preventDefault();
+    const startX = e.clientX - popupPos.x, startY = e.clientY - popupPos.y;
+    const onMove = (ev) => setPopupPos({ x: ev.clientX - startX, y: ev.clientY - startY });
+    const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [popupPos]);
+
+  const TIPO_LABEL = { client:"👤 Cliente", vacation:"🏖 Férias", holiday:"🎉 Feriado", reserved:"🔒 Reservado", blocked:"⛔ Bloqueado" };
+  const NIVEL_MODAL = { especialista:{label:"Especialista",color:"#a78bfa"}, senior:{label:"Sênior",color:"#22d3a0"}, pleno:{label:"Pleno",color:"#f5a623"}, junior:{label:"Júnior",color:"#6e6e88"} };
+
   return (
     <div>
       {/* ── Barra de filtros ── */}
@@ -1852,8 +1867,15 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
                           const color = getColor(entry);
                           return (
                             <div key={entry.id||ei}
-                              onClick={e=>{e.stopPropagation();if(canEdit&&onEdit)onEdit(entry,name);}}
-                              style={{ background:color,borderRadius:"7px",padding:"5px 7px",marginBottom:"3px",cursor:canEdit?"pointer":"default",transition:"opacity .15s" }}
+                              onClick={e=>{
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const x = Math.min(rect.right+8, window.innerWidth-300);
+                                const y = Math.min(rect.top, window.innerHeight-340);
+                                setPopupPos({x,y});
+                                setPopup({entry,name});
+                              }}
+                              style={{ background:color,borderRadius:"7px",padding:"5px 7px",marginBottom:"3px",cursor:"pointer",transition:"opacity .15s" }}
                               onMouseEnter={e=>e.currentTarget.style.opacity="0.8"}
                               onMouseLeave={e=>e.currentTarget.style.opacity="1"}
                             >
@@ -1875,7 +1897,88 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
           </tbody>
         </table>
       </div>
-      <p style={{ fontSize:"11px",color:"#3e3e55",marginTop:"10px" }}>💡 Clique em célula vazia para adicionar · Clique em agenda para editar · Colunas escuras = fim de semana</p>
+      <p style={{ fontSize:"11px",color:"#3e3e55",marginTop:"10px" }}>💡 Clique em agenda para ver detalhes{canEdit?" · Clique em célula vazia para adicionar":""} · Colunas escuras = fim de semana</p>
+
+      {/* Popup de detalhe da entrada */}
+      {popup && (
+        <div onClick={e=>e.stopPropagation()}
+          style={{ position:"fixed",left:popupPos.x+"px",top:popupPos.y+"px",background:"#111118",border:"1px solid #2a2a3a",borderRadius:"14px",zIndex:9000,width:"280px",boxShadow:"0 8px 40px rgba(0,0,0,0.7)",display:"flex",flexDirection:"column",maxHeight:"80vh" }}>
+          {/* Header arrastável */}
+          <div onMouseDown={startDragPopup}
+            style={{ padding:"13px 16px 11px",borderBottom:"1px solid #1f1f2e",flexShrink:0,cursor:"grab",userSelect:"none" }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
+              <div>
+                <div style={{ fontSize:"13px",fontWeight:700,color:"#f0f0fa" }}>{popup.name.split(" ")[0]}</div>
+                <div style={{ fontSize:"11px",color:"#3e3e55",marginTop:"2px" }}>
+                  {popup.entry.day && `Dia ${popup.entry.day}`}{popup.entry.month ? ` · ${popup.entry.month}` : ""}{popup.entry.year ? ` ${popup.entry.year}` : ""}
+                </div>
+              </div>
+              <button onMouseDown={e=>e.stopPropagation()} onClick={()=>setPopup(null)}
+                style={{ background:"#1f1f2e",border:"1px solid #2a2a3a",color:"#6e6e88",borderRadius:"8px",width:"28px",height:"28px",cursor:"pointer",fontSize:"13px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
+            </div>
+          </div>
+
+          {/* Corpo do detalhe */}
+          <div style={{ padding:"14px 16px",overflowY:"auto" }}>
+            {/* Cor + cliente */}
+            <div style={{ background:getColor(popup.entry),borderRadius:"10px",padding:"10px 14px",marginBottom:"12px" }}>
+              <div style={{ fontSize:"13px",fontWeight:800,color:"#fff" }}>
+                {popup.entry.modalidade==="remoto"?"💻 ":popup.entry.modalidade==="presencial"?"🏢 ":""}{popup.entry.client||TIPO_LABEL[popup.entry.type]||popup.entry.type}
+              </div>
+              {popup.entry.modalidade && (
+                <div style={{ fontSize:"10px",color:"rgba(255,255,255,0.7)",marginTop:"3px" }}>
+                  {popup.entry.modalidade==="remoto"?"Remoto":"Presencial"}
+                </div>
+              )}
+            </div>
+
+            {/* Tipo */}
+            <div style={{ fontSize:"11px",color:"#6e6e88",marginBottom:"10px" }}>
+              {TIPO_LABEL[popup.entry.type]||popup.entry.type}
+            </div>
+
+            {/* Horários */}
+            {(popup.entry.horaInicio||popup.entry.horaFim) && (
+              <div style={{ background:"#18181f",borderRadius:"8px",padding:"9px 12px",marginBottom:"10px",display:"flex",gap:"14px",flexWrap:"wrap",fontSize:"12px" }}>
+                {popup.entry.horaInicio && <span>🕐 <strong style={{ color:"#f0f0fa" }}>{popup.entry.horaInicio}</strong></span>}
+                {popup.entry.horaFim    && <span>🕔 <strong style={{ color:"#f0f0fa" }}>{popup.entry.horaFim}</strong></span>}
+                {popup.entry.intervalo  && <span>☕ <strong style={{ color:"#f0f0fa" }}>{popup.entry.intervalo}min</strong></span>}
+              </div>
+            )}
+
+            {/* Atividades */}
+            {popup.entry.atividades && (
+              <div style={{ background:"#18181f",borderRadius:"8px",padding:"9px 12px",marginBottom:"10px" }}>
+                <div style={{ fontSize:"10px",color:"#3e3e55",fontWeight:700,letterSpacing:"0.5px",textTransform:"uppercase",marginBottom:"5px" }}>Atividades</div>
+                <div style={{ fontSize:"12px",color:"#c8c8d8",lineHeight:1.6,whiteSpace:"pre-wrap" }}>{popup.entry.atividades}</div>
+              </div>
+            )}
+
+            {/* Histórico */}
+            {popup.entry.criadoPor && (
+              <div style={{ fontSize:"10px",color:"#3e3e55",marginBottom:"4px" }}>
+                ✏️ Criado por <strong style={{ color:"#6e6e88" }}>{popup.entry.criadoPor}</strong>
+                {popup.entry.criadoEm && <span> em {new Date(popup.entry.criadoEm).toLocaleDateString("pt-BR")}</span>}
+              </div>
+            )}
+            {popup.entry.alteradoPor && (
+              <div style={{ fontSize:"10px",color:"#3e3e55" }}>
+                🔄 Alterado por <strong style={{ color:"#6e6e88" }}>{popup.entry.alteradoPor}</strong>
+                {popup.entry.alteradoEm && <span> em {new Date(popup.entry.alteradoEm).toLocaleDateString("pt-BR")}</span>}
+              </div>
+            )}
+
+            {/* Botão editar (só para quem pode) */}
+            {canEdit && onEdit && (
+              <button onMouseDown={e=>e.stopPropagation()}
+                onClick={()=>{ onEdit(popup.entry, popup.name); setPopup(null); }}
+                style={{ width:"100%",padding:"9px",borderRadius:"9px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",marginTop:"12px",boxShadow:"0 4px 14px #6c63ff44" }}>
+                ✏️ Editar agenda
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -4172,9 +4275,7 @@ function Dashboard({ currentUser, onLogout }) {
 
   const VIEWS = canManage
     ? ["grid","calendario","semanal","timeline","stats","cadastros"]
-    : isConsultor
-      ? ["grid","calendario","semanal","timeline","stats","grade"]
-      : ["grid","calendario","semanal","timeline","stats"];
+    : ["grid","calendario","semanal","timeline","stats"];
   const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", semanal:"📅 Semanal", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros", grade:"🎓 Grade de Conhecimento" };
 
   const badge = ROLE_BADGES[currentUser.role];
