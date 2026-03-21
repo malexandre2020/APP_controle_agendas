@@ -490,7 +490,8 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
   const btnRed   = { background:"#ef444422",border:"1px solid #ef444444",color:"#ef4444",borderRadius:"6px",padding:"5px 10px",cursor:"pointer",fontSize:"12px",fontWeight:600 };
   const btnEdit  = { background:"#6c63ff22",border:"1px solid #3b82f644",color:"#6c63ff",borderRadius:"6px",padding:"5px 10px",cursor:"pointer",fontSize:"12px",fontWeight:600 };
 
-  const tabs = [["consultores","👥 Consultores"],["clientes","🏢 Clientes"],["projetos","📋 Projetos"],["email","📧 E-mail"]];
+  const tabs = [["consultores","👥 Consultores"],["clientes","🏢 Clientes"],["projetos","📋 Projetos"],["grade","🎓 Grade TOTVS"],["email","📧 E-mail"]];
+  const [gradeConsultor, setGradeConsultor] = React.useState(consultores[0]||"");
 
   // Enriquece consultores com meta se disponível
   const consultoresMeta = (window.__consultoresMeta||[]);
@@ -718,9 +719,312 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
         </div>
       )}
 
+      {/* ─────────── GRADE DE CONHECIMENTO ─────────── */}
+      {tab==="grade" && (
+        <div>
+          <div style={{ display:"flex",alignItems:"center",gap:"12px",marginBottom:"20px",flexWrap:"wrap" }}>
+            <span style={{ fontSize:"12px",color:"#6e6e88",fontWeight:600 }}>Visualizar grade de:</span>
+            <select value={gradeConsultor} onChange={e=>setGradeConsultor(e.target.value)}
+              style={{ padding:"8px 14px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",fontFamily:"inherit",cursor:"pointer",outline:"none" }}>
+              {consultores.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <GradeConhecimento consultorName={gradeConsultor} userId={null} readOnly={true}/>
+        </div>
+      )}
+
       {/* ─────────── E-MAIL ─────────── */}
       {tab==="email" && (
         <EmailConfigTab emailConfig={emailConfig||{}} onSave={onSaveEmailConfig}/>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GRADE DE CONHECIMENTO TOTVS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TOTVS_PRODUTOS = ["Protheus","RM","Datasul","Fluig"];
+
+const TOTVS_MODULOS = {
+  Protheus: [
+    { id:"SIGACOM",  label:"SIGACOM",  desc:"Compras" },
+    { id:"SIGAEST",  label:"SIGAEST",  desc:"Estoque e Custos" },
+    { id:"SIGAFAT",  label:"SIGAFAT",  desc:"Faturamento / Comercial" },
+    { id:"SIGAFIN",  label:"SIGAFIN",  desc:"Financeiro" },
+    { id:"SIGAFIS",  label:"SIGAFIS",  desc:"Livros Fiscais / Automação Fiscal" },
+    { id:"SIGACTB",  label:"SIGACTB",  desc:"Contabilidade Gerencial" },
+    { id:"SIGAPCP",  label:"SIGAPCP",  desc:"Planejamento e Controle da Produção" },
+    { id:"SIGAPON",  label:"SIGAPON",  desc:"Ponto Eletrônico" },
+    { id:"SIGARH",   label:"SIGARH / SIGAGPE", desc:"Gestão de Pessoal" },
+    { id:"SIGALOJA", label:"SIGALOJA", desc:"Frente de Loja (PDV)" },
+    { id:"SIGAWMS",  label:"SIGAWMS",  desc:"Gestão de Armazéns" },
+    { id:"SIGATMS",  label:"SIGATMS",  desc:"Gestão de Transportes" },
+    { id:"SIGACRM",  label:"SIGACRM",  desc:"CRM" },
+    { id:"SIGAGCT",  label:"SIGAGCT",  desc:"Gestão de Contratos" },
+    { id:"SIGAPMS",  label:"SIGAPMS",  desc:"Gestão de Projetos" },
+    { id:"SIGAATF",  label:"SIGAATF",  desc:"Ativo Fixo" },
+    { id:"SIGAPCO",  label:"SIGAPCO",  desc:"Planejamento e Controle Orçamentário" },
+    { id:"SIGAACD",  label:"SIGAACD",  desc:"Automação e Coleta de Dados" },
+    { id:"SIGATEC",  label:"SIGATEC",  desc:"Field Service / Assistência Técnica" },
+    { id:"SIGAOMS",  label:"SIGAOMS",  desc:"Gestão de Distribuição" },
+    { id:"SIGAEIC",  label:"SIGAEIC",  desc:"Easy Import Control" },
+    { id:"SIGAEEC",  label:"SIGAEEC",  desc:"Easy Export Control" },
+    { id:"SIGAEDC",  label:"SIGAEDC",  desc:"Easy Drawback Control" },
+    { id:"SIGAEFF",  label:"SIGAEFF",  desc:"Easy Financing" },
+    { id:"SIGAESS",  label:"SIGAESS",  desc:"Easy Siscoserv" },
+    { id:"SIGAJURI", label:"SIGAJURI", desc:"Gestão de Assuntos Jurídicos" },
+    { id:"SIGAGPE2", label:"SIGAGPE",  desc:"Folha de Pagamento / eSocial" },
+    { id:"SIGARSP",  label:"SIGARSP",  desc:"Recrutamento e Seleção" },
+    { id:"SIGATRN",  label:"SIGATRN",  desc:"Treinamento e Desenvolvimento" },
+    { id:"SIGACMD",  label:"SIGACMD",  desc:"Cargos e Salários" },
+    { id:"SIGAMDT",  label:"SIGAMDT",  desc:"Medicina e Segurança do Trabalho" },
+  ],
+  RM: [
+    { id:"RM_FIN",   label:"RM Financeiro",     desc:"Contas a pagar/receber, fluxo de caixa" },
+    { id:"RM_CTB",   label:"RM Contabilidade",  desc:"Contabilidade gerencial e fiscal" },
+    { id:"RM_RH",    label:"RM RH / Folha",     desc:"Gestão de pessoas e folha" },
+    { id:"RM_PMS",   label:"RM Projetos",       desc:"Gestão de projetos e portfólio" },
+    { id:"RM_LAB",   label:"RM Labore",         desc:"Ponto e jornada" },
+    { id:"RM_EDU",   label:"RM Educacional",    desc:"Gestão educacional" },
+    { id:"RM_SAU",   label:"RM Saúde",          desc:"Gestão de saúde" },
+    { id:"RM_ATF",   label:"RM Ativo Fixo",     desc:"Controle de ativos" },
+  ],
+  Datasul: [
+    { id:"DS_MNT",   label:"Manutenção",         desc:"Gestão de manutenção industrial" },
+    { id:"DS_CHO",   label:"Chão de Fábrica",    desc:"Controle da produção" },
+    { id:"DS_LOG",   label:"Logística",          desc:"Estoque, armazém e distribuição" },
+    { id:"DS_FIN",   label:"Financeiro",         desc:"Financeiro e contabilidade" },
+    { id:"DS_RH",    label:"RH / Folha",         desc:"Gestão de pessoal" },
+    { id:"DS_COM",   label:"Compras",            desc:"Gestão de suprimentos" },
+    { id:"DS_VEN",   label:"Vendas",             desc:"Faturamento e comercial" },
+  ],
+  Fluig: [
+    { id:"FL_BPM",   label:"BPM / Processos",   desc:"Modelagem e automação de processos" },
+    { id:"FL_ECM",   label:"ECM / Documentos",  desc:"Gestão de documentos" },
+    { id:"FL_PORTAL",label:"Portal / Identidade",desc:"Portal corporativo e SSO" },
+    { id:"FL_FORM",  label:"Formulários",        desc:"Formulários eletrônicos" },
+    { id:"FL_INT",   label:"Integrações",        desc:"APIs e integrações" },
+  ],
+};
+
+const NIVEIS = [
+  { id:"especialista", label:"Especialista", color:"#a78bfa", bg:"#a78bfa22" },
+  { id:"senior",       label:"Sênior",       color:"#22d3a0", bg:"#22d3a022" },
+  { id:"pleno",        label:"Pleno",        color:"#f5a623", bg:"#f5a62322" },
+  { id:"junior",       label:"Júnior",       color:"#6e6e88", bg:"#6e6e8822" },
+];
+
+function GradeConhecimento({ consultorName, userId, readOnly }) {
+  const [grade, setGrade] = React.useState({}); // { "SIGACOM": "senior", ... }
+  const [produtosSel, setProdutosSel] = React.useState(new Set());
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [saved, setSaved] = React.useState(false);
+  const [activeProd, setActiveProd] = React.useState("Protheus");
+  const [search, setSearch] = React.useState("");
+
+  // Carregar do Firestore
+  React.useEffect(() => {
+    if (!consultorName) return;
+    const key = "grade_" + consultorName.replace(/\s+/g,"_").toLowerCase();
+    loadFromFirestore(key, null).then(data => {
+      if (data) {
+        setGrade(data.modulos || {});
+        setProdutosSel(new Set(data.produtos || []));
+      }
+      setLoading(false);
+    });
+  }, [consultorName]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const key = "grade_" + consultorName.replace(/\s+/g,"_").toLowerCase();
+    await saveToFirestore(key, { modulos: grade, produtos: [...produtosSel], atualizadoEm: new Date().toISOString() });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const toggleProduto = (prod) => {
+    setProdutosSel(prev => {
+      const n = new Set(prev);
+      if (n.has(prod)) {
+        n.delete(prod);
+        // Remove módulos deste produto da grade
+        const mods = (TOTVS_MODULOS[prod]||[]).map(m=>m.id);
+        setGrade(g => { const ng = {...g}; mods.forEach(id => delete ng[id]); return ng; });
+      } else {
+        n.add(prod);
+      }
+      return n;
+    });
+  };
+
+  const setNivel = (modId, nivel) => {
+    setGrade(prev => {
+      if (prev[modId] === nivel) { const n={...prev}; delete n[modId]; return n; }
+      return {...prev, [modId]: nivel};
+    });
+  };
+
+  const modulos = (TOTVS_MODULOS[activeProd]||[]).filter(m =>
+    !search || m.label.toLowerCase().includes(search.toLowerCase()) || m.desc.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalConhecimentos = Object.keys(grade).length;
+  const nivelCounts = NIVEIS.map(n => ({ ...n, count: Object.values(grade).filter(v=>v===n.id).length }));
+
+  if (loading) return (
+    <div style={{ textAlign:"center",padding:"60px",color:"#3e3e55" }}>
+      <div style={{ fontSize:"32px",marginBottom:"12px" }}>⏳</div>Carregando grade...
+    </div>
+  );
+
+  return (
+    <div style={{ maxWidth:"1000px" }}>
+      {/* Header */}
+      <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"24px",gap:"16px",flexWrap:"wrap" }}>
+        <div>
+          <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:"0 0 6px",letterSpacing:"-0.3px" }}>
+            🎓 Grade de Conhecimento TOTVS
+          </h2>
+          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>
+            {readOnly ? `Conhecimentos declarados por ${consultorName}` : "Selecione seus produtos e defina o nível em cada módulo"}
+          </p>
+        </div>
+        <div style={{ display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap" }}>
+          {/* Resumo por nível */}
+          {nivelCounts.filter(n=>n.count>0).map(n=>(
+            <div key={n.id} style={{ padding:"5px 12px",borderRadius:"99px",background:n.bg,border:"1px solid "+n.color+"44",display:"flex",alignItems:"center",gap:"6px" }}>
+              <span style={{ fontSize:"11px",fontWeight:700,color:n.color }}>{n.count}</span>
+              <span style={{ fontSize:"10px",color:n.color,opacity:0.8 }}>{n.label}</span>
+            </div>
+          ))}
+          {!readOnly && (
+            <button onClick={handleSave} disabled={saving}
+              style={{ padding:"9px 20px",borderRadius:"10px",border:"none",background:saved?"#22d3a0":"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"13px",cursor:"pointer",fontFamily:"inherit",boxShadow:saved?"0 4px 16px #22d3a044":"0 4px 16px #6c63ff44",transition:"all .2s" }}>
+              {saving?"⏳ Salvando...":saved?"✅ Salvo!":"💾 Salvar grade"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Seleção de produtos */}
+      <div style={{ marginBottom:"20px" }}>
+        <div style={{ fontSize:"11px",color:"#3e3e55",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",marginBottom:"10px" }}>Produtos com conhecimento</div>
+        <div style={{ display:"flex",gap:"10px",flexWrap:"wrap" }}>
+          {TOTVS_PRODUTOS.map(prod => {
+            const sel = produtosSel.has(prod);
+            const count = (TOTVS_MODULOS[prod]||[]).filter(m=>grade[m.id]).length;
+            return (
+              <div key={prod}
+                onClick={()=>!readOnly && toggleProduto(prod)}
+                style={{ padding:"10px 18px",borderRadius:"12px",border:"1px solid "+(sel?"#6c63ff":"#2a2a3a"),background:sel?"#6c63ff18":"#111118",cursor:readOnly?"default":"pointer",transition:"all .2s",display:"flex",alignItems:"center",gap:"10px" }}>
+                <div style={{ width:"10px",height:"10px",borderRadius:"3px",background:sel?"#6c63ff":"#2a2a3a",transition:"background .2s" }}/>
+                <div>
+                  <div style={{ fontSize:"13px",fontWeight:700,color:sel?"#a78bfa":"#6e6e88" }}>{prod}</div>
+                  {count>0 && <div style={{ fontSize:"10px",color:"#6c63ff",marginTop:"1px" }}>{count} módulo{count>1?"s":""}</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {produtosSel.size === 0 && (
+        <div style={{ textAlign:"center",padding:"48px 20px",background:"#111118",borderRadius:"16px",border:"1px solid #1f1f2e" }}>
+          <div style={{ fontSize:"40px",marginBottom:"12px" }}>🎯</div>
+          <div style={{ fontSize:"14px",color:"#3e3e55" }}>Selecione os produtos TOTVS que você conhece para definir seus módulos</div>
+        </div>
+      )}
+
+      {produtosSel.size > 0 && (
+        <div style={{ background:"#111118",borderRadius:"16px",border:"1px solid #1f1f2e",overflow:"hidden" }}>
+          {/* Tabs de produto */}
+          <div style={{ display:"flex",borderBottom:"1px solid #1f1f2e",background:"#0d0d14",overflowX:"auto" }}>
+            {[...produtosSel].map(prod => {
+              const count = (TOTVS_MODULOS[prod]||[]).filter(m=>grade[m.id]).length;
+              return (
+                <button key={prod} onClick={()=>{ setActiveProd(prod); setSearch(""); }}
+                  style={{ padding:"12px 20px",border:"none",borderBottom:"2px solid "+(activeProd===prod?"#6c63ff":"transparent"),background:"transparent",color:activeProd===prod?"#a78bfa":"#3e3e55",fontWeight:activeProd===prod?700:400,fontSize:"13px",cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"8px",transition:"all .15s" }}>
+                  {prod}
+                  {count>0&&<span style={{ fontSize:"10px",background:"#6c63ff33",color:"#6c63ff",padding:"1px 7px",borderRadius:"99px",fontWeight:700 }}>{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Busca módulo */}
+          <div style={{ padding:"12px 16px",borderBottom:"1px solid #1f1f2e",display:"flex",alignItems:"center",gap:"8px" }}>
+            <div style={{ position:"relative",flex:1,maxWidth:"280px" }}>
+              <span style={{ position:"absolute",left:"10px",top:"50%",transform:"translateY(-50%)",fontSize:"12px",color:"#3e3e55",pointerEvents:"none" }}>🔍</span>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar módulo..."
+                style={{ width:"100%",padding:"7px 10px 7px 30px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"12px",fontFamily:"inherit",outline:"none",boxSizing:"border-box" }}/>
+            </div>
+            <div style={{ fontSize:"11px",color:"#3e3e55" }}>
+              {(TOTVS_MODULOS[activeProd]||[]).filter(m=>grade[m.id]).length} / {(TOTVS_MODULOS[activeProd]||[]).length} módulos preenchidos
+            </div>
+          </div>
+
+          {/* Legenda de níveis */}
+          <div style={{ padding:"10px 16px",borderBottom:"1px solid #1f1f2e",display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"center" }}>
+            <span style={{ fontSize:"10px",color:"#3e3e55",fontWeight:700,letterSpacing:"0.5px",textTransform:"uppercase",marginRight:"4px" }}>Níveis:</span>
+            {NIVEIS.map(n=>(
+              <div key={n.id} style={{ display:"flex",alignItems:"center",gap:"4px" }}>
+                <div style={{ width:"8px",height:"8px",borderRadius:"2px",background:n.color }}/>
+                <span style={{ fontSize:"11px",color:n.color,fontWeight:600 }}>{n.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Tabela de módulos */}
+          <div style={{ overflowY:"auto",maxHeight:"480px" }}>
+            <table style={{ width:"100%",borderCollapse:"collapse" }}>
+              <thead style={{ position:"sticky",top:0,zIndex:2 }}>
+                <tr style={{ background:"#0d0d14" }}>
+                  <th style={{ padding:"10px 16px",textAlign:"left",fontSize:"10px",color:"#3e3e55",fontWeight:700,letterSpacing:"0.8px",textTransform:"uppercase",width:"40%" }}>Módulo</th>
+                  {NIVEIS.map(n=>(
+                    <th key={n.id} style={{ padding:"10px 8px",textAlign:"center",fontSize:"10px",color:n.color,fontWeight:700,letterSpacing:"0.5px",textTransform:"uppercase" }}>{n.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {modulos.map((mod,idx)=>{
+                  const nivelAtual = grade[mod.id];
+                  return (
+                    <tr key={mod.id} style={{ borderBottom:"1px solid #18181f",background:nivelAtual?(NIVEIS.find(n=>n.id===nivelAtual)?.bg||"transparent"):"transparent",transition:"background .15s" }}>
+                      <td style={{ padding:"11px 16px" }}>
+                        <div style={{ fontSize:"12px",fontWeight:700,color:nivelAtual?"#f0f0fa":"#c8c8d8" }}>{mod.label}</div>
+                        <div style={{ fontSize:"11px",color:"#3e3e55",marginTop:"2px" }}>{mod.desc}</div>
+                      </td>
+                      {NIVEIS.map(n=>{
+                        const sel = nivelAtual === n.id;
+                        return (
+                          <td key={n.id} style={{ padding:"8px",textAlign:"center" }}>
+                            <button
+                              onClick={()=>!readOnly && setNivel(mod.id, n.id)}
+                              style={{ width:"36px",height:"36px",borderRadius:"10px",border:"1px solid "+(sel?n.color:"#2a2a3a"),background:sel?n.bg:"transparent",cursor:readOnly?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",transition:"all .15s" }}
+                              title={n.label}>
+                              {sel
+                                ? <span style={{ fontSize:"16px" }}>●</span>
+                                : <span style={{ fontSize:"14px",color:"#2a2a3a" }}>○</span>
+                              }
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+                {modulos.length===0&&(
+                  <tr><td colSpan={5} style={{ textAlign:"center",padding:"32px",fontSize:"12px",color:"#3e3e55" }}>Nenhum módulo encontrado</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -2597,8 +2901,10 @@ function Dashboard({ currentUser, onLogout }) {
 
   const VIEWS = canManage
     ? ["grid","calendario","semanal","timeline","stats","cadastros"]
-    : ["grid","calendario","semanal","timeline","stats"];
-  const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", semanal:"📅 Semanal", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros" };
+    : isConsultor
+      ? ["grid","calendario","semanal","timeline","stats","grade"]
+      : ["grid","calendario","semanal","timeline","stats"];
+  const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", semanal:"📅 Semanal", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros", grade:"🎓 Minha Grade" };
 
   const badge = ROLE_BADGES[currentUser.role];
 
@@ -2831,6 +3137,14 @@ function Dashboard({ currentUser, onLogout }) {
         {view==="semanal" && <WeeklyGlobalView weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={canEdit} onEdit={(entry,name)=>{setEditEntry({...entry,consultor:name});setShowModal(true);}} onNewEntry={canEdit?({consultor,month,day,year})=>{setEditEntry({consultor,month,day,year,prefill:true});setShowModal(true);}:null} theme={T}/>}
         {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
         {view==="stats" && <StatsView stats={stats}/>}
+
+        {view==="grade" && isConsultor && (
+          <GradeConhecimento
+            consultorName={currentUser.consultorName}
+            userId={currentUser.uid}
+            readOnly={false}
+          />
+        )}
 
         {view==="cadastros" && canManage && (
           <CadastrosView
