@@ -745,6 +745,8 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 // GRADE DE CONHECIMENTO TOTVS
 // ─────────────────────────────────────────────────────────────────────────────
 
+const TOTVS_PRODUTOS = ["Protheus","RM","Datasul","Fluig"];
+
 const TOTVS_GRUPOS = {
   Protheus: {
     // Backoffice / Administrativo
