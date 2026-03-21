@@ -1100,20 +1100,25 @@ function GradeConhecimento({ consultorName, userId, readOnly }) {
 
   // Carregar do Firestore
   React.useEffect(() => {
-    if (!consultorName) return;
-    const key = "grade_" + consultorName.replace(/\s+/g,"_").toLowerCase();
-    loadFromFirestore(key, null).then(data => {
-      if (data) {
-        setGrade(data.modulos || {});
-        setProdutosSel(new Set(data.produtos || []));
-      }
+    if (!consultorName) { setLoading(false); return; }
+    setLoading(true);
+    setGrade({});
+    setProdutosSel(new Set());
+    const key = "grade_" + consultorName.trim().toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+    loadFromFirestore(key, {}).then(data => {
+      try {
+        if (data && typeof data === "object") {
+          setGrade(data.modulos || {});
+          setProdutosSel(new Set(Array.isArray(data.produtos) ? data.produtos : []));
+        }
+      } catch(e) { console.warn("Grade load error:", e); }
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, [consultorName]);
 
   const handleSave = async () => {
     setSaving(true);
-    const key = "grade_" + consultorName.replace(/\s+/g,"_").toLowerCase();
+    const key = "grade_" + consultorName.trim().toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
     await saveToFirestore(key, { modulos: grade, produtos: [...produtosSel], atualizadoEm: new Date().toISOString() });
     setSaving(false);
     setSaved(true);
@@ -3192,7 +3197,7 @@ function Dashboard({ currentUser, onLogout }) {
     : isConsultor
       ? ["grid","calendario","semanal","timeline","stats","grade"]
       : ["grid","calendario","semanal","timeline","stats"];
-  const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", semanal:"📅 Semanal", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros", grade:"🎓 Minha Grade" };
+  const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", semanal:"📅 Semanal", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros", grade:"🎓 Grade de Conhecimento" };
 
   const badge = ROLE_BADGES[currentUser.role];
 
@@ -3426,9 +3431,9 @@ function Dashboard({ currentUser, onLogout }) {
         {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
         {view==="stats" && <StatsView stats={stats}/>}
 
-        {view==="grade" && isConsultor && (
+        {view==="grade" && (
           <GradeConhecimento
-            consultorName={currentUser.consultorName}
+            consultorName={currentUser.consultorName || currentUser.nome || currentUser.username || ""}
             userId={currentUser.uid}
             readOnly={false}
           />
