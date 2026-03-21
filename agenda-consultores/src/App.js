@@ -2756,6 +2756,7 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   const [novoRole, setNovoRole] = useState("viewer");
   const [novoConsultor, setNovoConsultor] = useState("");
   const [novoNome, setNovoNome] = useState("");
+  const [novoModulos, setNovoModulos] = useState(null); // null = todos
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -2804,13 +2805,13 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
           }
         }
       }
-      const perfil = { email: novoEmail.trim(), nome: novoNome.trim(), role: novoRole, consultorName: novoRole === "consultor" ? novoConsultor : "", ...(uid ? { uid } : {}) };
+      const perfil = { email: novoEmail.trim(), nome: novoNome.trim(), role: novoRole, consultorName: novoRole === "consultor" ? novoConsultor : "", ...(uid ? { uid } : {}), ...(novoModulos ? { modulosHabilitados: novoModulos } : {}) };
       const ref = await addDoc(collection(db, "usuarios"), perfil);
       setUsuarios(prev => [...prev, { id: ref.id, ...perfil }]);
       if (novoRole === "consultor" && novoConsultor && !consultores.includes(novoConsultor)) {
         onAddConsultor && onAddConsultor({ name: novoConsultor, codigo:"", email: novoEmail.trim() });
       }
-      setNovoEmail(""); setNovaSenha(""); setNovoNome(""); setNovoConsultor(""); setNovoRole("viewer");
+      setNovoEmail(""); setNovaSenha(""); setNovoNome(""); setNovoConsultor(""); setNovoRole("viewer"); setNovoModulos(null);
       setSuccess("✅ Usuário criado com sucesso!" + aviso + (novoRole === "consultor" ? " Consultor " + novoConsultor + " vinculado à agenda." : ""));
     } catch(e) {
       setError("Erro ao criar usuário: " + e.message);
@@ -2858,6 +2859,47 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
 
   const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #2a2a3a", background:"#0d0d14", color:"#c8c8d8", fontSize:"13px", width:"100%", boxSizing:"border-box" };
 
+  // Módulos disponíveis por perfil
+  const MODULOS_POR_PERFIL = {
+    admin:     [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"✈️",label:"Viagens"},{ id:"projetos",icon:"📋",label:"Projetos"},{ id:"cadastros",icon:"🗂",label:"Cadastros"}],
+    editor:    [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"✈️",label:"Viagens"},{ id:"projetos",icon:"📋",label:"Projetos"}],
+    viewer:    [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"✈️",label:"Viagens"}],
+    consultor: [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"grade",icon:"🎓",label:"Grade de Conhecimento"},{ id:"viagens",icon:"✈️",label:"Viagens"}],
+  };
+
+  const ModulosToggle = ({ role, value, onChange }) => {
+    const disponiveis = MODULOS_POR_PERFIL[role] || [];
+    const habilitados = value || disponiveis.map(m=>m.id); // null/undefined = todos
+    const toggle = (id) => {
+      const next = habilitados.includes(id) ? habilitados.filter(x=>x!==id) : [...habilitados,id];
+      onChange(next.length === disponiveis.length ? null : next); // null = todos habilitados
+    };
+    const allOn = !value || value.length === disponiveis.length;
+    return (
+      <div>
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"8px" }}>
+          <label style={{ fontSize:"11px",color:"#6e6e88",fontWeight:700,letterSpacing:"0.5px",textTransform:"uppercase" }}>Módulos habilitados</label>
+          <button onClick={()=>onChange(null)} style={{ fontSize:"10px",background:"none",border:"none",color:"#6c63ff",cursor:"pointer",fontWeight:600,fontFamily:"inherit" }}>
+            {allOn?"✓ Todos":"Habilitar todos"}
+          </button>
+        </div>
+        <div style={{ display:"flex",flexWrap:"wrap",gap:"6px" }}>
+          {disponiveis.map(m=>{
+            const on = habilitados.includes(m.id);
+            return (
+              <button key={m.id} onClick={()=>toggle(m.id)}
+                style={{ padding:"5px 12px",borderRadius:"8px",border:"1px solid "+(on?"#6c63ff":"#2a2a3a"),background:on?"#6c63ff22":"transparent",color:on?"#a78bfa":"#6e6e88",fontSize:"12px",fontWeight:on?700:400,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"5px",transition:"all .15s" }}>
+                <span>{m.icon}</span> {m.label}
+                {on && <span style={{ color:"#6c63ff",fontSize:"10px" }}>✓</span>}
+              </button>
+            );
+          })}
+        </div>
+        {!allOn && <div style={{ fontSize:"10px",color:"#3e3e55",marginTop:"6px" }}>{habilitados.length} de {disponiveis.length} módulos habilitados</div>}
+      </div>
+    );
+  };
+
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}>
       <div style={{ background:"#18181f", borderRadius:"16px", padding:"28px", width:"100%", maxWidth:"660px", border:"1px solid #2a2a3a", maxHeight:"90vh", overflowY:"auto", boxShadow:"0 20px 60px rgba(0,0,0,0.5)" }}>
@@ -2883,6 +2925,7 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
                         <div style={{ display:"flex", gap:"8px", marginTop:"3px" }}>
                           <span style={{ fontSize:"11px", fontWeight:700, color:badge.color, background:badge.bg, padding:"1px 8px", borderRadius:"10px" }}>{badge.label}</span>
                           {u.consultorName && <span style={{ fontSize:"11px", color:"#6e6e88" }}>{u.consultorName}</span>}
+                          {u.modulosHabilitados && <span style={{ fontSize:"10px", color:"#3e3e55", padding:"1px 7px", borderRadius:"99px", background:"#1f1f2e" }}>🔧 {u.modulosHabilitados.length} módulo{u.modulosHabilitados.length!==1?"s":""}</span>}
                         </div>
                       </div>
                       <div style={{ display:"flex", gap:"6px" }}>
@@ -2916,6 +2959,13 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
                               </select>
                             </div>
                           )}
+                          <div style={{ gridColumn:"1/-1",background:"#111118",borderRadius:"10px",border:"1px solid #1f1f2e",padding:"12px" }}>
+                            <ModulosToggle
+                              role={editFields.role}
+                              value={editFields.modulosHabilitados}
+                              onChange={v=>setEditFields(f=>({...f,modulosHabilitados:v}))}
+                            />
+                          </div>
                         </div>
                         <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
                           <button onClick={()=>handleEditSave(u)} disabled={editSaving} style={{ padding:"7px 16px", borderRadius:"8px", border:"none", background:"#22d3a0", color:"#fff", fontWeight:700, fontSize:"12px", cursor:"pointer" }}>{editSaving ? "Salvando..." : "💾 Salvar"}</button>
@@ -2954,6 +3004,9 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
                 </select>
               </div>
             )}
+            <div style={{ gridColumn:"1/-1",background:"#111118",borderRadius:"10px",border:"1px solid #1f1f2e",padding:"12px" }}>
+              <ModulosToggle role={novoRole} value={novoModulos} onChange={setNovoModulos}/>
+            </div>
           </div>
           {error && <div style={{ padding:"8px 12px", borderRadius:"8px", background:"#ef444422", border:"1px solid #ef444444", color:"#ef4444", fontSize:"12px", marginBottom:"10px" }}>⚠️ {error}</div>}
           {success && <div style={{ padding:"8px 12px", borderRadius:"8px", background:"#22c55e22", border:"1px solid #22c55e44", color:"#22d3a0", fontSize:"12px", marginBottom:"10px" }}>{success}</div>}
@@ -2966,6 +3019,643 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   );
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MÓDULO: SOLICITAÇÃO DE VIAGEM
+// ─────────────────────────────────────────────────────────────────────────────
+function ViagemCard({ viagem, STATUS_CONFIG, canManage, onEdit, onStatusChange, onDelete, onUpdateGastos }) {
+  const [expandido, setExpandido] = useState(false);
+  const st = STATUS_CONFIG[viagem.status]||STATUS_CONFIG.pendente;
+  const totalGastos = (viagem.gastos||[]).reduce((s,g)=>s+Number(g.valor||0),0);
+  return (
+    <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",overflow:"hidden" }}>
+      <div style={{ padding:"16px 20px",display:"flex",alignItems:"center",gap:"14px",flexWrap:"wrap",cursor:"pointer" }} onClick={()=>setExpandido(e=>!e)}>
+        <div style={{ fontSize:"22px" }}>✈️</div>
+        <div style={{ flex:1,minWidth:0 }}>
+          <div style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa" }}>{viagem.destino||"(sem destino)"}</div>
+          <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"2px",display:"flex",gap:"10px",flexWrap:"wrap" }}>
+            <span>👤 {viagem.solicitante}</span>
+            {viagem.dataIda && <span>📅 {viagem.dataIda}{viagem.dataVolta?" → "+viagem.dataVolta:""}</span>}
+            {viagem.transporte && <span>🚗 {viagem.transporte}</span>}
+            {totalGastos>0 && <span style={{ color:"#22d3a0" }}>💰 R$ {totalGastos.toFixed(2)}</span>}
+          </div>
+        </div>
+        <span style={{ padding:"4px 12px",borderRadius:"99px",background:st.bg,border:"1px solid "+st.color+"44",fontSize:"11px",fontWeight:700,color:st.color,whiteSpace:"nowrap" }}>{st.label}</span>
+        <span style={{ color:"#3e3e55",fontSize:"12px" }}>{expandido?"▴":"▾"}</span>
+      </div>
+      {expandido && (
+        <div style={{ borderTop:"1px solid #1f1f2e",padding:"16px 20px" }}>
+          {viagem.motivo && <p style={{ fontSize:"13px",color:"#c8c8d8",lineHeight:1.6,marginBottom:"14px" }}><strong style={{ color:"#6e6e88" }}>Motivo:</strong> {viagem.motivo}</p>}
+          {viagem.observacoes && <p style={{ fontSize:"13px",color:"#c8c8d8",lineHeight:1.6,marginBottom:"14px" }}><strong style={{ color:"#6e6e88" }}>Obs:</strong> {viagem.observacoes}</p>}
+          <div style={{ marginBottom:"16px" }}>
+            <div style={{ fontSize:"11px",color:"#6e6e88",fontWeight:700,letterSpacing:"0.5px",textTransform:"uppercase",marginBottom:"10px" }}>Lançamento de gastos</div>
+            <GastosViagem viagem={viagem} onAtualizar={onUpdateGastos}/>
+          </div>
+          <div style={{ display:"flex",gap:"8px",flexWrap:"wrap" }}>
+            <button onClick={(e)=>{e.stopPropagation();onEdit(viagem);setExpandido(false);}}
+              style={{ padding:"7px 16px",borderRadius:"8px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontSize:"12px",fontWeight:600,fontFamily:"inherit" }}>✏️ Editar</button>
+            {canManage && (
+              <>
+                {Object.entries(STATUS_CONFIG).filter(([k])=>k!==viagem.status).map(([k,v])=>(
+                  <button key={k} onClick={(e)=>{e.stopPropagation();onStatusChange(viagem.id,k);}}
+                    style={{ padding:"7px 14px",borderRadius:"8px",border:"1px solid "+v.color+"44",background:v.bg,color:v.color,cursor:"pointer",fontSize:"11px",fontWeight:600,fontFamily:"inherit" }}>→ {v.label}</button>
+                ))}
+                <button onClick={(e)=>{e.stopPropagation();onDelete(viagem.id);}}
+                  style={{ padding:"7px 14px",borderRadius:"8px",border:"1px solid #f04f5e44",background:"#f04f5e18",color:"#f04f5e",cursor:"pointer",fontSize:"11px",fontWeight:600,fontFamily:"inherit" }}>🗑 Excluir</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ModuloViagens({ currentUser, canEdit, canManage, consultores, theme: T }) {
+  const [viagens, setViagens] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editando, setEditando] = useState(null);
+  const [abaAtiva, setAbaAtiva] = useState("lista"); // lista | nova | relatorio
+
+  const isConsultor = currentUser.role === "consultor";
+  const nomeUsuario = currentUser.consultorName || currentUser.nome || currentUser.username || "";
+
+  const STATUS_CONFIG = {
+    pendente:  { label:"Pendente",   color:"#f5a623", bg:"#f5a62318" },
+    aprovada:  { label:"Aprovada",   color:"#22d3a0", bg:"#22d3a018" },
+    rejeitada: { label:"Rejeitada",  color:"#f04f5e", bg:"#f04f5e18" },
+    realizada: { label:"Realizada",  color:"#6c63ff", bg:"#6c63ff18" },
+    reembolso: { label:"Reembolso",  color:"#a78bfa", bg:"#a78bfa18" },
+  };
+
+  // Carregar do Firestore
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const snap = await getDoc(doc(db, "app_data", "viagens_all"));
+        if (snap.exists()) setViagens(snap.data().value || []);
+      } catch(e) { console.warn(e); }
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const salvarViagens = async (lista) => {
+    setViagens(lista);
+    await setDoc(doc(db, "app_data", "viagens_all"), { value: lista });
+  };
+
+  const viagensFiltradas = isConsultor
+    ? viagens.filter(v => v.solicitante === nomeUsuario)
+    : viagens;
+
+  const card = { background:T.surface,borderRadius:"14px",border:"1px solid "+T.border,padding:"18px 20px",marginBottom:"10px" };
+  const inp  = { padding:"9px 13px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",width:"100%",boxSizing:"border-box",fontFamily:"inherit" };
+  const lbl  = { fontSize:"11px",color:"#6e6e88",fontWeight:700,display:"block",marginBottom:"6px",letterSpacing:"0.5px",textTransform:"uppercase" };
+
+  const FormViagem = ({ inicial, onSalvar, onCancelar }) => {
+    const [form, setForm] = useState(inicial || {
+      solicitante: nomeUsuario, destino:"", dataIda:"", dataVolta:"", motivo:"",
+      transporte:"aéreo", hospedagem:false, adiantamento:"", observacoes:"",
+      status:"pendente", gastos:[], docs:[]
+    });
+    const set = (k,v) => setForm(p=>({...p,[k]:v}));
+    return (
+      <div style={{ background:T.surface,borderRadius:"16px",border:"1px solid "+T.border,padding:"24px",maxWidth:"680px" }}>
+        <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"17px",fontWeight:900,color:"#f0f0fa",margin:"0 0 20px",letterSpacing:"-0.3px" }}>
+          {inicial?"✏️ Editar Solicitação":"✈️ Nova Solicitação de Viagem"}
+        </h3>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"14px" }}>
+          {canManage && (
+            <div style={{ gridColumn:"1/-1" }}>
+              <label style={lbl}>Consultor solicitante</label>
+              <select value={form.solicitante} onChange={e=>set("solicitante",e.target.value)} style={inp}>
+                {consultores.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          )}
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={lbl}>Destino</label>
+            <input value={form.destino} onChange={e=>set("destino",e.target.value)} placeholder="Ex: São Paulo, SP" style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Data de ida</label>
+            <input type="date" value={form.dataIda} onChange={e=>set("dataIda",e.target.value)} style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Data de volta</label>
+            <input type="date" value={form.dataVolta} onChange={e=>set("dataVolta",e.target.value)} style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Transporte</label>
+            <select value={form.transporte} onChange={e=>set("transporte",e.target.value)} style={inp}>
+              {["aéreo","rodoviário","veículo próprio","locação"].map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div style={{ display:"flex",alignItems:"center",gap:"10px",paddingTop:"22px" }}>
+            <input type="checkbox" id="hosp" checked={form.hospedagem} onChange={e=>set("hospedagem",e.target.checked)} style={{ width:"16px",height:"16px",accentColor:"#6c63ff" }}/>
+            <label htmlFor="hosp" style={{ fontSize:"13px",color:"#c8c8d8",cursor:"pointer" }}>Necessita hospedagem</label>
+          </div>
+          <div>
+            <label style={lbl}>Adiantamento solicitado (R$)</label>
+            <input type="number" value={form.adiantamento} onChange={e=>set("adiantamento",e.target.value)} placeholder="0,00" style={inp}/>
+          </div>
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={lbl}>Motivo / Objetivo da viagem</label>
+            <textarea value={form.motivo} onChange={e=>set("motivo",e.target.value)} rows={3} placeholder="Descreva o motivo e objetivo da viagem..." style={{...inp,resize:"vertical",lineHeight:1.5}}/>
+          </div>
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={lbl}>Observações</label>
+            <textarea value={form.observacoes} onChange={e=>set("observacoes",e.target.value)} rows={2} placeholder="Informações adicionais..." style={{...inp,resize:"vertical",lineHeight:1.5}}/>
+          </div>
+          {canManage && (
+            <div>
+              <label style={lbl}>Status</label>
+              <select value={form.status} onChange={e=>set("status",e.target.value)} style={inp}>
+                {Object.entries(STATUS_CONFIG).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
+        <div style={{ display:"flex",gap:"10px",marginTop:"20px",justifyContent:"flex-end" }}>
+          <button onClick={onCancelar} style={{ padding:"9px 18px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>Cancelar</button>
+          <button onClick={()=>onSalvar(form)} style={{ padding:"9px 22px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>
+            {inicial?"💾 Salvar alterações":"✅ Enviar solicitação"}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Relatório de gastos
+  const GastosViagem = ({ viagem, onAtualizar }) => {
+    const [gastos, setGastos] = useState(viagem.gastos||[]);
+    const [novo, setNovo] = useState({ tipo:"alimentação", desc:"", valor:"", data:"" });
+    const tipos = ["alimentação","transporte","hospedagem","combustível","pedágio","outros"];
+    const total = gastos.reduce((s,g)=>s+Number(g.valor||0),0);
+    const adiantar = async () => {
+      const updated = {...viagem, gastos};
+      onAtualizar(updated);
+    };
+    return (
+      <div>
+        <div style={{ marginBottom:"14px",display:"flex",gap:"10px",flexWrap:"wrap" }}>
+          <select value={novo.tipo} onChange={e=>setNovo(p=>({...p,tipo:e.target.value}))} style={{...inp,width:"auto",flex:1}}>
+            {tipos.map(t=><option key={t} value={t}>{t}</option>)}
+          </select>
+          <input value={novo.desc} onChange={e=>setNovo(p=>({...p,desc:e.target.value}))} placeholder="Descrição" style={{...inp,flex:2}}/>
+          <input type="number" value={novo.valor} onChange={e=>setNovo(p=>({...p,valor:e.target.value}))} placeholder="R$ valor" style={{...inp,width:"120px",flex:"none"}}/>
+          <input type="date" value={novo.data} onChange={e=>setNovo(p=>({...p,data:e.target.value}))} style={{...inp,width:"140px",flex:"none"}}/>
+          <button onClick={()=>{ if(!novo.valor) return; const ng=[...gastos,{...novo,id:Date.now()}]; setGastos(ng); setNovo({tipo:"alimentação",desc:"",valor:"",data:""}); onAtualizar({...viagem,gastos:ng}); }}
+            style={{ padding:"9px 16px",borderRadius:"10px",border:"none",background:"#6c63ff",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap" }}>+ Lançar</button>
+        </div>
+        {gastos.length>0 && (
+          <table style={{ width:"100%",borderCollapse:"collapse",fontSize:"12px" }}>
+            <thead><tr style={{ borderBottom:"1px solid #2a2a3a" }}>
+              {["Tipo","Descrição","Data","Valor",""].map(h=><th key={h} style={{ padding:"6px 8px",textAlign:"left",color:"#6e6e88",fontWeight:600 }}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {gastos.map((g,i)=>(
+                <tr key={g.id||i} style={{ borderBottom:"1px solid #18181f" }}>
+                  <td style={{ padding:"7px 8px",color:"#c8c8d8" }}>{g.tipo}</td>
+                  <td style={{ padding:"7px 8px",color:"#c8c8d8" }}>{g.desc}</td>
+                  <td style={{ padding:"7px 8px",color:"#6e6e88" }}>{g.data}</td>
+                  <td style={{ padding:"7px 8px",color:"#22d3a0",fontWeight:700 }}>R$ {Number(g.valor).toFixed(2)}</td>
+                  <td><button onClick={()=>{ const ng=gastos.filter((_,j)=>j!==i); setGastos(ng); onAtualizar({...viagem,gastos:ng}); }} style={{ background:"none",border:"none",color:"#f04f5e",cursor:"pointer",fontSize:"13px" }}>✕</button></td>
+                </tr>
+              ))}
+              <tr style={{ borderTop:"2px solid #2a2a3a" }}>
+                <td colSpan={3} style={{ padding:"8px",color:"#6e6e88",fontWeight:700,textAlign:"right" }}>Total:</td>
+                <td style={{ padding:"8px",color:"#22d3a0",fontWeight:800,fontSize:"14px" }}>R$ {total.toFixed(2)}</td>
+                <td/>
+              </tr>
+            </tbody>
+          </table>
+        )}
+        {gastos.length===0 && <div style={{ textAlign:"center",padding:"20px",color:"#3e3e55",fontSize:"12px" }}>Nenhum gasto lançado ainda</div>}
+      </div>
+    );
+  };
+
+  if (loading) return <div style={{ textAlign:"center",padding:"60px",color:"#3e3e55" }}><div style={{ width:"28px",height:"28px",border:"3px solid #1f1f2e",borderTop:"3px solid #6c63ff",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto 12px" }}/></div>;
+
+  return (
+    <div>
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"24px",flexWrap:"wrap",gap:"12px" }}>
+        <div>
+          <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>✈️ Solicitações de Viagem</h2>
+          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>{viagensFiltradas.length} solicitação{viagensFiltradas.length!==1?"ões":""}</p>
+        </div>
+        <div style={{ display:"flex",gap:"8px",alignItems:"center" }}>
+          {/* Resumo por status */}
+          {Object.entries(STATUS_CONFIG).map(([k,v])=>{
+            const qtd = viagensFiltradas.filter(vi=>vi.status===k).length;
+            if (!qtd) return null;
+            return <div key={k} style={{ padding:"4px 10px",borderRadius:"99px",background:v.bg,border:"1px solid "+v.color+"44",fontSize:"11px",fontWeight:700,color:v.color }}>{qtd} {v.label}</div>;
+          })}
+          <button onClick={()=>{setEditando(null);setShowForm(true);}}
+            style={{ padding:"8px 18px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>
+            + Nova Solicitação
+          </button>
+        </div>
+      </div>
+
+      {showForm && (
+        <div style={{ marginBottom:"24px" }}>
+          <FormViagem
+            inicial={editando}
+            onSalvar={async (dados) => {
+              let nova;
+              if (editando) {
+                nova = viagens.map(v=>v.id===editando.id?{...dados,id:editando.id,atualizadoEm:new Date().toISOString()}:v);
+              } else {
+                nova = [...viagens, {...dados, id:Date.now().toString(36), criadoEm:new Date().toISOString()}];
+              }
+              await salvarViagens(nova);
+              setShowForm(false); setEditando(null);
+            }}
+            onCancelar={()=>{setShowForm(false);setEditando(null);}}
+          />
+        </div>
+      )}
+
+      {viagensFiltradas.length===0 && !showForm && (
+        <div style={{ textAlign:"center",padding:"60px",background:"#111118",borderRadius:"16px",border:"1px solid #1f1f2e" }}>
+          <div style={{ fontSize:"48px",marginBottom:"14px" }}>✈️</div>
+          <div style={{ fontSize:"14px",color:"#3e3e55",marginBottom:"16px" }}>Nenhuma solicitação de viagem</div>
+          <button onClick={()=>setShowForm(true)} style={{ padding:"9px 22px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit" }}>Criar primeira solicitação</button>
+        </div>
+      )}
+
+      <div style={{ display:"flex",flexDirection:"column",gap:"10px" }}>
+        {viagensFiltradas.sort((a,b)=>new Date(b.criadoEm||0)-new Date(a.criadoEm||0)).map(viagem=>(
+          <ViagemCard key={viagem.id} viagem={viagem} STATUS_CONFIG={STATUS_CONFIG} canManage={canManage}
+            onEdit={(v)=>{setEditando(v);setShowForm(true);}}
+            onStatusChange={async (id,status)=>{ const nova=viagens.map(x=>x.id===id?{...x,status}:x); await salvarViagens(nova); }}
+            onDelete={async (id)=>{ if(window.confirm("Excluir esta solicitação?")) await salvarViagens(viagens.filter(x=>x.id!==id)); }}
+            onUpdateGastos={async (v)=>{ const nova=viagens.map(x=>x.id===v.id?v:x); await salvarViagens(nova); }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MÓDULO: GESTÃO DE PROJETOS
+// ─────────────────────────────────────────────────────────────────────────────
+function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients, theme: T }) {
+  const [projetos, setProjetos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [projetoAtivo, setProjetoAtivo] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editandoProj, setEditandoProj] = useState(null);
+  const [abaProj, setAbaProj] = useState("kanban"); // kanban | cronograma | horas
+
+  const STATUS_PROJ = { planejamento:{label:"Planejamento",color:"#6e6e88"},andamento:{label:"Em andamento",color:"#6c63ff"},concluido:{label:"Concluído",color:"#22d3a0"},pausado:{label:"Pausado",color:"#f5a623"},cancelado:{label:"Cancelado",color:"#f04f5e"}};
+  const COLUNAS = ["backlog","em_progresso","revisao","concluido"];
+  const COL_LABELS = { backlog:"📋 Backlog", em_progresso:"⚙️ Em progresso", revisao:"👁 Revisão", concluido:"✅ Concluído" };
+  const PRIORIDADES = { alta:{label:"Alta",color:"#f04f5e"}, media:{label:"Média",color:"#f5a623"}, baixa:{label:"Baixa",color:"#22d3a0"} };
+
+  const inp = { padding:"9px 13px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",width:"100%",boxSizing:"border-box",fontFamily:"inherit" };
+  const lbl = { fontSize:"11px",color:"#6e6e88",fontWeight:700,display:"block",marginBottom:"6px",letterSpacing:"0.5px",textTransform:"uppercase" };
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const snap = await getDoc(doc(db, "app_data", "projetos_mgmt"));
+        if (snap.exists()) setProjetos(snap.data().value || []);
+      } catch(e) { console.warn(e); }
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const salvarProjetos = async (lista) => {
+    setProjetos(lista);
+    await setDoc(doc(db, "app_data", "projetos_mgmt"), { value: lista });
+  };
+
+  const proj = projetos.find(p=>p.id===projetoAtivo);
+
+  const atualizarProjeto = async (updated) => {
+    const nova = projetos.map(p=>p.id===updated.id?updated:p);
+    await salvarProjetos(nova);
+  };
+
+  const FormProjeto = ({ inicial, onSalvar, onCancelar }) => {
+    const [form, setForm] = useState(inicial||{ nome:"", cliente:"", descricao:"", consultores:[], dataInicio:"", dataFim:"", status:"planejamento", progresso:0 });
+    const set = (k,v) => setForm(p=>({...p,[k]:v}));
+    const toggleCons = (c) => setForm(p=>({...p,consultores:p.consultores.includes(c)?p.consultores.filter(x=>x!==c):[...p.consultores,c]}));
+    return (
+      <div style={{ background:T.surface,borderRadius:"16px",border:"1px solid "+T.border,padding:"24px",maxWidth:"680px",marginBottom:"24px" }}>
+        <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"17px",fontWeight:900,color:"#f0f0fa",margin:"0 0 20px",letterSpacing:"-0.3px" }}>{inicial?"✏️ Editar Projeto":"📋 Novo Projeto"}</h3>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"14px" }}>
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={lbl}>Nome do projeto</label>
+            <input value={form.nome} onChange={e=>set("nome",e.target.value)} placeholder="Ex: Implantação Protheus — Empresa X" style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Cliente</label>
+            <select value={form.cliente} onChange={e=>set("cliente",e.target.value)} style={inp}>
+              <option value="">Selecione...</option>
+              {clients.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Status</label>
+            <select value={form.status} onChange={e=>set("status",e.target.value)} style={inp}>
+              {Object.entries(STATUS_PROJ).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Data início</label>
+            <input type="date" value={form.dataInicio} onChange={e=>set("dataInicio",e.target.value)} style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Data fim prevista</label>
+            <input type="date" value={form.dataFim} onChange={e=>set("dataFim",e.target.value)} style={inp}/>
+          </div>
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={lbl}>Descrição</label>
+            <textarea value={form.descricao} onChange={e=>set("descricao",e.target.value)} rows={2} placeholder="Objetivo e escopo do projeto..." style={{...inp,resize:"vertical",lineHeight:1.5}}/>
+          </div>
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={lbl}>Consultores envolvidos</label>
+            <div style={{ display:"flex",flexWrap:"wrap",gap:"6px" }}>
+              {consultores.map(c=>{
+                const sel = form.consultores.includes(c);
+                return <button key={c} onClick={()=>toggleCons(c)} style={{ padding:"5px 12px",borderRadius:"99px",border:"1px solid "+(sel?"#6c63ff":"#2a2a3a"),background:sel?"#6c63ff22":"transparent",color:sel?"#a78bfa":"#6e6e88",cursor:"pointer",fontSize:"12px",fontWeight:sel?700:400,fontFamily:"inherit" }}>{c.split(" ")[0]}</button>;
+              })}
+            </div>
+          </div>
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={lbl}>Progresso ({form.progresso}%)</label>
+            <input type="range" min={0} max={100} value={form.progresso} onChange={e=>set("progresso",Number(e.target.value))} style={{ width:"100%",accentColor:"#6c63ff" }}/>
+          </div>
+        </div>
+        <div style={{ display:"flex",gap:"10px",marginTop:"20px",justifyContent:"flex-end" }}>
+          <button onClick={onCancelar} style={{ padding:"9px 18px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>Cancelar</button>
+          <button onClick={()=>onSalvar(form)} style={{ padding:"9px 22px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>
+            {inicial?"💾 Salvar":"✅ Criar projeto"}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) return <div style={{ textAlign:"center",padding:"60px",color:"#3e3e55" }}><div style={{ width:"28px",height:"28px",border:"3px solid #1f1f2e",borderTop:"3px solid #6c63ff",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto 12px" }}/></div>;
+
+  // Visão de detalhe do projeto
+  if (proj) {
+    const tarefas = proj.tarefas || [];
+    const horas = proj.horas || [];
+    const totalHoras = horas.reduce((s,h)=>s+Number(h.horas||0),0);
+
+    const addTarefa = async (col) => {
+      const nome = window.prompt("Nome da tarefa:");
+      if (!nome) return;
+      const t = { id:Date.now().toString(36), nome, coluna:col, responsavel:"", prioridade:"media", desc:"", criadoEm:new Date().toISOString() };
+      await atualizarProjeto({...proj, tarefas:[...tarefas,t]});
+    };
+    const moverTarefa = async (id, novaCol) => {
+      await atualizarProjeto({...proj, tarefas:tarefas.map(t=>t.id===id?{...t,coluna:novaCol}:t)});
+    };
+    const removerTarefa = async (id) => {
+      await atualizarProjeto({...proj, tarefas:tarefas.filter(t=>t.id!==id)});
+    };
+    const addHora = async () => {
+      const cons = window.prompt("Consultor:");
+      if (!cons) return;
+      const hrs = window.prompt("Horas trabalhadas:");
+      if (!hrs) return;
+      const desc = window.prompt("Descrição da atividade:");
+      const h = { id:Date.now().toString(36), consultor:cons, horas:Number(hrs), desc:desc||"", data:new Date().toISOString().slice(0,10) };
+      await atualizarProjeto({...proj, horas:[...horas,h]});
+    };
+
+    const st = STATUS_PROJ[proj.status]||STATUS_PROJ.planejamento;
+    return (
+      <div>
+        {/* Header do projeto */}
+        <div style={{ display:"flex",alignItems:"center",gap:"12px",marginBottom:"20px",flexWrap:"wrap" }}>
+          <button onClick={()=>setProjetoAtivo(null)} style={{ padding:"6px 12px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontSize:"12px",fontFamily:"inherit" }}>← Voltar</button>
+          <div style={{ flex:1,minWidth:0 }}>
+            <div style={{ display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap" }}>
+              <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:0,letterSpacing:"-0.3px" }}>{proj.nome}</h2>
+              <span style={{ padding:"4px 12px",borderRadius:"99px",background:st.color+"18",border:"1px solid "+st.color+"44",fontSize:"11px",fontWeight:700,color:st.color }}>{st.label}</span>
+            </div>
+            <div style={{ fontSize:"12px",color:"#6e6e88",marginTop:"4px",display:"flex",gap:"12px",flexWrap:"wrap" }}>
+              {proj.cliente && <span>🏢 {proj.cliente}</span>}
+              {proj.dataInicio && <span>📅 {proj.dataInicio}{proj.dataFim?" → "+proj.dataFim:""}</span>}
+              {proj.consultores?.length>0 && <span>👥 {proj.consultores.map(c=>c.split(" ")[0]).join(", ")}</span>}
+              <span>⏱ {totalHoras}h registradas</span>
+            </div>
+          </div>
+          <button onClick={()=>{setEditandoProj(proj);setShowForm(true);setProjetoAtivo(null);}}
+            style={{ padding:"7px 14px",borderRadius:"8px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontSize:"12px",fontWeight:600,fontFamily:"inherit" }}>✏️ Editar</button>
+        </div>
+
+        {/* Barra de progresso */}
+        <div style={{ background:"#111118",borderRadius:"10px",border:"1px solid #1f1f2e",padding:"12px 16px",marginBottom:"16px",display:"flex",alignItems:"center",gap:"14px" }}>
+          <span style={{ fontSize:"12px",color:"#6e6e88",whiteSpace:"nowrap" }}>Progresso:</span>
+          <div style={{ flex:1,height:"8px",background:"#1f1f2e",borderRadius:"99px",overflow:"hidden" }}>
+            <div style={{ height:"100%",width:(proj.progresso||0)+"%",background:"linear-gradient(90deg,#6c63ff,#a78bfa)",borderRadius:"99px",transition:"width .4s" }}/>
+          </div>
+          <span style={{ fontSize:"13px",fontWeight:700,color:"#a78bfa",minWidth:"40px" }}>{proj.progresso||0}%</span>
+        </div>
+
+        {/* Abas */}
+        <div style={{ display:"flex",gap:"2px",background:"#0d0d14",borderRadius:"10px",padding:"3px",border:"1px solid #2a2a3a",marginBottom:"20px",width:"fit-content" }}>
+          {[["kanban","📋 Kanban"],["cronograma","📊 Cronograma"],["horas","⏱ Horas"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setAbaProj(v)} style={{ padding:"6px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"12px",fontFamily:"inherit",background:abaProj===v?"#6c63ff":"transparent",color:abaProj===v?"#fff":"#6e6e88" }}>{l}</button>
+          ))}
+        </div>
+
+        {/* Kanban */}
+        {abaProj==="kanban" && (
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"12px",overflowX:"auto" }}>
+            {COLUNAS.map(col=>{
+              const tarefasCol = tarefas.filter(t=>t.coluna===col);
+              return (
+                <div key={col} style={{ background:"#111118",borderRadius:"12px",border:"1px solid #1f1f2e",minHeight:"200px" }}>
+                  <div style={{ padding:"12px 14px",borderBottom:"1px solid #1f1f2e",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+                    <span style={{ fontSize:"12px",fontWeight:700,color:"#c8c8d8" }}>{COL_LABELS[col]}</span>
+                    <span style={{ fontSize:"10px",background:"#1f1f2e",color:"#6e6e88",padding:"1px 7px",borderRadius:"99px",fontWeight:700 }}>{tarefasCol.length}</span>
+                  </div>
+                  <div style={{ padding:"8px" }}>
+                    {tarefasCol.map(t=>{
+                      const pr = PRIORIDADES[t.prioridade]||PRIORIDADES.media;
+                      return (
+                        <div key={t.id} style={{ background:"#18181f",borderRadius:"8px",border:"1px solid #2a2a3a",padding:"10px 12px",marginBottom:"6px" }}>
+                          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"6px",marginBottom:"6px" }}>
+                            <span style={{ fontSize:"12px",fontWeight:600,color:"#c8c8d8",lineHeight:1.4 }}>{t.nome}</span>
+                            <span style={{ fontSize:"9px",padding:"2px 6px",borderRadius:"99px",background:pr.color+"18",color:pr.color,fontWeight:700,whiteSpace:"nowrap" }}>{pr.label}</span>
+                          </div>
+                          {t.responsavel && <div style={{ fontSize:"10px",color:"#6e6e88",marginBottom:"6px" }}>👤 {t.responsavel}</div>}
+                          <div style={{ display:"flex",gap:"4px",flexWrap:"wrap" }}>
+                            {COLUNAS.filter(c=>c!==col).map(c=>(
+                              <button key={c} onClick={()=>moverTarefa(t.id,c)} style={{ fontSize:"9px",padding:"2px 7px",borderRadius:"99px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontFamily:"inherit" }}>→ {COL_LABELS[c].split(" ")[1]}</button>
+                            ))}
+                            <button onClick={()=>removerTarefa(t.id)} style={{ fontSize:"9px",padding:"2px 7px",borderRadius:"99px",border:"1px solid #f04f5e44",background:"transparent",color:"#f04f5e",cursor:"pointer",fontFamily:"inherit" }}>✕</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <button onClick={()=>addTarefa(col)} style={{ width:"100%",padding:"7px",borderRadius:"8px",border:"1px dashed #2a2a3a",background:"transparent",color:"#3e3e55",cursor:"pointer",fontSize:"12px",fontFamily:"inherit",marginTop:"4px" }}>+ Adicionar</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Cronograma */}
+        {abaProj==="cronograma" && (
+          <div style={{ background:"#111118",borderRadius:"12px",border:"1px solid #1f1f2e",padding:"20px" }}>
+            <h3 style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa",margin:"0 0 16px" }}>📊 Linha do tempo</h3>
+            {(!proj.dataInicio||!proj.dataFim) ? (
+              <div style={{ textAlign:"center",padding:"32px",color:"#3e3e55",fontSize:"13px" }}>Defina as datas de início e fim do projeto para ver o cronograma.</div>
+            ) : (
+              <div>
+                {/* Timeline visual */}
+                {(() => {
+                  const start = new Date(proj.dataInicio), end = new Date(proj.dataFim);
+                  const total = (end-start)/(1000*60*60*24);
+                  const hoje = new Date();
+                  const elapsed = Math.max(0,Math.min(total,(hoje-start)/(1000*60*60*24)));
+                  const pct = total>0?Math.round((elapsed/total)*100):0;
+                  return (
+                    <div>
+                      <div style={{ display:"flex",justifyContent:"space-between",fontSize:"11px",color:"#6e6e88",marginBottom:"6px" }}>
+                        <span>🚀 {proj.dataInicio}</span>
+                        <span>🏁 {proj.dataFim}</span>
+                      </div>
+                      <div style={{ height:"16px",background:"#1f1f2e",borderRadius:"99px",overflow:"hidden",position:"relative",marginBottom:"8px" }}>
+                        <div style={{ height:"100%",width:pct+"%",background:"linear-gradient(90deg,#6c63ff,#a78bfa)",borderRadius:"99px" }}/>
+                        <div style={{ position:"absolute",top:0,left:(proj.progresso||0)+"%",width:"2px",height:"100%",background:"#22d3a0" }}/>
+                      </div>
+                      <div style={{ display:"flex",gap:"16px",fontSize:"11px",color:"#6e6e88" }}>
+                        <span>⏳ Tempo decorrido: <strong style={{ color:"#a78bfa" }}>{pct}%</strong></span>
+                        <span>📈 Progresso real: <strong style={{ color:"#22d3a0" }}>{proj.progresso||0}%</strong></span>
+                        <span>📅 Duração total: <strong style={{ color:"#c8c8d8" }}>{total} dias</strong></span>
+                      </div>
+                    </div>
+                  );
+                })()}
+                <div style={{ marginTop:"20px" }}>
+                  <div style={{ fontSize:"11px",color:"#6e6e88",fontWeight:700,letterSpacing:"0.5px",textTransform:"uppercase",marginBottom:"10px" }}>Tarefas por fase</div>
+                  {COLUNAS.map(col=>{
+                    const n = tarefas.filter(t=>t.coluna===col).length;
+                    return n>0?(
+                      <div key={col} style={{ display:"flex",alignItems:"center",gap:"12px",marginBottom:"6px" }}>
+                        <span style={{ fontSize:"12px",color:"#c8c8d8",minWidth:"140px" }}>{COL_LABELS[col]}</span>
+                        <div style={{ flex:1,height:"6px",background:"#1f1f2e",borderRadius:"99px",overflow:"hidden" }}>
+                          <div style={{ height:"100%",width:(n/tarefas.length*100)+"%",background:"#6c63ff",borderRadius:"99px" }}/>
+                        </div>
+                        <span style={{ fontSize:"11px",color:"#6e6e88",minWidth:"20px" }}>{n}</span>
+                      </div>
+                    ):null;
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Horas */}
+        {abaProj==="horas" && (
+          <div>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px" }}>
+              <div style={{ fontSize:"13px",color:"#c8c8d8" }}>Total: <strong style={{ color:"#22d3a0",fontSize:"18px" }}>{totalHoras}h</strong></div>
+              <button onClick={addHora} style={{ padding:"7px 16px",borderRadius:"8px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"12px",fontFamily:"inherit" }}>+ Registrar horas</button>
+            </div>
+            {horas.length===0 && <div style={{ textAlign:"center",padding:"32px",background:"#111118",borderRadius:"12px",border:"1px solid #1f1f2e",color:"#3e3e55",fontSize:"13px" }}>Nenhuma hora registrada</div>}
+            <div style={{ display:"flex",flexDirection:"column",gap:"6px" }}>
+              {horas.sort((a,b)=>b.data?.localeCompare(a.data||"")).map((h,i)=>(
+                <div key={h.id||i} style={{ background:"#111118",borderRadius:"10px",border:"1px solid #1f1f2e",padding:"12px 16px",display:"flex",alignItems:"center",gap:"14px" }}>
+                  <div style={{ width:"42px",height:"42px",borderRadius:"10px",background:"#22d3a018",border:"1px solid #22d3a033",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                    <span style={{ fontSize:"13px",fontWeight:800,color:"#22d3a0" }}>{h.horas}h</span>
+                  </div>
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ fontSize:"13px",fontWeight:600,color:"#c8c8d8" }}>{h.consultor}</div>
+                    <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"2px" }}>{h.desc||"—"}</div>
+                  </div>
+                  <div style={{ fontSize:"11px",color:"#3e3e55" }}>{h.data}</div>
+                  <button onClick={()=>atualizarProjeto({...proj,horas:horas.filter((_,j)=>j!==i)})} style={{ background:"none",border:"none",color:"#f04f5e",cursor:"pointer",fontSize:"13px" }}>✕</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Lista de projetos
+  return (
+    <div>
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"24px",flexWrap:"wrap",gap:"12px" }}>
+        <div>
+          <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>📋 Gestão de Projetos</h2>
+          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>{projetos.length} projeto{projetos.length!==1?"s":""} cadastrado{projetos.length!==1?"s":""}</p>
+        </div>
+        {canEdit && <button onClick={()=>{setEditandoProj(null);setShowForm(true);}} style={{ padding:"8px 18px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>+ Novo Projeto</button>}
+      </div>
+
+      {showForm && (
+        <FormProjeto inicial={editandoProj}
+          onSalvar={async (dados)=>{
+            let nova;
+            if (editandoProj) nova=projetos.map(p=>p.id===editandoProj.id?{...dados,id:editandoProj.id}:p);
+            else nova=[...projetos,{...dados,id:Date.now().toString(36),tarefas:[],horas:[],criadoEm:new Date().toISOString()}];
+            await salvarProjetos(nova);
+            setShowForm(false);setEditandoProj(null);
+          }}
+          onCancelar={()=>{setShowForm(false);setEditandoProj(null);}}
+        />
+      )}
+
+      {projetos.length===0 && !showForm && (
+        <div style={{ textAlign:"center",padding:"60px",background:"#111118",borderRadius:"16px",border:"1px solid #1f1f2e" }}>
+          <div style={{ fontSize:"48px",marginBottom:"14px" }}>📋</div>
+          <div style={{ fontSize:"14px",color:"#3e3e55",marginBottom:"16px" }}>Nenhum projeto cadastrado</div>
+          {canEdit && <button onClick={()=>setShowForm(true)} style={{ padding:"9px 22px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit" }}>Criar primeiro projeto</button>}
+        </div>
+      )}
+
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:"14px" }}>
+        {projetos.map(p=>{
+          const st = STATUS_PROJ[p.status]||STATUS_PROJ.planejamento;
+          const concluidas = (p.tarefas||[]).filter(t=>t.coluna==="concluido").length;
+          const totalTar = (p.tarefas||[]).length;
+          const totalH = (p.horas||[]).reduce((s,h)=>s+Number(h.horas||0),0);
+          return (
+            <div key={p.id} className="card-hover" onClick={()=>setProjetoAtivo(p.id)}
+              style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",padding:"18px 20px",cursor:"pointer",position:"relative",overflow:"hidden" }}>
+              <div style={{ position:"absolute",top:0,left:0,right:0,height:"3px",background:st.color }}/>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"10px" }}>
+                <div style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa",lineHeight:1.3,flex:1,marginRight:"10px" }}>{p.nome}</div>
+                <span style={{ padding:"3px 10px",borderRadius:"99px",background:st.color+"18",border:"1px solid "+st.color+"44",fontSize:"10px",fontWeight:700,color:st.color,whiteSpace:"nowrap" }}>{st.label}</span>
+              </div>
+              {p.cliente && <div style={{ fontSize:"11px",color:"#6e6e88",marginBottom:"8px" }}>🏢 {p.cliente}</div>}
+              <div style={{ height:"4px",background:"#1f1f2e",borderRadius:"99px",overflow:"hidden",marginBottom:"10px" }}>
+                <div style={{ height:"100%",width:(p.progresso||0)+"%",background:"linear-gradient(90deg,#6c63ff,#a78bfa)",borderRadius:"99px" }}/>
+              </div>
+              <div style={{ display:"flex",gap:"14px",fontSize:"11px",color:"#6e6e88" }}>
+                <span>📈 {p.progresso||0}%</span>
+                {totalTar>0 && <span>📋 {concluidas}/{totalTar} tarefas</span>}
+                {totalH>0 && <span>⏱ {totalH}h</span>}
+                {p.consultores?.length>0 && <span>👥 {p.consultores.length}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function ConsultorDashboard() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -3028,6 +3718,7 @@ function Dashboard({ currentUser, onLogout }) {
   const [toast, setToast] = useState(null);
   const [showUserMgmt, setShowUserMgmt] = useState(false);
   const [theme, setTheme] = useState("dark");
+  const [activeModule, setActiveModule] = useState(isConsultor ? "agenda" : "home"); // home | agenda | viagens | projetos
   const [usuarios, setUsuarios] = useState([]);
   const [emailConfig, setEmailConfig] = useState(EMAIL_CONFIG_DEFAULT);
   const [consultorViewMode, setConsultorViewMode] = useState("mensal"); // "semanal" | "mensal"
@@ -3502,8 +4193,31 @@ function Dashboard({ currentUser, onLogout }) {
     </div>
   );
 
+  // Todos os módulos disponíveis por perfil (fonte única de verdade)
+  const ALL_MODULES_ADMIN = [
+    { id:"home",     icon:"⬡",  label:"Dashboard",            desc:"Visão geral do sistema" },
+    { id:"agenda",   icon:"📅", label:"Agenda",                desc:"Agenda de consultores" },
+    { id:"viagens",  icon:"✈️",  label:"Viagens",              desc:"Solicitações de viagem" },
+    { id:"projetos", icon:"📋", label:"Projetos",              desc:"Gestão de projetos" },
+  ];
+  const ALL_MODULES_CONSULTOR = [
+    { id:"agenda",   icon:"📅", label:"Agenda",                desc:"Minha agenda" },
+    { id:"grade",    icon:"🎓", label:"Grade de Conhecimento", desc:"Meus conhecimentos" },
+    { id:"viagens",  icon:"✈️",  label:"Viagens",              desc:"Minhas viagens" },
+  ];
+
+  // Módulos habilitados para este usuário (vem do perfil salvo no Firestore)
+  // Por padrão: todos habilitados
+  const modulosHabilitados = currentUser.modulosHabilitados || null; // null = todos
+
+  const MODULES_ADMIN    = ALL_MODULES_ADMIN.filter(m    => !modulosHabilitados || modulosHabilitados.includes(m.id));
+  const MODULES_CONSULTOR= ALL_MODULES_CONSULTOR.filter(m=> !modulosHabilitados || modulosHabilitados.includes(m.id));
+  const MODULES = isConsultor ? MODULES_CONSULTOR : MODULES_ADMIN;
+
+  const SIDEBAR_W = 220;
+
   return (
-    <div style={{ fontFamily:"'Outfit',sans-serif",background:T.bg,minHeight:"100vh",color:T.text,display:"flex",flexDirection:"column" }}>
+    <div style={{ fontFamily:"'Outfit',sans-serif",background:T.bg,minHeight:"100vh",color:T.text,display:"flex",flexDirection:"row" }}>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Cabinet+Grotesk:wght@700;800;900&display=swap" rel="stylesheet"/>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0;}
@@ -3514,7 +4228,6 @@ function Dashboard({ currentUser, onLogout }) {
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
-        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
         .nav-btn{transition:all .2s cubic-bezier(.4,0,.2,1);position:relative;}
         .nav-btn:hover{color:${T.heading}!important;}
         .nav-btn.active{background:${T.accent}!important;color:#fff!important;box-shadow:${T.accentGlow};}
@@ -3522,228 +4235,286 @@ function Dashboard({ currentUser, onLogout }) {
         .action-btn:hover{filter:brightness(1.1);transform:translateY(-1px);}
         .card-hover{transition:box-shadow .25s,transform .25s,border-color .25s;}
         .card-hover:hover{box-shadow:${T.shadowLg};transform:translateY(-3px);border-color:${T.accent}44!important;}
+        .side-item{transition:all .18s cubic-bezier(.4,0,.2,1);cursor:pointer;border-radius:10px;}
+        .side-item:hover{background:${T.surfaceHover}!important;}
         input,select,textarea{outline:none;transition:border-color .15s,box-shadow .15s;font-family:inherit;}
         input:focus,select:focus,textarea:focus{border-color:${T.accent}!important;box-shadow:0 0 0 3px ${T.accent}20!important;}
-        .pill-tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600;letter-spacing:.3px;}
-        .fade-up{animation:fadeUp .3s cubic-bezier(.4,0,.2,1) both;}
       `}</style>
 
-      {/* ── TOP HEADER ── */}
-      <header style={{ background:T.headerBg,borderBottom:"1px solid "+T.headerBorder,padding:"0 32px",display:"flex",alignItems:"center",justifyContent:"space-between",height:"60px",flexShrink:0,position:"sticky",top:0,zIndex:200,backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)" }}>
+      {/* ── SIDEBAR ── */}
+      <aside style={{ width:SIDEBAR_W+"px",minHeight:"100vh",background:T.headerBg,borderRight:"1px solid "+T.headerBorder,display:"flex",flexDirection:"column",position:"fixed",top:0,left:0,zIndex:100,flexShrink:0 }}>
         {/* Logo */}
-        <div style={{ display:"flex",alignItems:"center",gap:"10px",flexShrink:0 }}>
-          <div style={{ width:"32px",height:"32px",borderRadius:"9px",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"15px",boxShadow:T.accentGlow,flexShrink:0 }}>◈</div>
-          <div>
-            <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"16px",fontWeight:900,color:T.heading,letterSpacing:"-0.5px",lineHeight:1 }}>Agenda</div>
-            <div style={{ fontSize:"9px",color:T.text3,fontWeight:600,letterSpacing:"1.5px",marginTop:"2px",textTransform:"uppercase" }}>Consultores</div>
+        <div style={{ padding:"20px 16px 16px",borderBottom:"1px solid "+T.border }}>
+          <div style={{ display:"flex",alignItems:"center",gap:"10px" }}>
+            <div style={{ width:"34px",height:"34px",borderRadius:"10px",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"16px",boxShadow:T.accentGlow,flexShrink:0 }}>◈</div>
+            <div>
+              <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"15px",fontWeight:900,color:T.heading,letterSpacing:"-0.5px",lineHeight:1 }}>GSC</div>
+              <div style={{ fontSize:"9px",color:T.text3,fontWeight:600,letterSpacing:"1.5px",marginTop:"2px",textTransform:"uppercase" }}>Gestão de Serviços</div>
+            </div>
           </div>
         </div>
 
-        {/* NAV VIEWS */}
-        <nav style={{ display:"flex",gap:"1px",background:T.btnInactive,borderRadius:"12px",padding:"3px",border:"1px solid "+T.border }}>
-          {VIEWS.map(v=>(
-            <button key={v} onClick={()=>setView(v)} className={"nav-btn"+(view===v?" active":"")}
-              style={{ padding:"6px 16px",borderRadius:"9px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"12px",background:view===v?T.accent:"transparent",color:view===v?"#fff":T.text2,whiteSpace:"nowrap",letterSpacing:"0.1px" }}>
-              {VIEW_LABELS[v]}
-            </button>
-          ))}
+        {/* Nav */}
+        <nav style={{ flex:1,padding:"12px 10px",display:"flex",flexDirection:"column",gap:"2px",overflowY:"auto" }}>
+          <div style={{ fontSize:"9px",color:T.text3,fontWeight:700,letterSpacing:"1.2px",textTransform:"uppercase",padding:"8px 8px 6px" }}>Módulos</div>
+          {MODULES.map(m=>{
+            const active = activeModule===m.id;
+            return (
+              <div key={m.id} className="side-item" onClick={()=>setActiveModule(m.id)}
+                style={{ padding:"10px 12px",display:"flex",alignItems:"center",gap:"10px",background:active?`${T.accent}18`:"transparent",border:active?`1px solid ${T.accent}33`:"1px solid transparent" }}>
+                <span style={{ fontSize:"16px",lineHeight:1,width:"20px",textAlign:"center" }}>{m.icon}</span>
+                <div>
+                  <div style={{ fontSize:"13px",fontWeight:active?700:500,color:active?T.accent:T.text }}>{m.label}</div>
+                  <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px" }}>{m.desc}</div>
+                </div>
+                {active && <div style={{ marginLeft:"auto",width:"4px",height:"20px",borderRadius:"2px",background:T.accent }}/>}
+              </div>
+            );
+          })}
+
+          {canManage && (
+            <>
+              <div style={{ fontSize:"9px",color:T.text3,fontWeight:700,letterSpacing:"1.2px",textTransform:"uppercase",padding:"16px 8px 6px" }}>Administração</div>
+              <div className="side-item" onClick={()=>setActiveModule("cadastros")}
+                style={{ padding:"10px 12px",display:"flex",alignItems:"center",gap:"10px",background:activeModule==="cadastros"?`${T.accent}18`:"transparent",border:activeModule==="cadastros"?`1px solid ${T.accent}33`:"1px solid transparent" }}>
+                <span style={{ fontSize:"16px",lineHeight:1,width:"20px",textAlign:"center" }}>🗂</span>
+                <div>
+                  <div style={{ fontSize:"13px",fontWeight:activeModule==="cadastros"?700:500,color:activeModule==="cadastros"?T.accent:T.text }}>Cadastros</div>
+                  <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px" }}>Dados do sistema</div>
+                </div>
+                {activeModule==="cadastros" && <div style={{ marginLeft:"auto",width:"4px",height:"20px",borderRadius:"2px",background:T.accent }}/>}
+              </div>
+              <div className="side-item" onClick={()=>setShowUserMgmt(true)}
+                style={{ padding:"10px 12px",display:"flex",alignItems:"center",gap:"10px",background:"transparent",border:"1px solid transparent" }}>
+                <span style={{ fontSize:"16px",lineHeight:1,width:"20px",textAlign:"center" }}>👥</span>
+                <div>
+                  <div style={{ fontSize:"13px",fontWeight:500,color:T.text }}>Usuários</div>
+                  <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px" }}>Gerenciar acessos</div>
+                </div>
+              </div>
+            </>
+          )}
         </nav>
 
-        {/* RIGHT ACTIONS */}
-        <div style={{ display:"flex",gap:"8px",alignItems:"center" }}>
-          {canEdit && (
-            <button onClick={()=>{setEditEntry(null);setShowModal(true);}} className="action-btn"
-              style={{ padding:"8px 18px",borderRadius:"10px",border:"none",cursor:"pointer",fontWeight:700,fontSize:"12px",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,color:"#fff",display:"flex",alignItems:"center",gap:"7px",boxShadow:T.accentGlow,letterSpacing:"0.2px" }}>
-              <span style={{ fontSize:"16px",lineHeight:1,marginTop:"-1px" }}>+</span> Nova Agenda
-            </button>
-          )}
-          {canEdit && (
-            <button onClick={handleExportExcel} className="action-btn" title="Exportar Excel"
-              style={{ padding:"8px 12px",borderRadius:"10px",border:"1px solid "+T.border2,cursor:"pointer",fontSize:"13px",background:T.btnInactive,color:T.text2,display:"flex",alignItems:"center",gap:"5px" }}>
-              <span>📊</span>
-            </button>
-          )}
-          {canManage && (
-            <button onClick={()=>setShowUserMgmt(true)} className="action-btn" title="Gerenciar Usuários"
-              style={{ padding:"8px 12px",borderRadius:"10px",border:"1px solid "+T.border2,cursor:"pointer",fontSize:"13px",background:T.btnInactive,color:T.text2 }}>
-              👥
-            </button>
-          )}
-          <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} className="action-btn" title={isDark?"Tema claro":"Tema escuro"}
-            style={{ padding:"8px 12px",borderRadius:"10px",border:"1px solid "+T.border2,cursor:"pointer",fontSize:"13px",background:T.btnInactive,color:T.text2 }}>
-            {isDark?"☀️":"🌙"}
-          </button>
-          {/* User pill */}
-          <div style={{ display:"flex",alignItems:"center",gap:"9px",padding:"5px 12px 5px 5px",borderRadius:"99px",background:T.surface,border:"1px solid "+T.border,boxShadow:T.shadow }}>
-            <div style={{ width:"28px",height:"28px",borderRadius:"50%",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10px",fontWeight:800,color:"#fff",flexShrink:0 }}>
+        {/* User footer */}
+        <div style={{ padding:"12px 14px",borderTop:"1px solid "+T.border }}>
+          <div style={{ display:"flex",alignItems:"center",gap:"9px" }}>
+            <div style={{ width:"30px",height:"30px",borderRadius:"9px",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:800,color:"#fff",flexShrink:0 }}>
               {getInitials(currentUser.consultorName||currentUser.username||"??")}
             </div>
-            <div>
-              <div style={{ fontSize:"12px",fontWeight:700,color:T.heading,lineHeight:1 }}>{(currentUser.consultorName||currentUser.username||"").split(" ")[0]}</div>
-              <div style={{ fontSize:"9px",fontWeight:700,color:badge.color,lineHeight:1,marginTop:"3px",letterSpacing:"0.5px",textTransform:"uppercase" }}>{badge.label}</div>
+            <div style={{ flex:1,minWidth:0 }}>
+              <div style={{ fontSize:"12px",fontWeight:700,color:T.heading,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{(currentUser.consultorName||currentUser.username||"").split(" ")[0]}</div>
+              <div style={{ fontSize:"9px",fontWeight:700,color:badge.color,marginTop:"2px",letterSpacing:"0.5px",textTransform:"uppercase" }}>{badge.label}</div>
             </div>
-            <button onClick={onLogout} title="Sair"
-              style={{ background:"transparent",border:"none",color:T.text3,cursor:"pointer",fontSize:"14px",padding:"2px 0 2px 4px",display:"flex",alignItems:"center",opacity:0.7 }}>⎋</button>
+            <div style={{ display:"flex",gap:"4px" }}>
+              <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} title={isDark?"Tema claro":"Tema escuro"}
+                style={{ background:"transparent",border:"none",color:T.text3,cursor:"pointer",fontSize:"13px",padding:"4px",borderRadius:"6px" }}>{isDark?"☀️":"🌙"}</button>
+              <button onClick={onLogout} title="Sair"
+                style={{ background:"transparent",border:"none",color:T.text3,cursor:"pointer",fontSize:"13px",padding:"4px",borderRadius:"6px" }}>⎋</button>
+            </div>
           </div>
         </div>
-      </header>
+      </aside>
+
+      {/* ── MAIN CONTENT ── */}
+      <div style={{ marginLeft:SIDEBAR_W+"px",flex:1,display:"flex",flexDirection:"column",minHeight:"100vh" }}>
+
+        {/* Top bar */}
+        <header style={{ background:T.headerBg,borderBottom:"1px solid "+T.headerBorder,padding:"0 28px",height:"56px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50,backdropFilter:"blur(12px)" }}>
+          <div>
+            <span style={{ fontSize:"16px",fontWeight:700,color:T.heading }}>
+              {MODULES.concat([{id:"cadastros",label:"Cadastros"}]).find(m=>m.id===activeModule)?.label || ""}
+            </span>
+            {activeModule==="agenda" && <span style={{ fontSize:"11px",color:T.text3,marginLeft:"10px" }}>{consultores.length} consultores · {Object.values(scheduleData).flat().filter(e=>e.type==="client").length} dias agendados</span>}
+          </div>
+          <div style={{ display:"flex",gap:"8px",alignItems:"center" }}>
+            {activeModule==="agenda" && canEdit && (
+              <button onClick={()=>{setEditEntry(null);setShowModal(true);}} className="action-btn"
+                style={{ padding:"7px 16px",borderRadius:"10px",border:"none",cursor:"pointer",fontWeight:700,fontSize:"12px",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,color:"#fff",display:"flex",alignItems:"center",gap:"6px",boxShadow:T.accentGlow }}>
+                <span style={{ fontSize:"15px",lineHeight:1 }}>+</span> Nova Agenda
+              </button>
+            )}
+            {activeModule==="agenda" && canEdit && (
+              <button onClick={handleExportExcel} className="action-btn" title="Exportar Excel"
+                style={{ padding:"7px 12px",borderRadius:"10px",border:"1px solid "+T.border2,cursor:"pointer",fontSize:"13px",background:T.btnInactive,color:T.text2 }}>📊</button>
+            )}
+          </div>
+        </header>
+
+        {/* ── READONLY BANNER ── */}
+        {(isViewer || isConsultor) && activeModule==="agenda" && (
+          <div style={{ background:isDark?"#f5a62308":"#fffbeb",borderBottom:"1px solid "+(isDark?"#f5a62320":"#fcd34d"),padding:"6px 28px",display:"flex",alignItems:"center",gap:"8px" }}>
+            <span style={{ fontSize:"11px" }}>🔒</span>
+            <span style={{ fontSize:"11px",color:"#f5a623",fontWeight:600 }}>
+              {isConsultor ? `Acesso restrito — visualizando apenas a agenda de ${currentUser.consultorName}.` : "Modo visualização — sem permissão para editar agendas."}
+            </span>
+          </div>
+        )}
+
+        {/* ── MODULE: HOME (Dashboard) ── */}
+        {activeModule==="home" && (
+          <div style={{ padding:"28px 32px",flex:1 }}>
+            <div style={{ marginBottom:"28px" }}>
+              <h1 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"24px",fontWeight:900,color:T.heading,letterSpacing:"-0.5px",margin:"0 0 6px" }}>
+                Olá, {(currentUser.consultorName||currentUser.nome||currentUser.username||"").split(" ")[0]} 👋
+              </h1>
+              <p style={{ fontSize:"13px",color:T.text2,margin:0 }}>{new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})}</p>
+            </div>
+
+            {/* Cards de módulos */}
+            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:"16px",marginBottom:"32px" }}>
+              {[
+                { id:"agenda",   icon:"📅", label:"Agenda de Consultores", desc:"Gerencie as agendas e cronogramas dos consultores",  color:"#6c63ff", stat:Object.values(scheduleData).flat().filter(e=>e.type==="client").length, statLabel:"dias agendados" },
+                { id:"viagens",  icon:"✈️",  label:"Solicitações de Viagem",desc:"Controle pedidos de viagem, aprovações e reembolsos", color:"#22d3a0", stat:0, statLabel:"solicitações" },
+                { id:"projetos", icon:"📋", label:"Gestão de Projetos",    desc:"Acompanhe projetos, tarefas e horas trabalhadas",    color:"#f5a623", stat:projects.length, statLabel:"projetos ativos" },
+                ...(canManage?[{ id:"cadastros",icon:"🗂", label:"Cadastros", desc:"Consultores, clientes, projetos e configurações", color:"#a78bfa", stat:consultores.length, statLabel:"consultores" }]:[]),
+              ].map(mod=>(
+                <div key={mod.id} className="card-hover" onClick={()=>setActiveModule(mod.id)}
+                  style={{ background:T.surface,borderRadius:"16px",border:"1px solid "+T.border,padding:"22px",cursor:"pointer",position:"relative",overflow:"hidden" }}>
+                  <div style={{ position:"absolute",top:0,left:0,right:0,height:"3px",background:`linear-gradient(90deg,${mod.color},${mod.color}88)` }}/>
+                  <div style={{ fontSize:"28px",marginBottom:"14px" }}>{mod.icon}</div>
+                  <div style={{ fontSize:"15px",fontWeight:700,color:T.heading,marginBottom:"6px" }}>{mod.label}</div>
+                  <div style={{ fontSize:"12px",color:T.text2,lineHeight:1.5,marginBottom:"16px" }}>{mod.desc}</div>
+                  <div style={{ display:"flex",alignItems:"baseline",gap:"5px" }}>
+                    <span style={{ fontSize:"22px",fontWeight:800,color:mod.color }}>{mod.stat}</span>
+                    <span style={{ fontSize:"11px",color:T.text3 }}>{mod.statLabel}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Resumo rápido da semana */}
+            <div style={{ background:T.surface,borderRadius:"16px",border:"1px solid "+T.border,padding:"20px" }}>
+              <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"15px",fontWeight:700,color:T.heading,margin:"0 0 16px" }}>📅 Agenda desta semana</h3>
+              <WeeklyGlobalView weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={false} onEdit={null} onNewEntry={null} theme={T}/>
+            </div>
+          </div>
+        )}
+
+        {/* ── MODULE: AGENDA ── */}
+        {activeModule==="agenda" && (
+          <div style={{ display:"flex",flexDirection:"column",flex:1 }}>
+            {/* Filtros */}
+            <div style={{ background:T.surface,padding:"10px 28px",display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"center",borderBottom:"1px solid "+T.border }}>
+              {!isConsultor && (
+                <select value={selectedConsultor||""} onChange={e=>setSelectedConsultor(e.target.value||null)}
+                  style={{ padding:"7px 12px",borderRadius:"10px",border:"1px solid "+T.inputBorder,background:T.inputBg,color:T.inputColor,fontSize:"12px",cursor:"pointer",minWidth:"168px",fontFamily:"inherit",fontWeight:500 }}>
+                  <option value="">Todos os consultores</option>
+                  {consultores.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+              )}
+              {isConsultor && (
+                <div style={{ display:"flex",alignItems:"center",gap:"8px",padding:"5px 12px 5px 8px",borderRadius:"99px",background:T.btnInactive,border:"1px solid "+T.border }}>
+                  <div style={{ width:"22px",height:"22px",borderRadius:"50%",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"9px",fontWeight:800,color:"#fff" }}>{getInitials(currentUser.consultorName||"")}</div>
+                  <span style={{ fontSize:"12px",fontWeight:600,color:T.heading }}>{currentUser.consultorName}</span>
+                </div>
+              )}
+              <select value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)}
+                style={{ padding:"7px 12px",borderRadius:"10px",border:"1px solid "+T.inputBorder,background:T.inputBg,color:T.inputColor,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",fontWeight:500 }}>
+                {allMonths.map(m=><option key={m} value={m}>{m}</option>)}
+              </select>
+              <div style={{ position:"relative",display:"flex",alignItems:"center" }}>
+                <span style={{ position:"absolute",left:"10px",fontSize:"12px",color:T.text3,pointerEvents:"none" }}>🔍</span>
+                <input placeholder="Buscar cliente..." value={searchClient} onChange={e=>setSearchClient(e.target.value)}
+                  style={{ padding:"7px 12px 7px 30px",borderRadius:"10px",border:"1px solid "+T.inputBorder,background:T.inputBg,color:T.inputColor,fontSize:"12px",minWidth:"160px",fontFamily:"inherit" }}/>
+              </div>
+              {selectedConsultor && (
+                <div style={{ display:"flex",gap:"2px",background:T.btnInactive,borderRadius:"10px",padding:"2px",border:"1px solid "+T.border }}>
+                  {[["semanal","📅 Semanal"],["mensal","🗓 Mensal"]].map(([v,l])=>(
+                    <button key={v} onClick={()=>setConsultorViewMode(v)} className="nav-btn"
+                      style={{ padding:"5px 14px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"11px",background:consultorViewMode===v?T.accent:"transparent",color:consultorViewMode===v?"#fff":T.text2 }}>{l}</button>
+                  ))}
+                </div>
+              )}
+              {/* View tabs */}
+              <div style={{ marginLeft:"auto",display:"flex",gap:"2px",background:T.btnInactive,borderRadius:"10px",padding:"2px",border:"1px solid "+T.border }}>
+                {VIEWS.map(v=>(
+                  <button key={v} onClick={()=>setView(v)} className={"nav-btn"+(view===v?" active":"")}
+                    style={{ padding:"5px 12px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"11px",background:view===v?T.accent:"transparent",color:view===v?"#fff":T.text2,whiteSpace:"nowrap" }}>
+                    {VIEW_LABELS[v]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Content area */}
+            <div style={{ padding:"24px 28px",flex:1 }}>
+              {view==="grid" && (
+                selectedConsultor
+                  ? consultorViewMode==="semanal"
+                    ? selectedMonth!=="Todos"&&calendarData
+                      ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
+                      : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}><div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>Selecione um mês específico para ver a visualização semanal</div>
+                    : <CalendarioMensal data={{[selectedConsultor]: scheduleData[selectedConsultor]||[]}} selectedMonth={selectedMonth} allMonths={allMonths} consultores={[selectedConsultor]} clientColors={clientColorMap} readonly={!canEdit} onEdit={canEdit?(entry)=>{setEditEntry(entry);setShowModal(true);}:null} onDelete={canEdit?handleDeleteEntry:null} onNewEntry={canEdit?({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); }:null}/>
+                  : <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:"16px" }}>
+                      {Object.entries(filteredData).filter(([,e])=>e.length>0).map(([name,entries])=>(
+                        <ConsultorCard key={name} name={name} entries={entries} idx={consultores.indexOf(name)} onClick={()=>!isConsultor&&setSelectedConsultor(selectedConsultor===name?null:name)} selected={selectedConsultor===name}/>
+                      ))}
+                    </div>
+              )}
+              {view==="calendario" && (
+                selectedConsultor && consultorViewMode==="semanal"
+                  ? selectedMonth!=="Todos"&&calendarData
+                    ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
+                    : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}><div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>Selecione um mês específico para ver a visualização semanal</div>
+                  : <CalendarioMensal data={filteredData} selectedMonth={selectedMonth} allMonths={allMonths} consultores={isConsultor?[currentUser.consultorName]:consultores} clientColors={clientColorMap} readonly={!canEdit} onEdit={canEdit?(entry)=>{setEditEntry(entry);setShowModal(true);}:null} onDelete={canEdit?handleDeleteEntry:null} onNewEntry={canEdit?({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); }:null}/>
+              )}
+              {view==="semanal" && <WeeklyGlobalView weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={canEdit} onEdit={(entry,name)=>{setEditEntry({...entry,consultor:name});setShowModal(true);}} onNewEntry={canEdit?({consultor,month,day,year})=>{setEditEntry({consultor,month,day,year,prefill:true});setShowModal(true);}:null} theme={T}/>}
+              {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
+              {view==="stats" && <StatsView stats={stats}/>}
+            </div>
+          </div>
+        )}
+
+        {/* ── MODULE: GRADE (consultor) ── */}
+        {activeModule==="grade" && (
+          <div style={{ padding:"28px 32px",flex:1 }}>
+            <GradeConhecimento consultorName={currentUser.consultorName||currentUser.nome||currentUser.username||""} userId={currentUser.uid} readOnly={false}/>
+          </div>
+        )}
+
+        {/* ── MODULE: VIAGENS ── */}
+        {activeModule==="viagens" && (
+          <div style={{ padding:"28px 32px",flex:1 }}>
+            <ModuloViagens currentUser={currentUser} canEdit={canEdit} canManage={canManage} consultores={consultores} theme={T}/>
+          </div>
+        )}
+
+        {/* ── MODULE: PROJETOS ── */}
+        {activeModule==="projetos" && (
+          <div style={{ padding:"28px 32px",flex:1 }}>
+            <ModuloProjetos currentUser={currentUser} canEdit={canEdit} canManage={canManage} consultores={consultores} clients={clientList} theme={T}/>
+          </div>
+        )}
+
+        {/* ── MODULE: CADASTROS ── */}
+        {activeModule==="cadastros" && canManage && (
+          <div style={{ padding:"28px 32px",flex:1 }}>
+            <CadastrosView
+              consultores={consultores} clients={clientList} projects={projects}
+              onAddConsultor={handleAddConsultor} onRemoveConsultor={handleRemoveConsultor} onUpdateConsultor={handleUpdateConsultor}
+              onAddClient={handleAddClient} onRemoveClient={handleRemoveClient} onUpdateClient={handleUpdateClient}
+              onAddProject={handleAddProject} onRemoveProject={handleRemoveProject} onUpdateProject={handleUpdateProject}
+              emailConfig={emailConfig} onSaveEmailConfig={handleSaveEmailConfig}
+            />
+          </div>
+        )}
+      </div>
 
       {/* TOAST */}
       {toast && (
         <div style={{ position:"fixed",bottom:"24px",right:"24px",background:isDark?"#18181f":"#ffffff",color:T.heading,padding:"12px 18px",borderRadius:"14px",fontWeight:600,fontSize:"13px",zIndex:9999,boxShadow:"0 8px 40px rgba(0,0,0,0.5)",animation:"fadeUp .25s cubic-bezier(.4,0,.2,1)",display:"flex",alignItems:"center",gap:"10px",maxWidth:"360px",border:"1px solid "+(isDark?"#2a2a3a":"#e4e4ea"),borderLeft:"3px solid "+(toast.color||"#6c63ff") }}>
-          <div style={{ width:"8px",height:"8px",borderRadius:"50%",background:toast.color||"#6c63ff",flexShrink:0 }}/>
-          {toast.msg}
+          <div style={{ width:"8px",height:"8px",borderRadius:"50%",background:toast.color||"#6c63ff",flexShrink:0 }}/>{toast.msg}
         </div>
       )}
 
       {/* MODAL */}
       {showModal && canEdit && (
-        <AgendaModal
-          consultores={consultores}
-          clients={clientList.map(c=>c.name)}
-          months={MONTHS_ORDER}
-          editEntry={editEntry}
-          onSave={handleSaveEntry}
-          onClose={()=>{setShowModal(false);setEditEntry(null);}}
-        />
+        <AgendaModal consultores={consultores} clients={clientList.map(c=>c.name)} months={MONTHS_ORDER} editEntry={editEntry} onSave={handleSaveEntry} onClose={()=>{setShowModal(false);setEditEntry(null);}}/>
       )}
 
-      {/* READONLY BANNER */}
-      {(isViewer || isConsultor) && (
-        <div style={{ background:isDark?"#f5a62308":"#fffbeb",borderBottom:"1px solid "+(isDark?"#f5a62320":"#fcd34d"),padding:"6px 32px",display:"flex",alignItems:"center",gap:"8px" }}>
-          <span style={{ fontSize:"11px" }}>🔒</span>
-          <span style={{ fontSize:"11px",color:"#f5a623",fontWeight:600,letterSpacing:"0.1px" }}>
-            {isConsultor
-              ? `Acesso restrito — visualizando apenas a agenda de ${currentUser.consultorName}.`
-              : "Modo visualização — sem permissão para editar agendas."}
-          </span>
-        </div>
-      )}
-
-      {/* FILTERS */}
-      {view !== "cadastros" && (
-        <div style={{ background:T.surface,padding:"10px 32px",display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"center",borderBottom:"1px solid "+T.border }}>
-          {!isConsultor && (
-            <select value={selectedConsultor||""} onChange={e=>setSelectedConsultor(e.target.value||null)}
-              style={{ padding:"7px 12px",borderRadius:"10px",border:"1px solid "+T.inputBorder,background:T.inputBg,color:T.inputColor,fontSize:"12px",cursor:"pointer",minWidth:"168px",fontFamily:"inherit",fontWeight:500 }}>
-              <option value="">Todos os consultores</option>
-              {consultores.map(c=><option key={c} value={c}>{c}</option>)}
-            </select>
-          )}
-          {isConsultor && (
-            <div style={{ display:"flex",alignItems:"center",gap:"8px",padding:"5px 12px 5px 8px",borderRadius:"99px",background:T.btnInactive,border:"1px solid "+T.border }}>
-              <div style={{ width:"22px",height:"22px",borderRadius:"50%",background:`linear-gradient(135deg,#6c63ff,#a78bfa)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"9px",fontWeight:800,color:"#fff" }}>{getInitials(currentUser.consultorName||"")}</div>
-              <span style={{ fontSize:"12px",fontWeight:600,color:T.heading }}>{currentUser.consultorName}</span>
-            </div>
-          )}
-          <select value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)}
-            style={{ padding:"7px 12px",borderRadius:"10px",border:"1px solid "+T.inputBorder,background:T.inputBg,color:T.inputColor,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",fontWeight:500 }}>
-            {allMonths.map(m=><option key={m} value={m}>{m}</option>)}
-          </select>
-          <div style={{ position:"relative",display:"flex",alignItems:"center" }}>
-            <span style={{ position:"absolute",left:"10px",fontSize:"12px",color:T.text3,pointerEvents:"none" }}>🔍</span>
-            <input placeholder="Buscar cliente..." value={searchClient} onChange={e=>setSearchClient(e.target.value)}
-              style={{ padding:"7px 12px 7px 30px",borderRadius:"10px",border:"1px solid "+T.inputBorder,background:T.inputBg,color:T.inputColor,fontSize:"12px",minWidth:"160px",fontFamily:"inherit" }}/>
-          </div>
-          {selectedConsultor && (
-            <div style={{ display:"flex",gap:"2px",background:T.btnInactive,borderRadius:"10px",padding:"2px",border:"1px solid "+T.border }}>
-              <button onClick={()=>setConsultorViewMode("semanal")} className="nav-btn"
-                style={{ padding:"5px 14px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"11px",background:consultorViewMode==="semanal"?T.accent:"transparent",color:consultorViewMode==="semanal"?"#fff":T.text2 }}>📅 Semanal</button>
-              <button onClick={()=>setConsultorViewMode("mensal")} className="nav-btn"
-                style={{ padding:"5px 14px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"11px",background:consultorViewMode==="mensal"?T.accent:"transparent",color:consultorViewMode==="mensal"?"#fff":T.text2 }}>🗓 Mensal</button>
-            </div>
-          )}
-          {/* Stats */}
-          <div style={{ marginLeft:"auto",display:"flex",gap:"16px",alignItems:"center" }}>
-            <div style={{ fontSize:"11px",color:T.text3,display:"flex",alignItems:"center",gap:"5px" }}>
-              <span style={{ width:"6px",height:"6px",borderRadius:"50%",background:"#6c63ff",display:"inline-block" }}/>
-              <span style={{ fontWeight:700,color:T.text2 }}>{consultores.length}</span> consultores
-            </div>
-            <div style={{ width:"1px",height:"12px",background:T.border }}/>
-            <div style={{ fontSize:"11px",color:T.text3,display:"flex",alignItems:"center",gap:"5px" }}>
-              <span style={{ width:"6px",height:"6px",borderRadius:"50%",background:"#22d3a0",display:"inline-block" }}/>
-              <span style={{ fontWeight:700,color:T.text2 }}>{Object.values(scheduleData).flat().filter(e=>e.type==="client").length}</span> dias agendados
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CONTENT */}
-      <div style={{ padding:"24px 32px",flex:1 }}>
-        {view==="grid" && (
-          selectedConsultor
-            ? consultorViewMode==="semanal"
-              ? selectedMonth!=="Todos"&&calendarData
-                ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
-                : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}>
-                    <div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>
-                    Selecione um mês específico para ver a visualização semanal
-                  </div>
-              : <CalendarioMensal
-                  data={{[selectedConsultor]: scheduleData[selectedConsultor]||[]}}
-                  selectedMonth={selectedMonth}
-                  allMonths={allMonths}
-                  consultores={[selectedConsultor]}
-                  clientColors={clientColorMap}
-                  readonly={!canEdit}
-                  onEdit={canEdit ? (entry)=>{setEditEntry(entry);setShowModal(true);} : null}
-                  onDelete={canEdit ? handleDeleteEntry : null}
-                  onNewEntry={canEdit ? ({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); } : null}
-                />
-            : <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:"16px" }}>
-                {Object.entries(filteredData).filter(([,e])=>e.length>0).map(([name,entries])=>(
-                  <ConsultorCard key={name} name={name} entries={entries} idx={consultores.indexOf(name)} onClick={()=>!isConsultor&&setSelectedConsultor(selectedConsultor===name?null:name)} selected={selectedConsultor===name}/>
-                ))}
-              </div>
-        )}
-        {view==="calendario" && (
-          selectedConsultor && consultorViewMode==="semanal"
-            ? selectedMonth!=="Todos"&&calendarData
-              ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
-              : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}>
-                  <div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>
-                  Selecione um mês específico para ver a visualização semanal
-                </div>
-            : <CalendarioMensal
-                data={isConsultor ? {[currentUser.consultorName]: scheduleData[currentUser.consultorName]||[]} : scheduleData}
-                selectedMonth={selectedMonth}
-                allMonths={allMonths}
-                consultores={isConsultor ? [currentUser.consultorName] : consultores}
-                clientColors={clientColorMap}
-                readonly={!canEdit}
-                onEdit={canEdit ? (entry)=>{setEditEntry(entry);setShowModal(true);} : null}
-                onDelete={canEdit ? handleDeleteEntry : null}
-                onNewEntry={canEdit ? ({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); } : null}
-              />
-        )}
-        {view==="semanal" && <WeeklyGlobalView weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={canEdit} onEdit={(entry,name)=>{setEditEntry({...entry,consultor:name});setShowModal(true);}} onNewEntry={canEdit?({consultor,month,day,year})=>{setEditEntry({consultor,month,day,year,prefill:true});setShowModal(true);}:null} theme={T}/>}
-        {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
-        {view==="stats" && <StatsView stats={stats}/>}
-
-        {view==="grade" && (
-          <GradeConhecimento
-            consultorName={currentUser.consultorName || currentUser.nome || currentUser.username || ""}
-            userId={currentUser.uid}
-            readOnly={false}
-          />
-        )}
-
-        {view==="cadastros" && canManage && (
-          <CadastrosView
-            consultores={consultores} clients={clientList} projects={projects}
-            onAddConsultor={handleAddConsultor} onRemoveConsultor={handleRemoveConsultor} onUpdateConsultor={handleUpdateConsultor}
-            onAddClient={handleAddClient} onRemoveClient={handleRemoveClient} onUpdateClient={handleUpdateClient}
-            onAddProject={handleAddProject} onRemoveProject={handleRemoveProject} onUpdateProject={handleUpdateProject}
-            emailConfig={emailConfig} onSaveEmailConfig={handleSaveEmailConfig}
-          />
-        )}
-      </div>
       {showUserMgmt && (
-        <GerenciarUsuarios
-          consultores={consultores}
-          onAddConsultor={handleAddConsultor}
-          onClose={() => setShowUserMgmt(false)}
-        />
+        <GerenciarUsuarios consultores={consultores} onAddConsultor={handleAddConsultor} onClose={()=>setShowUserMgmt(false)}/>
       )}
     </div>
   );
