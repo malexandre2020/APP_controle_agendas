@@ -1090,39 +1090,61 @@ const NIVEIS = [
 ];
 
 function GradeConhecimento({ consultorName, userId, readOnly }) {
-  const [grade, setGrade] = React.useState({}); // { "SIGACOM": "senior", ... }
+  const [grade, setGrade] = React.useState({});
   const [produtosSel, setProdutosSel] = React.useState(new Set());
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [activeProd, setActiveProd] = React.useState("Protheus");
   const [search, setSearch] = React.useState("");
+  const [erro, setErro] = React.useState(null);
+
+  // Gera key segura para Firestore (só letras, números e underscore, max 100 chars)
+  const makeKey = (name) =>
+    "grade_" + (name||"").trim().toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"").slice(0,80);
 
   // Carregar do Firestore
   React.useEffect(() => {
-    if (!consultorName) { setLoading(false); return; }
-    setLoading(true);
-    setGrade({});
-    setProdutosSel(new Set());
-    const key = "grade_" + consultorName.trim().toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
-    loadFromFirestore(key, {}).then(data => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setErro(null);
+      setGrade({});
+      setProdutosSel(new Set());
+      if (!consultorName) { setLoading(false); return; }
       try {
-        if (data && typeof data === "object") {
-          setGrade(data.modulos || {});
-          setProdutosSel(new Set(Array.isArray(data.produtos) ? data.produtos : []));
+        const key = makeKey(consultorName);
+        const snap = await getDoc(doc(db, "app_data", key));
+        if (cancelled) return;
+        if (snap.exists()) {
+          const val = snap.data().value || {};
+          setGrade(val.modulos || {});
+          setProdutosSel(new Set(Array.isArray(val.produtos) ? val.produtos : []));
         }
-      } catch(e) { console.warn("Grade load error:", e); }
-      setLoading(false);
-    }).catch(() => setLoading(false));
+      } catch(e) {
+        if (!cancelled) setErro("Erro ao carregar grade: " + e.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
   }, [consultorName]);
 
   const handleSave = async () => {
     setSaving(true);
-    const key = "grade_" + consultorName.trim().toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
-    await saveToFirestore(key, { modulos: grade, produtos: [...produtosSel], atualizadoEm: new Date().toISOString() });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      const key = makeKey(consultorName);
+      await setDoc(doc(db, "app_data", key), { value: { modulos: grade, produtos: [...produtosSel], atualizadoEm: new Date().toISOString() } });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch(e) {
+      console.error("Erro ao salvar grade:", e);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggleProduto = (prod) => {
@@ -1156,7 +1178,15 @@ function GradeConhecimento({ consultorName, userId, readOnly }) {
 
   if (loading) return (
     <div style={{ textAlign:"center",padding:"60px",color:"#3e3e55" }}>
-      <div style={{ fontSize:"32px",marginBottom:"12px" }}>⏳</div>Carregando grade...
+      <div style={{ width:"32px",height:"32px",border:"3px solid #1f1f2e",borderTop:"3px solid #6c63ff",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto 16px" }}/>
+      <div style={{ fontSize:"13px" }}>Carregando grade de conhecimento...</div>
+    </div>
+  );
+
+  if (erro) return (
+    <div style={{ textAlign:"center",padding:"60px",color:"#f04f5e",background:"#f04f5e10",borderRadius:"16px",border:"1px solid #f04f5e30" }}>
+      <div style={{ fontSize:"32px",marginBottom:"12px" }}>⚠️</div>
+      <div style={{ fontSize:"13px" }}>{erro}</div>
     </div>
   );
 
