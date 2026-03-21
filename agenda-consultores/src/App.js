@@ -3818,10 +3818,11 @@ function Dashboard({ currentUser, onLogout }) {
   const [toast, setToast] = useState(null);
   const [showUserMgmt, setShowUserMgmt] = useState(false);
   const [theme, setTheme] = useState("dark");
-  const [activeModule, setActiveModule] = useState(isConsultor ? "agenda" : "home"); // home | agenda | viagens | projetos
+  const [activeModule, setActiveModule] = useState(isConsultor ? "agenda" : "home");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [usuarios, setUsuarios] = useState([]);
   const [emailConfig, setEmailConfig] = useState(EMAIL_CONFIG_DEFAULT);
-  const [consultorViewMode, setConsultorViewMode] = useState("mensal"); // "semanal" | "mensal"
+  const [consultorViewMode, setConsultorViewMode] = useState("mensal");
 
   const isDark = theme === "dark";
   const T = {
@@ -4312,7 +4313,6 @@ function Dashboard({ currentUser, onLogout }) {
   const MODULES_CONSULTOR= ALL_MODULES_CONSULTOR.filter(m=> !modulosHabilitados || modulosHabilitados.includes(m.id));
   const MODULES = isConsultor ? MODULES_CONSULTOR : MODULES_ADMIN;
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const SIDEBAR_W     = sidebarCollapsed ? 60 : 220;
   const SIDEBAR_TRANS = "width .22s cubic-bezier(.4,0,.2,1)";
 
