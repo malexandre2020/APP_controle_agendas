@@ -94,15 +94,24 @@ function genId() { return Date.now().toString(36) + Math.random().toString(36).s
 
 function ensureIds(scheduleData) {
   const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth(); // 0-11
   const result = {};
   for (const [c, entries] of Object.entries(scheduleData||{})) {
     result[c] = (entries||[]).map(e => {
       let upd = e.id ? e : {...e, id: genId()};
       if (!upd.year) {
-        // Inferir ano a partir de criadoEm, se disponível
         let inferredYear = currentYear;
         if (upd.criadoEm) {
           try { inferredYear = new Date(upd.criadoEm).getFullYear(); } catch(_) {}
+        } else {
+          // Inferir pelo mês: Set-Dez sem criadoEm → provavelmente ano anterior
+          const mIdx = MONTHS_ORDER.findIndex(m => m.toUpperCase() === (upd.month||"").toUpperCase());
+          if (mIdx >= 0) {
+            // Se o mês da entrada é posterior ao mês atual, é do ano anterior
+            if (mIdx > currentMonth) {
+              inferredYear = currentYear - 1;
+            }
+          }
         }
         upd = {...upd, year: inferredYear};
       }
@@ -1903,16 +1912,22 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
   const lookup = {};
   for (const [name, entries] of Object.entries(data)) {
     lookup[name] = {};
-    entries.filter(e=>e.month.toUpperCase()===calMes.toUpperCase() && e.year===calAno)
-      .forEach(e=>{ if (!lookup[name][e.day]) lookup[name][e.day]=[]; lookup[name][e.day].push(e); });
+    entries.filter(e => {
+      const monthMatch = e.month.toUpperCase() === calMes.toUpperCase();
+      const yearMatch  = !e.year || e.year === calAno;
+      return monthMatch && yearMatch;
+    }).forEach(e=>{ if (!lookup[name][e.day]) lookup[name][e.day]=[]; lookup[name][e.day].push(e); });
   }
 
   // All unique clients present in this month
   const allClientsInMonth = React.useMemo(() => {
     const set = new Set();
     consultores.forEach(name => {
-      (data[name]||[]).filter(e=>e.month.toUpperCase()===calMes.toUpperCase()&&e.year===calAno&&e.type==="client")
-        .forEach(e => set.add(normalizeClient(e.client)));
+      (data[name]||[]).filter(e =>
+        e.month.toUpperCase()===calMes.toUpperCase() &&
+        (!e.year || e.year===calAno) &&
+        e.type==="client"
+      ).forEach(e => set.add(normalizeClient(e.client)));
     });
     return [...set].sort();
   }, [data, consultores, calMes]);
@@ -1946,7 +1961,11 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
 
   const clientFilterActive = selectedClients.size < allClientsInMonth.length;
 
-  const allConsultoresWithData = consultores.filter(name=>(data[name]||[]).some(e=>e.month.toUpperCase()===calMes.toUpperCase()&&e.year===calAno));
+  const allConsultoresWithData = consultores.filter(name=>
+    (data[name]||[]).some(e =>
+      e.month.toUpperCase()===calMes.toUpperCase() && (!e.year || e.year===calAno)
+    )
+  );
   const activeConsultores = consultores.filter(name => selectedConsultores.has(name));
 
   // Map month name → approximate year/month for Date calculations
@@ -3686,7 +3705,9 @@ function Dashboard({ currentUser, onLogout }) {
                   Selecione um mês específico para ver a visualização semanal
                 </div>
             : <CalendarioMensal
-                data={filteredData} selectedMonth={selectedMonth} allMonths={allMonths}
+                data={isConsultor ? {[currentUser.consultorName]: scheduleData[currentUser.consultorName]||[]} : scheduleData}
+                selectedMonth={selectedMonth}
+                allMonths={allMonths}
                 consultores={isConsultor ? [currentUser.consultorName] : consultores}
                 clientColors={clientColorMap}
                 readonly={!canEdit}
