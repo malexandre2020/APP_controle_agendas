@@ -745,67 +745,340 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 // GRADE DE CONHECIMENTO TOTVS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TOTVS_PRODUTOS = ["Protheus","RM","Datasul","Fluig"];
+const TOTVS_GRUPOS = {
+  Protheus: {
+    // Backoffice / Administrativo
+    "SIGAATF":"Backoffice / Administrativo", "SIGACOM":"Backoffice / Administrativo",
+    "SIGAEST":"Backoffice / Administrativo", "SIGAFAT":"Backoffice / Administrativo",
+    "SIGAFIN":"Backoffice / Administrativo", "SIGACTB":"Backoffice / Administrativo",
+    "SIGAFIS":"Backoffice / Administrativo", "SIGAPCO":"Backoffice / Administrativo",
+    // Comercial / Vendas
+    "SIGAOMS":"Comercial / Vendas", "SIGATMK":"Comercial / Vendas",
+    "SIGALOJA":"Comercial / Vendas","SIGAFRT":"Comercial / Vendas",
+    "SIGACTR":"Comercial / Vendas",
+    // Logística
+    "SIGAWMS":"Logística", "SIGATMS":"Logística",
+    // Manufatura / Produção
+    "SIGAPCP":"Manufatura / Produção", "SIGAMNT":"Manufatura / Produção",
+    "SIGAOFI":"Manufatura / Produção", "SIGACFG":"Manufatura / Produção",
+    "SIGAMES":"Manufatura / Produção",
+    // Qualidade
+    "SIGAQIE":"Qualidade", "SIGAQIP":"Qualidade", "SIGAQMT":"Qualidade",
+    "SIGAQNC":"Qualidade", "SIGAQAD":"Qualidade", "SIGAQCP":"Qualidade",
+    "SIGAQDO":"Qualidade",
+    // Recursos Humanos
+    "SIGAGPE":"Recursos Humanos", "SIGAPON":"Recursos Humanos",
+    "SIGARSP":"Recursos Humanos", "SIGATRM":"Recursos Humanos",
+    "SIGACSA":"Recursos Humanos", "SIGAPLS":"Recursos Humanos",
+    "SIGATCF":"Recursos Humanos",
+    // Serviços e Projetos
+    "SIGATEC":"Serviços e Projetos", "SIGAPMS":"Serviços e Projetos",
+    "SIGAENG":"Serviços e Projetos",
+    // Comércio Exterior
+    "SIGAEIC":"Comércio Exterior", "SIGAEXP":"Comércio Exterior",
+    // Outros
+    "SIGAVEI":"Outros módulos específicos", "SIGAFRO":"Outros módulos específicos",
+    "SIGAAGR":"Outros módulos específicos", "SIGASAU":"Outros módulos específicos",
+    "SIGALOG":"Outros módulos específicos",
+  },
+  RM: {
+    // Backoffice / Administrativo & Controladoria
+    "RM_NUC": "Backoffice / Administrativo & Controladoria",
+    "RM_FLX": "Backoffice / Administrativo & Controladoria",
+    "RM_SAL": "Backoffice / Administrativo & Controladoria",
+    "RM_LIB": "Backoffice / Administrativo & Controladoria",
+    "RM_BON": "Backoffice / Administrativo & Controladoria",
+    "RM_FAC": "Backoffice / Administrativo & Controladoria",
+    "RM_OFC": "Backoffice / Administrativo & Controladoria",
+    "RM_SOL": "Backoffice / Administrativo & Controladoria",
+    // Comercial / Relacionamento
+    "RM_AGL": "Comercial / Relacionamento",
+    "RM_POR": "Comercial / Relacionamento",
+    // Recursos Humanos
+    "RM_LAB": "Recursos Humanos",
+    "RM_VIT": "Recursos Humanos",
+    "RM_CHR": "Recursos Humanos",
+    "RM_TES": "Recursos Humanos",
+    "RM_TRN": "Recursos Humanos",
+    // Educacional
+    "RM_CLS": "Educacional",
+    "RM_BIB": "Educacional",
+    // Saúde
+    "RM_SAU": "Saúde (vertical)",
+    "RM_PLA": "Saúde (vertical)",
+    // Verticais / Especializados
+    "RM_SGI": "Verticais / Especializados",
+    // Business Intelligence & Portais
+    "RM_BIS": "Business Intelligence & Portais",
+    "RM_POR2":"Business Intelligence & Portais",
+    // Infraestrutura / Plataforma
+    "RM_REP": "Infraestrutura / Plataforma",
+    "RM_FWK": "Infraestrutura / Plataforma",
+    "RM_EAI": "Infraestrutura / Plataforma",
+  },
+  Datasul: {
+    // Financeiro
+    "DS_APB":  "Financeiro", "DS_ACR":  "Financeiro", "DS_CMG":  "Financeiro",
+    "DS_CFL":  "Financeiro", "DS_APL":  "Financeiro", "DS_COB":  "Financeiro", "DS_TES":  "Financeiro",
+    // Controladoria / Contabilidade
+    "DS_FGL":  "Controladoria / Contabilidade", "DS_MGL":  "Controladoria / Contabilidade",
+    "DS_MCT":  "Controladoria / Contabilidade", "DS_ASC":  "Controladoria / Contabilidade",
+    "DS_BUC":  "Controladoria / Contabilidade", "DS_FAS":  "Controladoria / Contabilidade",
+    "DS_ORC":  "Controladoria / Contabilidade",
+    // Fiscal / Tributário
+    "DS_OBF":  "Fiscal / Tributário", "DS_CFG":  "Fiscal / Tributário",
+    "DS_RECI": "Fiscal / Tributário", "DS_TAX":  "Fiscal / Tributário",
+    // Logística / Suprimentos
+    "DS_COM":  "Logística / Suprimentos", "DS_EST":  "Logística / Suprimentos",
+    "DS_RECV": "Logística / Suprimentos", "DS_AVF":  "Logística / Suprimentos",
+    "DS_COT":  "Logística / Suprimentos", "DS_CTR":  "Logística / Suprimentos",
+    // Faturamento / Comercial
+    "DS_FAT":  "Faturamento / Comercial", "DS_PED":  "Faturamento / Comercial",
+    "DS_EMB":  "Faturamento / Comercial", "DS_CRM":  "Faturamento / Comercial",
+    // Comércio Exterior
+    "DS_IMP":  "Comércio Exterior", "DS_EXP":  "Comércio Exterior",
+    "DS_DRB":  "Comércio Exterior", "DS_CAM":  "Comércio Exterior",
+    // Manufatura / Produção
+    "DS_ENG":  "Manufatura / Produção", "DS_MRP":  "Manufatura / Produção",
+    "DS_APS":  "Manufatura / Produção", "DS_CPR":  "Manufatura / Produção",
+    "DS_CFB":  "Manufatura / Produção", "DS_CDP":  "Manufatura / Produção",
+    "DS_CST":  "Manufatura / Produção", "DS_QUAL": "Manufatura / Produção",
+    "DS_MET":  "Manufatura / Produção", "DS_MES":  "Manufatura / Produção",
+    "DS_CFGP": "Manufatura / Produção", "DS_DPR":  "Manufatura / Produção",
+    "DS_MAN":  "Manufatura / Produção",
+    // Recursos Humanos
+    "DS_HCM":  "Recursos Humanos", "DS_FOP":  "Recursos Humanos",
+    "DS_ORG":  "Recursos Humanos", "DS_PJT":  "Recursos Humanos",
+    // Verticais — Agronegócio
+    "DS_GRA":  "Verticais — Agronegócio",
+    // Verticais — Frotas
+    "DS_FRO":  "Verticais — Frotas",
+    // Verticais — Saúde
+    "DS_HOSP": "Verticais — Saúde", "DS_BENE": "Verticais — Saúde", "DS_CMED": "Verticais — Saúde",
+    // Ferramentas / Plataforma
+    "DS_TEC":  "Ferramentas / Plataforma", "DS_EAI":  "Ferramentas / Plataforma",
+    "DS_BI":   "Ferramentas / Plataforma", "DS_SMA":  "Ferramentas / Plataforma",
+  },
+  Fluig: {
+    // ECM
+    "FL_ECM_DOC":  "ECM – Gestão de Documentos", "FL_ECM_VER":  "ECM – Gestão de Documentos",
+    "FL_ECM_PER":  "ECM – Gestão de Documentos", "FL_ECM_DIG":  "ECM – Gestão de Documentos",
+    "FL_ECM_ASS":  "ECM – Gestão de Documentos", "FL_ECM_META": "ECM – Gestão de Documentos",
+    // BPM
+    "FL_BPM_MOD":  "BPM – Gestão de Processos",  "FL_BPM_WFL":  "BPM – Gestão de Processos",
+    "FL_BPM_FORM": "BPM – Gestão de Processos",  "FL_BPM_SLA":  "BPM – Gestão de Processos",
+    "FL_BPM_AUTO": "BPM – Gestão de Processos",
+    // WCM
+    "FL_WCM_PORT": "WCM – Portais e Intranet",   "FL_WCM_INT":  "WCM – Portais e Intranet",
+    "FL_WCM_WID":  "WCM – Portais e Intranet",   "FL_WCM_COLAB":"WCM – Portais e Intranet",
+    "FL_WCM_FORN": "WCM – Portais e Intranet",
+    // Social
+    "FL_SOC_FEED": "Social / Colaboração",        "FL_SOC_COM":  "Social / Colaboração",
+    "FL_SOC_COLAB":"Social / Colaboração",
+    // Integração
+    "FL_INT_API":  "Integração",                  "FL_INT_ERP":  "Integração",
+    "FL_INT_SYNC": "Integração",
+    // Identity
+    "FL_IDN_USR":  "Identity / Segurança",        "FL_IDN_SSO":  "Identity / Segurança",
+    "FL_IDN_AUD":  "Identity / Segurança",
+  }
+};
 
 const TOTVS_MODULOS = {
   Protheus: [
-    { id:"SIGACOM",  label:"SIGACOM",  desc:"Compras" },
-    { id:"SIGAEST",  label:"SIGAEST",  desc:"Estoque e Custos" },
-    { id:"SIGAFAT",  label:"SIGAFAT",  desc:"Faturamento / Comercial" },
-    { id:"SIGAFIN",  label:"SIGAFIN",  desc:"Financeiro" },
-    { id:"SIGAFIS",  label:"SIGAFIS",  desc:"Livros Fiscais / Automação Fiscal" },
-    { id:"SIGACTB",  label:"SIGACTB",  desc:"Contabilidade Gerencial" },
-    { id:"SIGAPCP",  label:"SIGAPCP",  desc:"Planejamento e Controle da Produção" },
-    { id:"SIGAPON",  label:"SIGAPON",  desc:"Ponto Eletrônico" },
-    { id:"SIGARH",   label:"SIGARH / SIGAGPE", desc:"Gestão de Pessoal" },
-    { id:"SIGALOJA", label:"SIGALOJA", desc:"Frente de Loja (PDV)" },
-    { id:"SIGAWMS",  label:"SIGAWMS",  desc:"Gestão de Armazéns" },
-    { id:"SIGATMS",  label:"SIGATMS",  desc:"Gestão de Transportes" },
-    { id:"SIGACRM",  label:"SIGACRM",  desc:"CRM" },
-    { id:"SIGAGCT",  label:"SIGAGCT",  desc:"Gestão de Contratos" },
-    { id:"SIGAPMS",  label:"SIGAPMS",  desc:"Gestão de Projetos" },
-    { id:"SIGAATF",  label:"SIGAATF",  desc:"Ativo Fixo" },
+    // Backoffice / Administrativo
+    { id:"SIGAATF",  label:"SIGAATF",  desc:"Ativo Fixo — controle de imobilizado" },
+    { id:"SIGACOM",  label:"SIGACOM",  desc:"Compras — gestão de compras" },
+    { id:"SIGAEST",  label:"SIGAEST",  desc:"Estoque e Custos — controle de estoque" },
+    { id:"SIGAFAT",  label:"SIGAFAT",  desc:"Faturamento — emissão de notas e faturamento" },
+    { id:"SIGAFIN",  label:"SIGAFIN",  desc:"Financeiro — contas a pagar/receber" },
+    { id:"SIGACTB",  label:"SIGACTB",  desc:"Contabilidade — contabilidade geral" },
+    { id:"SIGAFIS",  label:"SIGAFIS",  desc:"Livros Fiscais — escrituração fiscal" },
     { id:"SIGAPCO",  label:"SIGAPCO",  desc:"Planejamento e Controle Orçamentário" },
-    { id:"SIGAACD",  label:"SIGAACD",  desc:"Automação e Coleta de Dados" },
-    { id:"SIGATEC",  label:"SIGATEC",  desc:"Field Service / Assistência Técnica" },
-    { id:"SIGAOMS",  label:"SIGAOMS",  desc:"Gestão de Distribuição" },
-    { id:"SIGAEIC",  label:"SIGAEIC",  desc:"Easy Import Control" },
-    { id:"SIGAEEC",  label:"SIGAEEC",  desc:"Easy Export Control" },
-    { id:"SIGAEDC",  label:"SIGAEDC",  desc:"Easy Drawback Control" },
-    { id:"SIGAEFF",  label:"SIGAEFF",  desc:"Easy Financing" },
-    { id:"SIGAESS",  label:"SIGAESS",  desc:"Easy Siscoserv" },
-    { id:"SIGAJURI", label:"SIGAJURI", desc:"Gestão de Assuntos Jurídicos" },
-    { id:"SIGAGPE2", label:"SIGAGPE",  desc:"Folha de Pagamento / eSocial" },
+    // Comercial / Vendas
+    { id:"SIGAOMS",  label:"SIGAOMS",  desc:"Order Management System — gestão de pedidos" },
+    { id:"SIGATMK",  label:"SIGATMK",  desc:"Telemarketing — televendas e telecobrança" },
+    { id:"SIGALOJA", label:"SIGALOJA", desc:"Loja / PDV — operação de lojas" },
+    { id:"SIGAFRT",  label:"SIGAFRT",  desc:"Front Loja — frente de caixa" },
+    { id:"SIGACTR",  label:"SIGACTR",  desc:"Contratos — gestão de contratos" },
+    // Logística
+    { id:"SIGAWMS",  label:"SIGAWMS",  desc:"Warehouse Management System — gestão de armazém" },
+    { id:"SIGATMS",  label:"SIGATMS",  desc:"Transportation Management — gestão de transporte" },
+    // Manufatura / Produção
+    { id:"SIGAPCP",  label:"SIGAPCP",  desc:"PCP — Planejamento e Controle de Produção" },
+    { id:"SIGAMNT",  label:"SIGAMNT",  desc:"Manutenção — manutenção de ativos" },
+    { id:"SIGAOFI",  label:"SIGAOFI",  desc:"Oficina — gestão de oficina" },
+    { id:"SIGACFG",  label:"SIGACFG",  desc:"Configurador de produtos" },
+    { id:"SIGAMES",  label:"SIGAMES",  desc:"Manufacturing Execution System" },
+    // Qualidade
+    { id:"SIGAQIE",  label:"SIGAQIE",  desc:"Inspeção de Entradas" },
+    { id:"SIGAQIP",  label:"SIGAQIP",  desc:"Inspeção de Processos" },
+    { id:"SIGAQMT",  label:"SIGAQMT",  desc:"Metrologia" },
+    { id:"SIGAQNC",  label:"SIGAQNC",  desc:"Não conformidades" },
+    { id:"SIGAQAD",  label:"SIGAQAD",  desc:"Auditoria" },
+    { id:"SIGAQCP",  label:"SIGAQCP",  desc:"Controle estatístico de processo" },
+    { id:"SIGAQDO",  label:"SIGAQDO",  desc:"Controle de documentos" },
+    // Recursos Humanos
+    { id:"SIGAGPE",  label:"SIGAGPE",  desc:"Gestão de Pessoal — folha de pagamento" },
+    { id:"SIGAPON",  label:"SIGAPON",  desc:"Ponto Eletrônico" },
     { id:"SIGARSP",  label:"SIGARSP",  desc:"Recrutamento e Seleção" },
-    { id:"SIGATRN",  label:"SIGATRN",  desc:"Treinamento e Desenvolvimento" },
-    { id:"SIGACMD",  label:"SIGACMD",  desc:"Cargos e Salários" },
-    { id:"SIGAMDT",  label:"SIGAMDT",  desc:"Medicina e Segurança do Trabalho" },
+    { id:"SIGATRM",  label:"SIGATRM",  desc:"Treinamento" },
+    { id:"SIGACSA",  label:"SIGACSA",  desc:"Cargos e salários" },
+    { id:"SIGAPLS",  label:"SIGAPLS",  desc:"Plano de saúde" },
+    { id:"SIGATCF",  label:"SIGATCF",  desc:"RH Online" },
+    // Serviços e Projetos
+    { id:"SIGATEC",  label:"SIGATEC",  desc:"Field Service" },
+    { id:"SIGAPMS",  label:"SIGAPMS",  desc:"Gestão de Projetos" },
+    { id:"SIGAENG",  label:"SIGAENG",  desc:"Engenharia" },
+    // Comércio Exterior
+    { id:"SIGAEIC",  label:"SIGAEIC",  desc:"Easy Import Control" },
+    { id:"SIGAEXP",  label:"SIGAEXP",  desc:"Exportação" },
+    // Outros módulos específicos
+    { id:"SIGAVEI",  label:"SIGAVEI",  desc:"Gestão de veículos" },
+    { id:"SIGAFRO",  label:"SIGAFRO",  desc:"Gestão de frotas" },
+    { id:"SIGAAGR",  label:"SIGAAGR",  desc:"Agronegócio" },
+    { id:"SIGASAU",  label:"SIGASAU",  desc:"Saúde" },
+    { id:"SIGALOG",  label:"SIGALOG",  desc:"Logística avançada" },
   ],
   RM: [
-    { id:"RM_FIN",   label:"RM Financeiro",     desc:"Contas a pagar/receber, fluxo de caixa" },
-    { id:"RM_CTB",   label:"RM Contabilidade",  desc:"Contabilidade gerencial e fiscal" },
-    { id:"RM_RH",    label:"RM RH / Folha",     desc:"Gestão de pessoas e folha" },
-    { id:"RM_PMS",   label:"RM Projetos",       desc:"Gestão de projetos e portfólio" },
-    { id:"RM_LAB",   label:"RM Labore",         desc:"Ponto e jornada" },
-    { id:"RM_EDU",   label:"RM Educacional",    desc:"Gestão educacional" },
-    { id:"RM_SAU",   label:"RM Saúde",          desc:"Gestão de saúde" },
-    { id:"RM_ATF",   label:"RM Ativo Fixo",     desc:"Controle de ativos" },
+    // Backoffice / Administrativo & Controladoria
+    { id:"RM_NUC",  label:"RM Nucleus",   desc:"Estoque, compras, faturamento e contratos" },
+    { id:"RM_FLX",  label:"RM Fluxus",    desc:"Gestão financeira, caixa e bancos" },
+    { id:"RM_SAL",  label:"RM Saldus",    desc:"Contabilidade gerencial e fiscal" },
+    { id:"RM_LIB",  label:"RM Liber",     desc:"Gestão fiscal / tributária e obrigações" },
+    { id:"RM_BON",  label:"RM Bonum",     desc:"Ativo imobilizado / patrimônio" },
+    { id:"RM_FAC",  label:"RM Factor",    desc:"Planejamento e Controle da Produção (PCP)" },
+    { id:"RM_OFC",  label:"RM Officina",  desc:"Manutenção industrial / ativos" },
+    { id:"RM_SOL",  label:"RM Solum",     desc:"Construção civil, obras e projetos" },
+    // Comercial / Relacionamento
+    { id:"RM_AGL",  label:"RM Agilis",    desc:"CRM / gestão de relacionamento com clientes" },
+    { id:"RM_POR",  label:"RM Portal",    desc:"Portais corporativos (funcionário, cliente, fornecedor)" },
+    // Recursos Humanos
+    { id:"RM_LAB",  label:"RM Labore",    desc:"Folha de pagamento" },
+    { id:"RM_VIT",  label:"RM Vitae",     desc:"Gestão de pessoas / RH" },
+    { id:"RM_CHR",  label:"RM Chronus",   desc:"Controle de ponto eletrônico" },
+    { id:"RM_TES",  label:"RM Testis",    desc:"Avaliação de desempenho / pesquisas" },
+    { id:"RM_TRN",  label:"RM Training",  desc:"Gestão de treinamento e capacitação" },
+    // Educacional
+    { id:"RM_CLS",  label:"RM Classis",   desc:"Gestão acadêmica (escolas e universidades)" },
+    { id:"RM_BIB",  label:"RM Biblios",   desc:"Controle de acervo e empréstimos" },
+    // Saúde (vertical)
+    { id:"RM_SAU",  label:"RM Saúde",     desc:"Gestão hospitalar" },
+    { id:"RM_PLA",  label:"RM Planos",    desc:"Operadoras de saúde" },
+    // Verticais / Especializados
+    { id:"RM_SGI",  label:"RM SGI",       desc:"Gestão de empreendimentos imobiliários" },
+    // Business Intelligence & Portais
+    { id:"RM_BIS",  label:"RM Bis",       desc:"BI / indicadores e dashboards gerenciais" },
+    { id:"RM_POR2", label:"RM Portal (BI)",desc:"Portais web (RH, aluno, fornecedor etc.)" },
+    // Infraestrutura / Plataforma
+    { id:"RM_REP",  label:"RM Reports",   desc:"Geração de relatórios" },
+    { id:"RM_FWK",  label:"RM Portal Framework", desc:"Portais web" },
+    { id:"RM_EAI",  label:"RM Integrações / EAI", desc:"Integração com outros sistemas TOTVS e ERPs" },
   ],
   Datasul: [
-    { id:"DS_MNT",   label:"Manutenção",         desc:"Gestão de manutenção industrial" },
-    { id:"DS_CHO",   label:"Chão de Fábrica",    desc:"Controle da produção" },
-    { id:"DS_LOG",   label:"Logística",          desc:"Estoque, armazém e distribuição" },
-    { id:"DS_FIN",   label:"Financeiro",         desc:"Financeiro e contabilidade" },
-    { id:"DS_RH",    label:"RH / Folha",         desc:"Gestão de pessoal" },
-    { id:"DS_COM",   label:"Compras",            desc:"Gestão de suprimentos" },
-    { id:"DS_VEN",   label:"Vendas",             desc:"Faturamento e comercial" },
+    // Financeiro
+    { id:"DS_APB",  label:"APB",          desc:"Contas a Pagar" },
+    { id:"DS_ACR",  label:"ACR",          desc:"Contas a Receber" },
+    { id:"DS_CMG",  label:"CMG",          desc:"Caixa e Bancos" },
+    { id:"DS_CFL",  label:"CFL",          desc:"Fluxo de Caixa" },
+    { id:"DS_APL",  label:"APL",          desc:"Aplicações e Empréstimos" },
+    { id:"DS_COB",  label:"COB",          desc:"Cobrança" },
+    { id:"DS_TES",  label:"TES",          desc:"Tesouraria" },
+    // Controladoria / Contabilidade
+    { id:"DS_FGL",  label:"FGL",          desc:"Contabilidade Fiscal" },
+    { id:"DS_MGL",  label:"MGL",          desc:"Contabilidade Gerencial" },
+    { id:"DS_MCT",  label:"MCT",          desc:"Contabilidade" },
+    { id:"DS_ASC",  label:"ASC",          desc:"Cenários Contábeis" },
+    { id:"DS_BUC",  label:"BUC",          desc:"Unidade de Negócio" },
+    { id:"DS_FAS",  label:"FAS",          desc:"Ativo Fixo" },
+    { id:"DS_ORC",  label:"ORC",          desc:"Orçamento" },
+    // Fiscal / Tributário
+    { id:"DS_OBF",  label:"OBF",          desc:"Obrigações Fiscais" },
+    { id:"DS_CFG",  label:"CFG",          desc:"Configurador Fiscal" },
+    { id:"DS_RECI", label:"REC",          desc:"Recuperação de Impostos" },
+    { id:"DS_TAX",  label:"TAX",          desc:"Configurador de Tributos" },
+    // Logística / Suprimentos
+    { id:"DS_COM",  label:"COM",          desc:"Compras" },
+    { id:"DS_EST",  label:"EST",          desc:"Estoque" },
+    { id:"DS_RECV", label:"REC",          desc:"Recebimento" },
+    { id:"DS_AVF",  label:"AVF",          desc:"Avaliação de Fornecedores" },
+    { id:"DS_COT",  label:"COT",          desc:"Cotações de Compras" },
+    { id:"DS_CTR",  label:"CTR",          desc:"Contratos de Compras" },
+    // Faturamento / Comercial
+    { id:"DS_FAT",  label:"FAT",          desc:"Faturamento" },
+    { id:"DS_PED",  label:"PED",          desc:"Pedidos de Venda" },
+    { id:"DS_EMB",  label:"EMB",          desc:"Controle de Embarques" },
+    { id:"DS_CRM",  label:"CRM",          desc:"Relacionamento com clientes" },
+    // Comércio Exterior
+    { id:"DS_IMP",  label:"IMP",          desc:"Importação" },
+    { id:"DS_EXP",  label:"EXP",          desc:"Exportação" },
+    { id:"DS_DRB",  label:"DRB",          desc:"Drawback" },
+    { id:"DS_CAM",  label:"CAM",          desc:"Câmbio" },
+    // Manufatura / Produção
+    { id:"DS_ENG",  label:"ENG",          desc:"Engenharia de Produto" },
+    { id:"DS_MRP",  label:"MRP",          desc:"Planejamento de Materiais" },
+    { id:"DS_APS",  label:"APS",          desc:"Planejamento Avançado de Produção" },
+    { id:"DS_CPR",  label:"CPR",          desc:"Controle de Produção" },
+    { id:"DS_CFB",  label:"CFB",          desc:"Chão de Fábrica" },
+    { id:"DS_CDP",  label:"CDP",          desc:"Coleta de Dados de Produção" },
+    { id:"DS_CST",  label:"CST",          desc:"Custos Industriais" },
+    { id:"DS_QUAL", label:"QUAL",         desc:"Controle de Qualidade" },
+    { id:"DS_MET",  label:"MET",          desc:"Metrologia" },
+    { id:"DS_MES",  label:"MES",          desc:"Manufacturing Execution System" },
+    { id:"DS_CFGP", label:"CFG Produtos", desc:"Configurador de Produtos" },
+    { id:"DS_DPR",  label:"DPR",          desc:"Desenvolvimento de Produtos" },
+    { id:"DS_MAN",  label:"MAN",          desc:"Manutenção Industrial" },
+    // Recursos Humanos
+    { id:"DS_HCM",  label:"HCM",          desc:"Gestão de Pessoas" },
+    { id:"DS_FOP",  label:"FOP",          desc:"Folha de Pagamento" },
+    { id:"DS_ORG",  label:"ORG",          desc:"Desenvolvimento Organizacional" },
+    { id:"DS_PJT",  label:"PJT",          desc:"Controle de Projetos" },
+    // Verticais — Agronegócio
+    { id:"DS_GRA",  label:"GRA",          desc:"Gestão de Grãos" },
+    // Verticais — Frotas
+    { id:"DS_FRO",  label:"FRO",          desc:"Gestão de Frotas" },
+    // Verticais — Saúde
+    { id:"DS_HOSP", label:"Módulo Hospitalar", desc:"Gestão hospitalar" },
+    { id:"DS_BENE", label:"Beneficiários", desc:"Gestão de beneficiários" },
+    { id:"DS_CMED", label:"Contas Médicas",desc:"Gestão de contas médicas" },
+    // Ferramentas / Plataforma
+    { id:"DS_TEC",  label:"TEC",          desc:"Framework Datasul" },
+    { id:"DS_EAI",  label:"EAI",          desc:"Integrações" },
+    { id:"DS_BI",   label:"BI",           desc:"Business Analytics" },
+    { id:"DS_SMA",  label:"SmartView",    desc:"SmartView / Analytics" },
   ],
   Fluig: [
-    { id:"FL_BPM",   label:"BPM / Processos",   desc:"Modelagem e automação de processos" },
-    { id:"FL_ECM",   label:"ECM / Documentos",  desc:"Gestão de documentos" },
-    { id:"FL_PORTAL",label:"Portal / Identidade",desc:"Portal corporativo e SSO" },
-    { id:"FL_FORM",  label:"Formulários",        desc:"Formulários eletrônicos" },
-    { id:"FL_INT",   label:"Integrações",        desc:"APIs e integrações" },
+    // ECM – Gestão de Documentos
+    { id:"FL_ECM_DOC",  label:"Gestão de Documentos",     desc:"Controle e armazenamento de documentos corporativos" },
+    { id:"FL_ECM_VER",  label:"Controle de Versões",      desc:"Versionamento e histórico de documentos" },
+    { id:"FL_ECM_PER",  label:"Permissões e Segurança",   desc:"Controle de acesso e segurança de documentos" },
+    { id:"FL_ECM_DIG",  label:"Digitalização",            desc:"Digitalização, indexação e busca de documentos" },
+    { id:"FL_ECM_ASS",  label:"Assinatura Eletrônica",    desc:"Assinatura e validação eletrônica de documentos" },
+    { id:"FL_ECM_META", label:"Metadados e Pastas",       desc:"Organização por pastas, metadados e categorias" },
+    // BPM – Gestão de Processos
+    { id:"FL_BPM_MOD",  label:"Modelagem de Processos",   desc:"Criação e modelagem de fluxos de trabalho BPMN" },
+    { id:"FL_BPM_WFL",  label:"Workflows e Aprovações",   desc:"Automação de aprovações e tarefas sequenciais" },
+    { id:"FL_BPM_FORM", label:"Formulários Eletrônicos",  desc:"Criação de formulários digitais para processos" },
+    { id:"FL_BPM_SLA",  label:"SLA e Monitoramento",      desc:"Acompanhamento de SLA e indicadores de processos" },
+    { id:"FL_BPM_AUTO", label:"Automação de Processos",   desc:"Automação e robotização de fluxos internos" },
+    // WCM – Portais e Intranet
+    { id:"FL_WCM_PORT", label:"Portais Corporativos",     desc:"Criação e gestão de portais corporativos" },
+    { id:"FL_WCM_INT",  label:"Intranet",                 desc:"Intranet e comunicação interna" },
+    { id:"FL_WCM_WID",  label:"Widgets e Componentes",    desc:"Páginas personalizadas, widgets e componentes visuais" },
+    { id:"FL_WCM_COLAB",label:"Portal do Colaborador",    desc:"Portal do funcionário com autoatendimento" },
+    { id:"FL_WCM_FORN", label:"Portal do Fornecedor",     desc:"Portal externo para fornecedores e clientes" },
+    // Social / Colaboração
+    { id:"FL_SOC_FEED", label:"Feed Corporativo",         desc:"Feed de notícias e comunicação entre equipes" },
+    { id:"FL_SOC_COM",  label:"Comunidades",              desc:"Grupos, comunidades e compartilhamento de arquivos" },
+    { id:"FL_SOC_COLAB",label:"Colaboração em Equipe",    desc:"Comentários, curtidas e interação interna" },
+    // Integração
+    { id:"FL_INT_API",  label:"APIs REST",                desc:"Integração via APIs REST com sistemas externos" },
+    { id:"FL_INT_ERP",  label:"Integração com ERPs",      desc:"Integração com Protheus, Datasul e RM" },
+    { id:"FL_INT_SYNC", label:"Sincronização de Dados",   desc:"Consumo de serviços e sincronização de informações" },
+    // Identity / Segurança
+    { id:"FL_IDN_USR",  label:"Gestão de Usuários",       desc:"Controle de usuários, grupos e papéis" },
+    { id:"FL_IDN_SSO",  label:"Single Sign-On",           desc:"Autenticação centralizada e SSO" },
+    { id:"FL_IDN_AUD",  label:"Auditoria de Acessos",     desc:"Logs de auditoria e rastreabilidade de acessos" },
   ],
 };
 
@@ -993,8 +1266,22 @@ function GradeConhecimento({ consultorName, userId, readOnly }) {
               <tbody>
                 {modulos.map((mod,idx)=>{
                   const nivelAtual = grade[mod.id];
+                  const grupos = TOTVS_GRUPOS[activeProd];
+                  const grupoAtual = grupos?.[mod.id];
+                  const grupoAnterior = idx > 0 ? grupos?.[modulos[idx-1].id] : null;
+                  const showGrupoHeader = grupoAtual && grupoAtual !== grupoAnterior && !search;
                   return (
-                    <tr key={mod.id} style={{ borderBottom:"1px solid #18181f",background:nivelAtual?(NIVEIS.find(n=>n.id===nivelAtual)?.bg||"transparent"):"transparent",transition:"background .15s" }}>
+                    <React.Fragment key={mod.id}>
+                      {showGrupoHeader && (
+                        <tr>
+                          <td colSpan={5} style={{ padding:"10px 16px 6px",background:"#0d0d14",borderBottom:"1px solid #1f1f2e" }}>
+                            <span style={{ fontSize:"10px",fontWeight:700,color:"#6c63ff",letterSpacing:"1px",textTransform:"uppercase" }}>
+                              {grupoAtual}
+                            </span>
+                          </td>
+                        </tr>
+                      )}
+                    <tr style={{ borderBottom:"1px solid #18181f",background:nivelAtual?(NIVEIS.find(n=>n.id===nivelAtual)?.bg||"transparent"):"transparent",transition:"background .15s" }}>
                       <td style={{ padding:"11px 16px" }}>
                         <div style={{ fontSize:"12px",fontWeight:700,color:nivelAtual?"#f0f0fa":"#c8c8d8" }}>{mod.label}</div>
                         <div style={{ fontSize:"11px",color:"#3e3e55",marginTop:"2px" }}>{mod.desc}</div>
@@ -1008,7 +1295,7 @@ function GradeConhecimento({ consultorName, userId, readOnly }) {
                               style={{ width:"36px",height:"36px",borderRadius:"10px",border:"1px solid "+(sel?n.color:"#2a2a3a"),background:sel?n.bg:"transparent",cursor:readOnly?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",transition:"all .15s" }}
                               title={n.label}>
                               {sel
-                                ? <span style={{ fontSize:"16px" }}>●</span>
+                                ? <span style={{ fontSize:"16px",color:n.color }}>●</span>
                                 : <span style={{ fontSize:"14px",color:"#2a2a3a" }}>○</span>
                               }
                             </button>
@@ -1016,6 +1303,7 @@ function GradeConhecimento({ consultorName, userId, readOnly }) {
                         );
                       })}
                     </tr>
+                    </React.Fragment>
                   );
                 })}
                 {modulos.length===0&&(
