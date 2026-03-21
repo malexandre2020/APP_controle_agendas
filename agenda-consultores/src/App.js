@@ -490,7 +490,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
   const btnRed   = { background:"#ef444422",border:"1px solid #ef444444",color:"#ef4444",borderRadius:"6px",padding:"5px 10px",cursor:"pointer",fontSize:"12px",fontWeight:600 };
   const btnEdit  = { background:"#6c63ff22",border:"1px solid #3b82f644",color:"#6c63ff",borderRadius:"6px",padding:"5px 10px",cursor:"pointer",fontSize:"12px",fontWeight:600 };
 
-  const tabs = [["consultores","👥 Consultores"],["clientes","🏢 Clientes"],["projetos","📋 Projetos"],["grade","🎓 Grade TOTVS"],["email","📧 E-mail"]];
+  const tabs = [["consultores","👥 Consultores"],["clientes","🏢 Clientes"],["projetos","📋 Projetos"],["grade","🎓 Grade de Conhecimento"],["email","📧 E-mail"]];
   const [gradeConsultor, setGradeConsultor] = React.useState(consultores[0]||"");
 
   // Enriquece consultores com meta se disponível
@@ -719,18 +719,9 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
         </div>
       )}
 
-      {/* ─────────── GRADE DE CONHECIMENTO ─────────── */}
+      {/* ─────────── GRADE DE CONHECIMENTO CONSULTORES ─────────── */}
       {tab==="grade" && (
-        <div>
-          <div style={{ display:"flex",alignItems:"center",gap:"12px",marginBottom:"20px",flexWrap:"wrap" }}>
-            <span style={{ fontSize:"12px",color:"#6e6e88",fontWeight:600 }}>Visualizar grade de:</span>
-            <select value={gradeConsultor} onChange={e=>setGradeConsultor(e.target.value)}
-              style={{ padding:"8px 14px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",fontFamily:"inherit",cursor:"pointer",outline:"none" }}>
-              {consultores.map(c=><option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <GradeConhecimento consultorName={gradeConsultor} userId={null} readOnly={true}/>
-        </div>
+        <GradeAdminView consultores={consultores}/>
       )}
 
       {/* ─────────── E-MAIL ─────────── */}
@@ -742,7 +733,252 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GRADE DE CONHECIMENTO TOTVS
+// GRADE ADMIN VIEW — busca por produto/módulo + visualização por consultor
+// ─────────────────────────────────────────────────────────────────────────────
+function GradeAdminView({ consultores }) {
+  const [modo, setModo] = React.useState("consultor"); // "consultor" | "busca"
+  const [gradeConsultor, setGradeConsultor] = React.useState(consultores[0]||"");
+
+  // Busca
+  const [filtroProduto, setFiltroProduto] = React.useState("");
+  const [filtroModulo, setFiltroModulo]   = React.useState("");
+  const [resultados, setResultados]       = React.useState(null); // null = ainda não buscou
+  const [buscando, setBuscando]           = React.useState(false);
+
+  const makeKey = (name) =>
+    "grade_" + (name||"").trim().toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"").slice(0,80);
+
+  // Módulos disponíveis para o produto selecionado
+  const modulosDoProduto = React.useMemo(() => {
+    if (!filtroProduto) {
+      // todos os módulos de todos os produtos
+      return TOTVS_PRODUTOS.flatMap(p =>
+        (TOTVS_MODULOS[p]||[]).map(m => ({ ...m, produto: p }))
+      );
+    }
+    return (TOTVS_MODULOS[filtroProduto]||[]).map(m => ({ ...m, produto: filtroProduto }));
+  }, [filtroProduto]);
+
+  const handleBuscar = async () => {
+    setBuscando(true);
+    setResultados(null);
+    try {
+      // Carregar grades de todos os consultores em paralelo
+      const grades = await Promise.all(
+        consultores.map(async (nome) => {
+          try {
+            const snap = await getDoc(doc(db, "app_data", makeKey(nome)));
+            const val = snap.exists() ? (snap.data().value || {}) : {};
+            return { nome, modulos: val.modulos || {}, produtos: val.produtos || [] };
+          } catch { return { nome, modulos: {}, produtos: [] }; }
+        })
+      );
+
+      // Filtrar por produto e/ou módulo
+      const res = [];
+      for (const g of grades) {
+        const entries = Object.entries(g.modulos); // [modId, nivel]
+        for (const [modId, nivel] of entries) {
+          // Encontrar o módulo em TOTVS_MODULOS
+          let modInfo = null, produtoMod = null;
+          for (const p of TOTVS_PRODUTOS) {
+            const m = (TOTVS_MODULOS[p]||[]).find(x => x.id === modId);
+            if (m) { modInfo = m; produtoMod = p; break; }
+          }
+          if (!modInfo) continue;
+          // Aplicar filtros
+          if (filtroProduto && produtoMod !== filtroProduto) continue;
+          if (filtroModulo && modInfo.id !== filtroModulo) continue;
+          res.push({ consultor: g.nome, produto: produtoMod, modId, label: modInfo.label, desc: modInfo.desc, nivel });
+        }
+      }
+
+      // Agrupar por produto > módulo > consultores
+      const agrupado = {};
+      for (const r of res) {
+        if (!agrupado[r.produto]) agrupado[r.produto] = {};
+        if (!agrupado[r.produto][r.modId]) agrupado[r.produto][r.modId] = { label: r.label, desc: r.desc, consultores: [] };
+        agrupado[r.produto][r.modId].consultores.push({ nome: r.consultor, nivel: r.nivel });
+      }
+      setResultados(agrupado);
+    } catch(e) {
+      setResultados({});
+    } finally {
+      setBuscando(false);
+    }
+  };
+
+  const nivelInfo = (id) => NIVEIS.find(n => n.id === id) || { label: id, color: "#6e6e88", bg: "#6e6e8822" };
+  const nivelOrder = { especialista: 0, senior: 1, pleno: 2, junior: 3 };
+
+  const inp  = { padding:"8px 14px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",fontFamily:"inherit",cursor:"pointer",outline:"none" };
+
+  const totalConsultores = resultados ? new Set(
+    Object.values(resultados).flatMap(mods => Object.values(mods).flatMap(m => m.consultores.map(c => c.nome)))
+  ).size : 0;
+  const totalModulos = resultados ? Object.values(resultados).reduce((s, mods) => s + Object.keys(mods).length, 0) : 0;
+
+  return (
+    <div>
+      {/* Header + toggle modo */}
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"24px",flexWrap:"wrap",gap:"12px" }}>
+        <div>
+          <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>
+            🎓 Grade de Conhecimento — Consultores
+          </h2>
+          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>Visualize a grade individual ou pesquise por produto/módulo</p>
+        </div>
+        <div style={{ display:"flex",gap:"2px",background:"#0d0d14",borderRadius:"10px",padding:"3px",border:"1px solid #2a2a3a" }}>
+          <button onClick={()=>setModo("consultor")} style={{ padding:"7px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"12px",fontFamily:"inherit",background:modo==="consultor"?"#6c63ff":"transparent",color:modo==="consultor"?"#fff":"#6e6e88" }}>
+            👤 Por consultor
+          </button>
+          <button onClick={()=>setModo("busca")} style={{ padding:"7px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"12px",fontFamily:"inherit",background:modo==="busca"?"#6c63ff":"transparent",color:modo==="busca"?"#fff":"#6e6e88" }}>
+            🔍 Buscar por produto/módulo
+          </button>
+        </div>
+      </div>
+
+      {/* MODO: Por consultor */}
+      {modo==="consultor" && (
+        <div>
+          <div style={{ display:"flex",alignItems:"center",gap:"12px",marginBottom:"20px",flexWrap:"wrap" }}>
+            <span style={{ fontSize:"12px",color:"#6e6e88",fontWeight:600 }}>Visualizar grade de:</span>
+            <select value={gradeConsultor} onChange={e=>setGradeConsultor(e.target.value)} style={inp}>
+              {consultores.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <GradeConhecimento consultorName={gradeConsultor} userId={null} readOnly={true}/>
+        </div>
+      )}
+
+      {/* MODO: Busca por produto/módulo */}
+      {modo==="busca" && (
+        <div>
+          {/* Filtros */}
+          <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",padding:"20px",marginBottom:"20px" }}>
+            <div style={{ fontSize:"11px",color:"#3e3e55",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",marginBottom:"14px" }}>Filtros de busca</div>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:"12px",alignItems:"end",flexWrap:"wrap" }}>
+              {/* Produto */}
+              <div>
+                <label style={{ fontSize:"11px",color:"#6e6e88",fontWeight:600,display:"block",marginBottom:"6px",letterSpacing:"0.3px" }}>Produto TOTVS</label>
+                <select value={filtroProduto} onChange={e=>{ setFiltroProduto(e.target.value); setFiltroModulo(""); setResultados(null); }} style={{...inp, width:"100%"}}>
+                  <option value="">Todos os produtos</option>
+                  {TOTVS_PRODUTOS.map(p=><option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              {/* Módulo */}
+              <div>
+                <label style={{ fontSize:"11px",color:"#6e6e88",fontWeight:600,display:"block",marginBottom:"6px",letterSpacing:"0.3px" }}>Módulo específico</label>
+                <select value={filtroModulo} onChange={e=>{ setFiltroModulo(e.target.value); setResultados(null); }} style={{...inp, width:"100%"}}>
+                  <option value="">Todos os módulos</option>
+                  {modulosDoProduto.map(m=>(
+                    <option key={m.id} value={m.id}>{m.produto !== filtroProduto && !filtroProduto ? `[${m.produto}] ` : ""}{m.label} — {m.desc}</option>
+                  ))}
+                </select>
+              </div>
+              {/* Botão buscar */}
+              <button onClick={handleBuscar} disabled={buscando}
+                style={{ padding:"9px 24px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"13px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44",whiteSpace:"nowrap",height:"38px" }}>
+                {buscando?"⏳ Buscando...":"🔍 Buscar"}
+              </button>
+            </div>
+          </div>
+
+          {/* Resultados */}
+          {buscando && (
+            <div style={{ textAlign:"center",padding:"48px",color:"#3e3e55" }}>
+              <div style={{ width:"32px",height:"32px",border:"3px solid #1f1f2e",borderTop:"3px solid #6c63ff",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto 14px" }}/>
+              <div style={{ fontSize:"13px" }}>Carregando grades de todos os consultores...</div>
+            </div>
+          )}
+
+          {!buscando && resultados !== null && totalModulos === 0 && (
+            <div style={{ textAlign:"center",padding:"48px",background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e" }}>
+              <div style={{ fontSize:"36px",marginBottom:"12px" }}>🔍</div>
+              <div style={{ fontSize:"14px",color:"#3e3e55" }}>Nenhum consultor cadastrou conhecimento neste produto/módulo ainda.</div>
+            </div>
+          )}
+
+          {!buscando && resultados !== null && totalModulos > 0 && (
+            <div>
+              {/* Resumo */}
+              <div style={{ display:"flex",gap:"16px",marginBottom:"16px",flexWrap:"wrap" }}>
+                <div style={{ padding:"8px 16px",borderRadius:"10px",background:"#6c63ff18",border:"1px solid #6c63ff33",display:"flex",alignItems:"center",gap:"8px" }}>
+                  <span style={{ fontSize:"18px" }}>👥</span>
+                  <div>
+                    <div style={{ fontSize:"18px",fontWeight:800,color:"#a78bfa" }}>{totalConsultores}</div>
+                    <div style={{ fontSize:"10px",color:"#6e6e88" }}>consultor{totalConsultores!==1?"es":""}</div>
+                  </div>
+                </div>
+                <div style={{ padding:"8px 16px",borderRadius:"10px",background:"#22d3a018",border:"1px solid #22d3a033",display:"flex",alignItems:"center",gap:"8px" }}>
+                  <span style={{ fontSize:"18px" }}>📋</span>
+                  <div>
+                    <div style={{ fontSize:"18px",fontWeight:800,color:"#22d3a0" }}>{totalModulos}</div>
+                    <div style={{ fontSize:"10px",color:"#6e6e88" }}>módulo{totalModulos!==1?"s":""} encontrado{totalModulos!==1?"s":""}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Por produto */}
+              {Object.entries(resultados).map(([produto, mods])=>(
+                <div key={produto} style={{ marginBottom:"20px" }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:"10px",marginBottom:"10px" }}>
+                    <div style={{ padding:"4px 12px",borderRadius:"99px",background:"#6c63ff22",border:"1px solid #6c63ff44" }}>
+                      <span style={{ fontSize:"12px",fontWeight:700,color:"#a78bfa" }}>{produto}</span>
+                    </div>
+                    <span style={{ fontSize:"11px",color:"#3e3e55" }}>{Object.keys(mods).length} módulo{Object.keys(mods).length!==1?"s":""}</span>
+                  </div>
+
+                  <div style={{ display:"flex",flexDirection:"column",gap:"8px" }}>
+                    {Object.entries(mods).map(([modId, info])=>{
+                      const sorted = [...info.consultores].sort((a,b) => (nivelOrder[a.nivel]??9)-(nivelOrder[b.nivel]??9));
+                      return (
+                        <div key={modId} style={{ background:"#111118",borderRadius:"12px",border:"1px solid #1f1f2e",padding:"14px 16px" }}>
+                          <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"12px",flexWrap:"wrap" }}>
+                            <div>
+                              <div style={{ fontSize:"13px",fontWeight:700,color:"#f0f0fa" }}>{info.label}</div>
+                              <div style={{ fontSize:"11px",color:"#3e3e55",marginTop:"2px" }}>{info.desc}</div>
+                            </div>
+                            <div style={{ display:"flex",gap:"6px",flexWrap:"wrap",justifyContent:"flex-end" }}>
+                              {sorted.map(({nome,nivel})=>{
+                                const nv = nivelInfo(nivel);
+                                return (
+                                  <div key={nome} style={{ display:"flex",alignItems:"center",gap:"6px",padding:"5px 10px",borderRadius:"8px",background:nv.bg,border:"1px solid "+nv.color+"44" }}>
+                                    <div style={{ width:"20px",height:"20px",borderRadius:"6px",background:`hsl(${(consultores.indexOf(nome)*37)%360},55%,48%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"8px",fontWeight:800,color:"#fff",flexShrink:0 }}>
+                                      {nome.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+                                    </div>
+                                    <span style={{ fontSize:"11px",fontWeight:600,color:"#c8c8d8" }}>{nome.split(" ")[0]}</span>
+                                    <span style={{ fontSize:"10px",fontWeight:700,color:nv.color,padding:"1px 6px",borderRadius:"99px",background:nv.bg }}>{nv.label}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {resultados === null && !buscando && (
+            <div style={{ textAlign:"center",padding:"48px",background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e" }}>
+              <div style={{ fontSize:"36px",marginBottom:"12px" }}>🎯</div>
+              <div style={{ fontSize:"14px",color:"#3e3e55" }}>Selecione os filtros e clique em <strong style={{ color:"#a78bfa" }}>Buscar</strong> para ver quais consultores possuem o conhecimento</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GRADE DE CONHECIMENTO TOTVS (componente do consultor)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TOTVS_PRODUTOS = ["Protheus","RM","Datasul","Fluig"];
