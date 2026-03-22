@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { initializeApp, getApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, getDocs, deleteDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 // ─── FIREBASE CONFIG ──────────────────────────────────────────────────────────
 const firebaseConfig = {
@@ -15,6 +16,7 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
+const storage = getStorage(firebaseApp);
 
 // ─── EMAIL CONFIG DEFAULT (substituído pelas configurações salvas no Firestore) ──
 const EMAIL_CONFIG_DEFAULT = {
@@ -3490,6 +3492,111 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// UPLOAD DE RESERVAS (PDF de hotel e voo) — aparece em viagens aprovadas
+// ─────────────────────────────────────────────────────────────────────────────
+function UploadReserva({ viagem, onUpdate }) {
+  const [uploading, setUploading] = useState(null); // "hotel" | "voo" | null
+  const [erro,      setErro]      = useState(null);
+
+  const TIPOS = [
+    { key:"pdfHotel", label:"🏨 Reserva de Hotel", icon:"🏨" },
+    { key:"pdfVoo",   label:"✈️ Passagem / Voo",  icon:"✈️" },
+  ];
+
+  const handleUpload = async (e, tipo) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/pdf") { setErro("Apenas arquivos PDF são aceitos."); return; }
+    if (file.size > 5 * 1024 * 1024) { setErro("Arquivo muito grande. Máximo 5MB."); return; }
+    setErro(null);
+    setUploading(tipo);
+    try {
+      const path = `viagens/${viagem.id}/${tipo}_${Date.now()}.pdf`;
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file, { contentType:"application/pdf" });
+      const url = await getDownloadURL(storageRef);
+      // Deletar arquivo anterior se existir
+      if (viagem[tipo+"Path"]) {
+        try { await deleteObject(ref(storage, viagem[tipo+"Path"])); } catch(_) {}
+      }
+      onUpdate({ ...viagem, [tipo]: url, [tipo+"Name"]: file.name, [tipo+"Path"]: path });
+    } catch(e) {
+      console.error(e);
+      setErro("Erro ao fazer upload: " + e.message);
+    } finally {
+      setUploading(null);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemove = async (tipo) => {
+    if (!window.confirm("Remover este arquivo?")) return;
+    try {
+      if (viagem[tipo+"Path"]) await deleteObject(ref(storage, viagem[tipo+"Path"]));
+    } catch(_) {}
+    onUpdate({ ...viagem, [tipo]: null, [tipo+"Name"]: null, [tipo+"Path"]: null });
+  };
+
+  return (
+    <div style={{ marginTop:"14px",background:"#0d0d14",borderRadius:"12px",border:"1px solid #1f1f2e",padding:"14px 16px" }}>
+      <div style={{ fontSize:"10px",color:"#6c63ff",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",marginBottom:"12px" }}>
+        📎 Documentos da Reserva
+      </div>
+      {erro && (
+        <div style={{ marginBottom:"10px",padding:"7px 12px",borderRadius:"8px",background:"#f04f5e15",border:"1px solid #f04f5e44",fontSize:"11px",color:"#f04f5e" }}>
+          ⚠️ {erro}
+        </div>
+      )}
+      <div style={{ display:"flex",flexDirection:"column",gap:"10px" }}>
+        {TIPOS.map(({ key, label, icon }) => {
+          const hasFile = !!viagem[key];
+          const isUp    = uploading === key;
+          return (
+            <div key={key} style={{ display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap" }}>
+              {/* Info do arquivo */}
+              <div style={{ flex:1,minWidth:0 }}>
+                <div style={{ fontSize:"12px",fontWeight:600,color:hasFile?"#f0f0fa":"#6e6e88" }}>{label}</div>
+                {hasFile && (
+                  <div style={{ fontSize:"10px",color:"#6e6e88",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                    📄 {viagem[key+"Name"]||"arquivo.pdf"}
+                  </div>
+                )}
+              </div>
+
+              {/* Ações */}
+              <div style={{ display:"flex",gap:"6px",flexShrink:0 }}>
+                {hasFile && (
+                  <>
+                    <a href={viagem[key]} target="_blank" rel="noreferrer"
+                      style={{ padding:"5px 12px",borderRadius:"8px",border:"1px solid #22d3a044",background:"#22d3a018",color:"#22d3a0",fontSize:"11px",fontWeight:700,textDecoration:"none",display:"flex",alignItems:"center",gap:"4px" }}>
+                      👁 Visualizar
+                    </a>
+                    <button onClick={()=>handleRemove(key)}
+                      style={{ padding:"5px 10px",borderRadius:"8px",border:"1px solid #f04f5e44",background:"#f04f5e18",color:"#f04f5e",cursor:"pointer",fontSize:"11px",fontWeight:700,fontFamily:"inherit" }}>
+                      🗑
+                    </button>
+                  </>
+                )}
+                <label style={{ padding:"5px 12px",borderRadius:"8px",border:"1px solid "+(hasFile?"#2a2a3a":"#6c63ff44"),background:hasFile?"transparent":"#6c63ff18",color:hasFile?"#6e6e88":"#a78bfa",fontSize:"11px",fontWeight:700,cursor:isUp?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:"4px",opacity:isUp?0.6:1 }}>
+                  {isUp ? "⏳ Enviando..." : hasFile ? "🔄 Substituir" : "📤 Upload PDF"}
+                  <input type="file" accept="application/pdf" style={{ display:"none" }}
+                    disabled={!!uploading}
+                    onChange={e=>handleUpload(e, key)}/>
+                </label>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ marginTop:"10px",fontSize:"10px",color:"#3e3e55" }}>
+        Formatos aceitos: PDF · Tamanho máximo: 5MB por arquivo
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MÓDULO: SOLICITAÇÃO DE VIAGEM
 // ─────────────────────────────────────────────────────────────────────────────
 function ViagemCard({ viagem, STATUS_CONFIG, canManage, onEdit, onStatusChange, onDelete, onUpdateGastos }) {
@@ -3582,6 +3689,14 @@ function ViagemCard({ viagem, STATUS_CONFIG, canManage, onEdit, onStatusChange, 
           )}
           {viagem.comentarioGestor && (
             <div style={{ marginTop:"10px",fontSize:"12px",color:"#f5a623",background:"#f5a62310",borderRadius:"8px",padding:"8px 12px" }}>💬 Gestor: {viagem.comentarioGestor}</div>
+          )}
+
+          {/* Upload de PDFs — disponível quando aprovada, para gestores e para o consultor */}
+          {viagem.status === "aprovada" && (
+            <UploadReserva
+              viagem={viagem}
+              onUpdate={onUpdateGastos}
+            />
           )}
         </div>
       )}
@@ -4163,11 +4278,28 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientLis
         {notifs.map((v,i)=>(
           <div key={v.id||i} style={{ background:"#111118",borderRadius:"10px",border:"1px solid #22d3a022",padding:"12px 14px",marginBottom:"8px",fontSize:"12px" }}>
             <div style={{ fontWeight:700,color:"#f0f0fa",marginBottom:"6px" }}>{v.cliente||"(sem cliente)"}{v.motivo?" — "+v.motivo:""}</div>
-            <div style={{ display:"flex",gap:"16px",flexWrap:"wrap",color:"#6e6e88" }}>
+            <div style={{ display:"flex",gap:"16px",flexWrap:"wrap",color:"#6e6e88",marginBottom:"8px" }}>
               {v.cidadeHospedagem && <span>🏨 {v.cidadeHospedagem} · {v.checkIn} → {v.checkOut}</span>}
               {v.incluirVoo && <span>✈️ {v.aeroportoOrigem} → {v.aeroportoDestino} · ida: {v.dataVooIda}{v.horarioIda?" ("+v.horarioIda+")":""}{v.dataVooVolta?" · volta: "+v.dataVooVolta:""}{v.horarioVolta?" ("+v.horarioVolta+")":""}</span>}
               {v.enderecoCliente && <span>📍 {v.enderecoCliente}</span>}
             </div>
+            {/* PDFs anexados */}
+            {(v.pdfHotel || v.pdfVoo) && (
+              <div style={{ display:"flex",gap:"8px",flexWrap:"wrap",paddingTop:"8px",borderTop:"1px solid #1f1f2e" }}>
+                {v.pdfHotel && (
+                  <a href={v.pdfHotel} target="_blank" rel="noreferrer"
+                    style={{ display:"flex",alignItems:"center",gap:"6px",padding:"5px 12px",borderRadius:"8px",border:"1px solid #22d3a044",background:"#22d3a018",color:"#22d3a0",fontSize:"11px",fontWeight:700,textDecoration:"none" }}>
+                    🏨 {v.pdfHotelName||"Reserva Hotel.pdf"}
+                  </a>
+                )}
+                {v.pdfVoo && (
+                  <a href={v.pdfVoo} target="_blank" rel="noreferrer"
+                    style={{ display:"flex",alignItems:"center",gap:"6px",padding:"5px 12px",borderRadius:"8px",border:"1px solid #a78bfa44",background:"#a78bfa18",color:"#a78bfa",fontSize:"11px",fontWeight:700,textDecoration:"none" }}>
+                    ✈️ {v.pdfVooName||"Passagem.pdf"}
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -4220,7 +4352,21 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientLis
             onEdit={(v)=>{setEditando(v);setShowForm(true);}}
             onStatusChange={handleStatusChange}
             onDelete={async (id)=>{ if(window.confirm("Excluir?")) await salvarViagens(viagens.filter(x=>x.id!==id)); }}
-            onUpdateGastos={async (v)=>{ await salvarViagens(viagens.map(x=>x.id===v.id?v:x)); }}
+            onUpdateGastos={async (v)=>{
+              const lista = viagens.map(x=>x.id===v.id?v:x);
+              await salvarViagens(lista);
+              // Sincronizar PDFs na notificação do consultor
+              if (v.consultor && (v.pdfHotel || v.pdfVoo)) {
+                try {
+                  const key = "notif_viagem_"+v.consultor.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+                  const snap = await getDoc(doc(db,"app_data",key));
+                  if (snap.exists()) {
+                    const notifs = (snap.data().value||[]).map(n => n.id===v.id ? {...n, pdfHotel:v.pdfHotel, pdfHotelName:v.pdfHotelName, pdfVoo:v.pdfVoo, pdfVooName:v.pdfVooName} : n);
+                    await setDoc(doc(db,"app_data",key), { value: notifs });
+                  }
+                } catch(e) { console.warn(e); }
+              }
+            }}
           />
         ))}
       </div>
