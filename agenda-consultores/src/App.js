@@ -3084,10 +3084,16 @@ function StatsView({ stats }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ROLE_BADGES = {
-  admin:     { label:"Admin",         color:"#a855f7", bg:"#a855f718" },
-  editor:    { label:"Editor",        color:"#6c63ff", bg:"#3b82f618" },
-  viewer:    { label:"Visualizador",  color:"#6e6e88", bg:"#6e6e8818" },
-  consultor: { label:"Consultor",     color:"#f59e0b", bg:"#f59e0b18" },
+  admin:              { label:"Admin",              color:"#a855f7", bg:"#a855f718", nivel:99 },
+  editor:             { label:"Editor",             color:"#6c63ff", bg:"#6c63ff18", nivel:80 },
+  viewer:             { label:"Visualizador",       color:"#6e6e88", bg:"#6e6e8818", nivel:10 },
+  consultor:          { label:"Consultor",          color:"#f59e0b", bg:"#f59e0b18", nivel:20 },
+  diretor_executivo:  { label:"Diretor Executivo",  color:"#ec4899", bg:"#ec489918", nivel:90 },
+  diretor:            { label:"Diretor",            color:"#f43f5e", bg:"#f43f5e18", nivel:80 },
+  gerente_executivo:  { label:"Gerente Executivo",  color:"#f97316", bg:"#f9731618", nivel:70 },
+  gerente:            { label:"Gerente",            color:"#eab308", bg:"#eab30818", nivel:60 },
+  coordenador:        { label:"Coordenador",        color:"#22d3a0", bg:"#22d3a018", nivel:50 },
+  administrativo:     { label:"Administrativo",     color:"#64748b", bg:"#64748b18", nivel:30 },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3331,11 +3337,18 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #2a2a3a", background:"#0d0d14", color:"#c8c8d8", fontSize:"13px", width:"100%", boxSizing:"border-box" };
 
   // Módulos disponíveis por perfil
+  const MODULOS_GESTORES = [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"alcadas",icon:"🔀",label:"Alçadas de Aprovação"}];
   const MODULOS_POR_PERFIL = {
-    admin:     [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"cadastros",icon:"🗂",label:"Cadastros"}],
-    editor:    [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"projetos",icon:"📁",label:"Projetos"}],
-    viewer:    [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"✈️",label:"Viagens"}],
-    consultor: [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"grade",icon:"🎓",label:"Grade de Conhecimento"},{ id:"viagens",icon:"✈️",label:"Viagens"}],
+    admin:             [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"alcadas",icon:"🔀",label:"Alçadas"},{ id:"cadastros",icon:"🗂",label:"Cadastros"}],
+    editor:            MODULOS_GESTORES,
+    diretor_executivo: MODULOS_GESTORES,
+    diretor:           MODULOS_GESTORES,
+    gerente_executivo: MODULOS_GESTORES,
+    gerente:           MODULOS_GESTORES,
+    coordenador:       [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"alcadas",icon:"🔀",label:"Alçadas"}],
+    viewer:            [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"}],
+    consultor:         [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"grade",icon:"🎓",label:"Grade de Conhecimento"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"}],
+    administrativo:    [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"}],
   };
 
   const ModulosToggle = ({ role, value, onChange }) => {
@@ -3418,7 +3431,13 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
                               <option value="admin">Admin</option>
                               <option value="editor">Editor</option>
                               <option value="viewer">Visualizador</option>
+                              <option value="diretor_executivo">Diretor Executivo</option>
+                              <option value="diretor">Diretor</option>
+                              <option value="gerente_executivo">Gerente Executivo</option>
+                              <option value="gerente">Gerente</option>
+                              <option value="coordenador">Coordenador</option>
                               <option value="consultor">Consultor</option>
+                              <option value="administrativo">Administrativo</option>
                             </select>
                           </div>
                           {editFields.role === "consultor" && (
@@ -3464,7 +3483,13 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
                 <option value="admin">Admin</option>
                 <option value="editor">Editor</option>
                 <option value="viewer">Visualizador</option>
+                <option value="diretor_executivo">Diretor Executivo</option>
+                <option value="diretor">Diretor</option>
+                <option value="gerente_executivo">Gerente Executivo</option>
+                <option value="gerente">Gerente</option>
+                <option value="coordenador">Coordenador</option>
                 <option value="consultor">Consultor</option>
+                <option value="administrativo">Administrativo</option>
               </select>
             </div>
             {novoRole === "consultor" && (
@@ -3698,6 +3723,503 @@ function ViagemCard({ viagem, STATUS_CONFIG, canManage, onEdit, onStatusChange, 
               onUpdate={onUpdateGastos}
             />
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MÓDULO: ALÇADAS DE APROVAÇÃO
+// ─────────────────────────────────────────────────────────────────────────────
+const ROLES_LABELS = {
+  admin:"Admin", editor:"Editor", viewer:"Visualizador",
+  diretor_executivo:"Diretor Executivo", diretor:"Diretor",
+  gerente_executivo:"Gerente Executivo", gerente:"Gerente",
+  coordenador:"Coordenador", consultor:"Consultor", administrativo:"Administrativo",
+};
+
+const TIPOS_SOLICITACAO = [
+  { id:"viagem",   label:"Viagem e Hospedagem", icon:"🏨" },
+  { id:"os",       label:"Ordem de Serviço",    icon:"📋" },
+  { id:"projeto",  label:"Projeto",             icon:"📁" },
+];
+
+function ModuloAlcadas({ currentUser, canManage, canApprove, consultores, usuarios, theme: T }) {
+  const [aba,           setAba]           = useState("kanban");   // kanban | cadastro
+  const [alcadas,       setAlcadas]       = useState([]);
+  const [solicitacoes,  setSolicitacoes]  = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [editAlcada,    setEditAlcada]    = useState(null);
+  const [showFormAlc,   setShowFormAlc]   = useState(false);
+  const [filtroTipo,    setFiltroTipo]    = useState("");
+  const [filtroStatus,  setFiltroStatus]  = useState("");
+  const [comentario,    setComentario]    = useState("");
+  const [acaoSel,       setAcaoSel]       = useState(null); // {solId, acao}
+
+  const nomeUsuario = currentUser.nome || currentUser.username || currentUser.consultorName || "";
+  const roleUsuario = currentUser.role || "viewer";
+
+  // ── Carregar alçadas e solicitações ──
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [snapAlc, snapSol] = await Promise.all([
+          getDoc(doc(db,"app_data","alcadas_config")),
+          getDoc(doc(db,"app_data","alcadas_solicitacoes")),
+        ]);
+        if (snapAlc.exists()) setAlcadas(snapAlc.data().value || []);
+        if (snapSol.exists()) setSolicitacoes(snapSol.data().value || []);
+      } catch(e) { console.warn(e); }
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const salvarAlcadas = async (lista) => {
+    setAlcadas(lista);
+    await setDoc(doc(db,"app_data","alcadas_config"), { value: lista });
+  };
+  const salvarSolicitacoes = async (lista) => {
+    setSolicitacoes(lista);
+    await setDoc(doc(db,"app_data","alcadas_solicitacoes"), { value: lista });
+  };
+
+  // ── Encontrar alçada aplicável para um tipo ──
+  const getAlcada = (tipo) => alcadas.find(a => a.tipo === tipo && a.ativa);
+
+  // ── Criar nova solicitação no fluxo ──
+  const criarSolicitacao = async (tipo, dados) => {
+    const alc = getAlcada(tipo);
+    if (!alc) return null;
+    const sol = {
+      id: Date.now().toString(36),
+      tipo, dados,
+      alcadaId: alc.id,
+      niveis: alc.niveis,
+      nivelAtual: 0,
+      status: "em_aprovacao",
+      historico: [{ acao:"criado", por: nomeUsuario, role: roleUsuario, em: new Date().toISOString() }],
+      criadoPor: nomeUsuario,
+      criadoEm: new Date().toISOString(),
+    };
+    const novas = [...solicitacoes, sol];
+    await salvarSolicitacoes(novas);
+    return sol;
+  };
+
+  // ── Aprovar / Rejeitar / Devolver nível atual ──
+  const processarAcao = async (solId, acao, obs) => {
+    const sol = solicitacoes.find(s => s.id === solId);
+    if (!sol) return;
+    const nivel = sol.niveis[sol.nivelAtual];
+    const hist = [...sol.historico, {
+      acao, nivel: nivel?.cargo, por: nomeUsuario, role: roleUsuario,
+      obs, em: new Date().toISOString(),
+    }];
+
+    let novoStatus = sol.status;
+    let novoNivel  = sol.nivelAtual;
+
+    if (acao === "aprovado") {
+      if (sol.nivelAtual >= sol.niveis.length - 1) {
+        novoStatus = "aprovado"; // todos os níveis aprovaram
+      } else {
+        novoNivel  = sol.nivelAtual + 1; // avança para próximo nível
+        novoStatus = "em_aprovacao";
+      }
+    } else if (acao === "rejeitado") {
+      novoStatus = "rejeitado";
+    } else if (acao === "devolvido") {
+      novoNivel  = Math.max(0, sol.nivelAtual - 1);
+      novoStatus = "em_aprovacao";
+    }
+
+    const updated = { ...sol, nivelAtual: novoNivel, status: novoStatus, historico: hist, atualizadoEm: new Date().toISOString() };
+    const novas = solicitacoes.map(s => s.id === solId ? updated : s);
+    await salvarSolicitacoes(novas);
+    setAcaoSel(null); setComentario("");
+  };
+
+  // ── Verificar se o usuário atual pode agir no nível da solicitação ──
+  const podeAgir = (sol) => {
+    if (sol.status !== "em_aprovacao") return false;
+    const nivel = sol.niveis?.[sol.nivelAtual];
+    if (!nivel) return false;
+    if (canManage) return true; // admin sempre pode
+    return nivel.cargo === roleUsuario || nivel.cargo === currentUser.role;
+  };
+
+  const inp = { padding:"9px 13px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",width:"100%",boxSizing:"border-box",fontFamily:"inherit",outline:"none" };
+  const lbl = { fontSize:"11px",color:"#6e6e88",fontWeight:700,display:"block",marginBottom:"6px",letterSpacing:"0.5px",textTransform:"uppercase" };
+
+  const STATUS_SOL = {
+    em_aprovacao: { label:"Em aprovação", color:"#6c63ff", bg:"#6c63ff18", icon:"⏳" },
+    aprovado:     { label:"Aprovado",     color:"#22d3a0", bg:"#22d3a018", icon:"✅" },
+    rejeitado:    { label:"Rejeitado",    color:"#f04f5e", bg:"#f04f5e18", icon:"❌" },
+    devolvido:    { label:"Devolvido",    color:"#f5a623", bg:"#f5a62318", icon:"↩️" },
+  };
+
+  // ── Formulário de Cadastro de Alçada ──
+  const FormAlcada = ({ inicial, onSalvar, onCancelar }) => {
+    const vazio = { id:Date.now().toString(36), nome:"", tipo:"viagem", ativa:true, niveis:[] };
+    const [form, setForm] = useState(inicial || vazio);
+    const set = (k,v) => setForm(p=>({...p,[k]:v}));
+
+    const addNivel = () => setForm(p=>({...p, niveis:[...p.niveis, { id:Date.now().toString(36), ordem:p.niveis.length+1, cargo:"gerente", label:"" }]}));
+    const removeNivel = (idx) => setForm(p=>({...p, niveis:p.niveis.filter((_,i)=>i!==idx)}));
+    const setNivel = (idx, k, v) => setForm(p=>({...p, niveis:p.niveis.map((n,i)=>i===idx?{...n,[k]:v}:n)}));
+    const moveNivel = (idx, dir) => {
+      const ns = [...form.niveis];
+      const swap = idx + dir;
+      if (swap < 0 || swap >= ns.length) return;
+      [ns[idx], ns[swap]] = [ns[swap], ns[idx]];
+      setForm(p=>({...p, niveis:ns.map((n,i)=>({...n,ordem:i+1}))}));
+    };
+
+    return (
+      <div style={{ background:"#111118",borderRadius:"16px",border:"1px solid #1f1f2e",padding:"24px",maxWidth:"620px",marginBottom:"24px" }}>
+        <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"16px",fontWeight:900,color:"#f0f0fa",margin:"0 0 20px" }}>
+          {inicial?"✏️ Editar Alçada":"🔀 Nova Alçada de Aprovação"}
+        </h3>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"16px" }}>
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={lbl}>Nome da alçada</label>
+            <input value={form.nome} onChange={e=>set("nome",e.target.value)} placeholder="Ex: Aprovação de Viagens Nacionais" style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Tipo de solicitação</label>
+            <select value={form.tipo} onChange={e=>set("tipo",e.target.value)} style={inp}>
+              {TIPOS_SOLICITACAO.map(t=><option key={t.id} value={t.id}>{t.icon} {t.label}</option>)}
+            </select>
+          </div>
+          <div style={{ display:"flex",alignItems:"center",gap:"10px",paddingTop:"22px" }}>
+            <input type="checkbox" id="ativa_check" checked={form.ativa} onChange={e=>set("ativa",e.target.checked)} style={{ width:"16px",height:"16px",accentColor:"#6c63ff" }}/>
+            <label htmlFor="ativa_check" style={{ fontSize:"13px",color:"#c8c8d8",cursor:"pointer" }}>Alçada ativa</label>
+          </div>
+        </div>
+
+        {/* Níveis de aprovação */}
+        <div style={{ marginBottom:"16px" }}>
+          <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"10px" }}>
+            <label style={lbl}>Hierarquia de aprovação</label>
+            <button onClick={addNivel} style={{ padding:"5px 14px",borderRadius:"8px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontSize:"12px",fontWeight:700,fontFamily:"inherit" }}>+ Nível</button>
+          </div>
+          {form.niveis.length === 0 && (
+            <div style={{ padding:"20px",textAlign:"center",background:"#0d0d14",borderRadius:"10px",border:"1px dashed #2a2a3a",color:"#3e3e55",fontSize:"12px" }}>
+              Clique em "+ Nível" para definir a hierarquia de aprovação
+            </div>
+          )}
+          <div style={{ display:"flex",flexDirection:"column",gap:"8px" }}>
+            {form.niveis.map((n, idx) => (
+              <div key={n.id} style={{ background:"#0d0d14",borderRadius:"10px",border:"1px solid #2a2a3a",padding:"10px 12px",display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap" }}>
+                {/* Ordem */}
+                <div style={{ width:"24px",height:"24px",borderRadius:"6px",background:"#6c63ff22",border:"1px solid #6c63ff44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:800,color:"#a78bfa",flexShrink:0 }}>
+                  {idx+1}
+                </div>
+                {/* Cargo */}
+                <select value={n.cargo} onChange={e=>setNivel(idx,"cargo",e.target.value)} style={{...inp,flex:1,minWidth:"160px"}}>
+                  {Object.entries(ROLES_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+                </select>
+                {/* Label personalizado */}
+                <input value={n.label||""} onChange={e=>setNivel(idx,"label",e.target.value)} placeholder="Descrição (opcional)" style={{...inp,flex:1,minWidth:"140px"}}/>
+                {/* Mover + remover */}
+                <div style={{ display:"flex",gap:"4px",flexShrink:0 }}>
+                  <button onClick={()=>moveNivel(idx,-1)} disabled={idx===0} style={{ width:"26px",height:"26px",borderRadius:"6px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontSize:"12px" }}>↑</button>
+                  <button onClick={()=>moveNivel(idx,1)} disabled={idx===form.niveis.length-1} style={{ width:"26px",height:"26px",borderRadius:"6px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontSize:"12px" }}>↓</button>
+                  <button onClick={()=>removeNivel(idx)} style={{ width:"26px",height:"26px",borderRadius:"6px",border:"1px solid #f04f5e44",background:"transparent",color:"#f04f5e",cursor:"pointer",fontSize:"12px" }}>✕</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display:"flex",gap:"10px",justifyContent:"flex-end" }}>
+          <button onClick={onCancelar} style={{ padding:"9px 18px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>Cancelar</button>
+          <button onClick={()=>onSalvar(form)} disabled={!form.nome.trim()||form.niveis.length===0}
+            style={{ padding:"9px 24px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44",opacity:!form.nome.trim()||form.niveis.length===0?0.5:1 }}>
+            💾 Salvar alçada
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Filtros para o Kanban ──
+  const solFiltradas = solicitacoes.filter(s => {
+    if (filtroTipo   && s.tipo   !== filtroTipo)   return false;
+    if (filtroStatus && s.status !== filtroStatus) return false;
+    return true;
+  });
+
+  // Colunas do Kanban
+  const KANBAN_COLS = [
+    { id:"em_aprovacao", label:"⏳ Em aprovação", color:"#6c63ff" },
+    { id:"aprovado",     label:"✅ Aprovado",     color:"#22d3a0" },
+    { id:"rejeitado",    label:"❌ Rejeitado",    color:"#f04f5e" },
+  ];
+
+  if (loading) return (
+    <div style={{ textAlign:"center",padding:"60px" }}>
+      <div style={{ width:"28px",height:"28px",border:"3px solid #1f1f2e",borderTop:"3px solid #6c63ff",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto 12px" }}/>
+    </div>
+  );
+
+  return (
+    <div>
+      {/* Header + abas */}
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"24px",flexWrap:"wrap",gap:"12px" }}>
+        <div>
+          <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>🔀 Alçadas de Aprovação</h2>
+          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>{alcadas.filter(a=>a.ativa).length} alçada{alcadas.filter(a=>a.ativa).length!==1?"s":""} ativa{alcadas.filter(a=>a.ativa).length!==1?"s":""} · {solicitacoes.length} solicitaç{solicitacoes.length!==1?"ões":"ão"}</p>
+        </div>
+        <div style={{ display:"flex",gap:"6px" }}>
+          {[{id:"kanban",label:"📊 Kanban"},{id:"cadastro",label:"⚙️ Cadastro"}].map(t=>(
+            <button key={t.id} onClick={()=>setAba(t.id)}
+              style={{ padding:"7px 16px",borderRadius:"9px",border:"1px solid "+(aba===t.id?"#6c63ff":"#2a2a3a"),background:aba===t.id?"#6c63ff22":"transparent",color:aba===t.id?"#a78bfa":"#6e6e88",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── ABA: CADASTRO ── */}
+      {aba==="cadastro" && (
+        <div>
+          <div style={{ display:"flex",justifyContent:"flex-end",marginBottom:"16px" }}>
+            {canManage && (
+              <button onClick={()=>{setEditAlcada(null);setShowFormAlc(true);}}
+                style={{ padding:"8px 18px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>
+                + Nova Alçada
+              </button>
+            )}
+          </div>
+
+          {showFormAlc && (
+            <FormAlcada
+              inicial={editAlcada}
+              onSalvar={async (dados) => {
+                const nova = editAlcada
+                  ? alcadas.map(a=>a.id===editAlcada.id?dados:a)
+                  : [...alcadas, dados];
+                await salvarAlcadas(nova);
+                setShowFormAlc(false); setEditAlcada(null);
+              }}
+              onCancelar={()=>{setShowFormAlc(false);setEditAlcada(null);}}
+            />
+          )}
+
+          {alcadas.length===0 && !showFormAlc && (
+            <div style={{ textAlign:"center",padding:"60px",background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e" }}>
+              <div style={{ fontSize:"40px",marginBottom:"12px" }}>🔀</div>
+              <div style={{ fontSize:"14px",color:"#3e3e55",marginBottom:"16px" }}>Nenhuma alçada cadastrada</div>
+              {canManage && <button onClick={()=>setShowFormAlc(true)} style={{ padding:"9px 20px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit" }}>Criar primeira alçada</button>}
+            </div>
+          )}
+
+          <div style={{ display:"flex",flexDirection:"column",gap:"10px" }}>
+            {alcadas.map(alc=>{
+              const tipo = TIPOS_SOLICITACAO.find(t=>t.id===alc.tipo);
+              return (
+                <div key={alc.id} style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",padding:"16px 20px" }}>
+                  <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"12px",flexWrap:"wrap" }}>
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <div style={{ display:"flex",alignItems:"center",gap:"10px",marginBottom:"8px" }}>
+                        <span style={{ fontSize:"18px" }}>{tipo?.icon||"📋"}</span>
+                        <span style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa" }}>{alc.nome}</span>
+                        <span style={{ padding:"2px 10px",borderRadius:"99px",fontSize:"10px",fontWeight:700,background:alc.ativa?"#22d3a018":"#2a2a3a",color:alc.ativa?"#22d3a0":"#6e6e88",border:"1px solid "+(alc.ativa?"#22d3a033":"#2a2a3a") }}>
+                          {alc.ativa?"● Ativa":"○ Inativa"}
+                        </span>
+                      </div>
+                      <div style={{ fontSize:"11px",color:"#6e6e88",marginBottom:"10px" }}>{tipo?.label} · {alc.niveis?.length||0} nível{(alc.niveis?.length||0)!==1?"is":""} de aprovação</div>
+                      {/* Fluxo visual */}
+                      <div style={{ display:"flex",alignItems:"center",gap:"4px",flexWrap:"wrap" }}>
+                        {(alc.niveis||[]).map((n,i)=>{
+                          const badge = ROLE_BADGES[n.cargo];
+                          return (
+                            <React.Fragment key={n.id}>
+                              <div style={{ padding:"4px 10px",borderRadius:"8px",background:badge?.bg||"#2a2a3a",border:"1px solid "+(badge?.color||"#6e6e88")+"44",fontSize:"11px",fontWeight:700,color:badge?.color||"#6e6e88" }}>
+                                {i+1}. {n.label||ROLES_LABELS[n.cargo]||n.cargo}
+                              </div>
+                              {i<alc.niveis.length-1 && <span style={{ color:"#3e3e55",fontSize:"14px" }}>→</span>}
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {canManage && (
+                      <div style={{ display:"flex",gap:"6px",flexShrink:0 }}>
+                        <button onClick={()=>{setEditAlcada(alc);setShowFormAlc(true);}}
+                          style={{ padding:"6px 12px",borderRadius:"8px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontSize:"11px",fontWeight:700,fontFamily:"inherit" }}>✏️</button>
+                        <button onClick={async()=>{ if(window.confirm("Excluir esta alçada?")) await salvarAlcadas(alcadas.filter(a=>a.id!==alc.id)); }}
+                          style={{ padding:"6px 12px",borderRadius:"8px",border:"1px solid #f04f5e44",background:"#f04f5e18",color:"#f04f5e",cursor:"pointer",fontSize:"11px",fontWeight:700,fontFamily:"inherit" }}>🗑</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── ABA: KANBAN ── */}
+      {aba==="kanban" && (
+        <div>
+          {/* Filtros */}
+          <div style={{ display:"flex",gap:"8px",marginBottom:"20px",flexWrap:"wrap",alignItems:"center" }}>
+            <select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)} style={{...inp,width:"auto",minWidth:"180px"}}>
+              <option value="">Todos os tipos</option>
+              {TIPOS_SOLICITACAO.map(t=><option key={t.id} value={t.id}>{t.icon} {t.label}</option>)}
+            </select>
+            <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} style={{...inp,width:"auto",minWidth:"160px"}}>
+              <option value="">Todos os status</option>
+              {Object.entries(STATUS_SOL).map(([k,v])=><option key={k} value={k}>{v.icon} {v.label}</option>)}
+            </select>
+            {(filtroTipo||filtroStatus) && (
+              <button onClick={()=>{setFiltroTipo("");setFiltroStatus("");}}
+                style={{ padding:"7px 12px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontSize:"11px",fontFamily:"inherit" }}>✕ Limpar</button>
+            )}
+            <span style={{ fontSize:"11px",color:"#3e3e55",marginLeft:"auto" }}>{solFiltradas.length} solicitaç{solFiltradas.length!==1?"ões":"ão"}</span>
+          </div>
+
+          {solicitacoes.length===0 && (
+            <div style={{ textAlign:"center",padding:"60px",background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e" }}>
+              <div style={{ fontSize:"40px",marginBottom:"12px" }}>📊</div>
+              <div style={{ fontSize:"14px",color:"#3e3e55" }}>Nenhuma solicitação em andamento</div>
+              <div style={{ fontSize:"12px",color:"#3e3e55",marginTop:"6px" }}>As solicitações de viagem e OS aparecerão aqui quando submetidas para aprovação</div>
+            </div>
+          )}
+
+          {/* Colunas Kanban */}
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"14px",overflowX:"auto",minWidth:"700px" }}>
+            {KANBAN_COLS.map(col => {
+              const cards = solFiltradas.filter(s=>s.status===col.id);
+              return (
+                <div key={col.id} style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",minHeight:"200px" }}>
+                  {/* Header coluna */}
+                  <div style={{ padding:"12px 16px",borderBottom:"1px solid #1f1f2e",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+                    <span style={{ fontSize:"13px",fontWeight:700,color:col.color }}>{col.label}</span>
+                    <span style={{ fontSize:"11px",background:col.color+"22",color:col.color,padding:"1px 8px",borderRadius:"99px",fontWeight:700 }}>{cards.length}</span>
+                  </div>
+
+                  {/* Cards */}
+                  <div style={{ padding:"10px",display:"flex",flexDirection:"column",gap:"8px" }}>
+                    {cards.map(sol => {
+                      const tipo = TIPOS_SOLICITACAO.find(t=>t.id===sol.tipo);
+                      const nivelAtual = sol.niveis?.[sol.nivelAtual];
+                      const nivelBadge = ROLE_BADGES[nivelAtual?.cargo];
+                      const podeAct = podeAgir(sol);
+                      const isSel = acaoSel?.solId === sol.id;
+
+                      return (
+                        <div key={sol.id} style={{ background:"#18181f",borderRadius:"10px",border:"1px solid "+(podeAct?"#6c63ff44":"#2a2a3a"),padding:"12px 14px",transition:"border-color .2s" }}>
+                          {/* Tipo + ID */}
+                          <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"6px" }}>
+                            <div style={{ display:"flex",alignItems:"center",gap:"6px" }}>
+                              <span style={{ fontSize:"14px" }}>{tipo?.icon||"📋"}</span>
+                              <span style={{ fontSize:"11px",fontWeight:700,color:"#a78bfa" }}>#{sol.id.slice(-4).toUpperCase()}</span>
+                            </div>
+                            <span style={{ fontSize:"10px",color:"#3e3e55" }}>
+                              {new Date(sol.criadoEm).toLocaleDateString("pt-BR")}
+                            </span>
+                          </div>
+
+                          {/* Dados principais */}
+                          <div style={{ fontSize:"12px",fontWeight:600,color:"#f0f0fa",marginBottom:"4px" }}>
+                            {sol.dados?.cliente||sol.dados?.titulo||tipo?.label}
+                          </div>
+                          <div style={{ fontSize:"11px",color:"#6e6e88",marginBottom:"8px" }}>
+                            👤 {sol.criadoPor}
+                            {sol.dados?.motivo && <span> · {sol.dados.motivo}</span>}
+                          </div>
+
+                          {/* Nível atual */}
+                          {sol.status==="em_aprovacao" && nivelAtual && (
+                            <div style={{ marginBottom:"8px" }}>
+                              <div style={{ fontSize:"9px",color:"#3e3e55",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:"4px" }}>Aguardando aprovação de:</div>
+                              {/* Fluxo de níveis */}
+                              <div style={{ display:"flex",alignItems:"center",gap:"3px",flexWrap:"wrap",marginBottom:"6px" }}>
+                                {sol.niveis.map((n,i)=>{
+                                  const badge = ROLE_BADGES[n.cargo];
+                                  const passou = i < sol.nivelAtual;
+                                  const atual  = i === sol.nivelAtual;
+                                  return (
+                                    <React.Fragment key={n.id||i}>
+                                      <div style={{ padding:"2px 7px",borderRadius:"6px",fontSize:"9px",fontWeight:700,
+                                        background:passou?"#22d3a018":atual?badge?.bg||"#6c63ff18":"transparent",
+                                        color:passou?"#22d3a0":atual?badge?.color||"#a78bfa":"#3e3e55",
+                                        border:"1px solid "+(passou?"#22d3a033":atual?(badge?.color||"#6c63ff")+"44":"#2a2a3a") }}>
+                                        {passou?"✓ ":atual?"● ":""}{n.label||ROLES_LABELS[n.cargo]||n.cargo}
+                                      </div>
+                                      {i<sol.niveis.length-1 && <span style={{ color:"#2a2a3a",fontSize:"10px" }}>›</span>}
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Histórico resumido */}
+                          {sol.historico?.length > 1 && (
+                            <div style={{ fontSize:"10px",color:"#3e3e55",marginBottom:"8px",borderTop:"1px solid #1f1f2e",paddingTop:"6px" }}>
+                              {sol.historico.slice(-2).map((h,i)=>(
+                                <div key={i} style={{ marginBottom:"2px" }}>
+                                  <span style={{ color:h.acao==="aprovado"?"#22d3a0":h.acao==="rejeitado"?"#f04f5e":"#6e6e88" }}>
+                                    {h.acao==="aprovado"?"✓":h.acao==="rejeitado"?"✕":h.acao==="devolvido"?"↩":"·"} 
+                                  </span>
+                                  {" "}{h.nivel||""} {h.por&&`(${h.por.split(" ")[0]})`}
+                                  {h.obs && <span style={{ color:"#6e6e88" }}> — {h.obs.slice(0,40)}{h.obs.length>40?"...":""}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Botões de ação */}
+                          {podeAct && (
+                            <div style={{ display:"flex",gap:"5px",flexWrap:"wrap" }}>
+                              {[
+                                {a:"aprovado",  l:"✅ Aprovar",  c:"#22d3a0"},
+                                {a:"rejeitado", l:"❌ Rejeitar", c:"#f04f5e"},
+                                {a:"devolvido", l:"↩ Devolver",  c:"#f5a623"},
+                              ].map(btn=>(
+                                <button key={btn.a}
+                                  onClick={()=>setAcaoSel(isSel&&acaoSel.acao===btn.a?null:{solId:sol.id,acao:btn.a})}
+                                  style={{ padding:"4px 10px",borderRadius:"7px",border:"1px solid "+btn.c+"44",background:isSel&&acaoSel.acao===btn.a?btn.c+"22":"transparent",color:btn.c,fontSize:"10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
+                                  {btn.l}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Painel de confirmação */}
+                          {isSel && (
+                            <div style={{ marginTop:"8px",background:"#0d0d14",borderRadius:"8px",padding:"10px",border:"1px solid #2a2a3a" }}>
+                              <textarea value={comentario} onChange={e=>setComentario(e.target.value)} rows={2}
+                                placeholder={acaoSel.acao==="aprovado"?"Observação (opcional)...":"Motivo (recomendado)..."}
+                                style={{ width:"100%",padding:"7px 10px",borderRadius:"7px",border:"1px solid #2a2a3a",background:"#111118",color:"#c8c8d8",fontSize:"11px",fontFamily:"inherit",resize:"none",outline:"none",boxSizing:"border-box",marginBottom:"7px",lineHeight:1.5 }}/>
+                              <div style={{ display:"flex",gap:"6px",justifyContent:"flex-end" }}>
+                                <button onClick={()=>{setAcaoSel(null);setComentario("");}} style={{ padding:"4px 10px",borderRadius:"6px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontSize:"10px",fontFamily:"inherit" }}>Cancelar</button>
+                                <button onClick={()=>processarAcao(sol.id,acaoSel.acao,comentario)}
+                                  style={{ padding:"4px 12px",borderRadius:"6px",border:"none",
+                                    background:acaoSel.acao==="aprovado"?"#22d3a0":acaoSel.acao==="rejeitado"?"#f04f5e":"#f5a623",
+                                    color:"#fff",cursor:"pointer",fontSize:"10px",fontWeight:700,fontFamily:"inherit" }}>
+                                  Confirmar
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {cards.length===0 && (
+                      <div style={{ textAlign:"center",padding:"24px",color:"#3e3e55",fontSize:"11px" }}>Nenhuma solicitação</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -4328,10 +4850,31 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientLis
       {showForm && (
         <FormViagem inicial={editando}
           onSalvar={async (dados)=>{
+            const id = editando ? editando.id : Date.now().toString(36);
             const nova = editando
-              ? viagens.map(v=>v.id===editando.id?{...dados,id:editando.id,atualizadoEm:new Date().toISOString()}:v)
-              : [...viagens,{...dados,id:Date.now().toString(36),criadoEm:new Date().toISOString()}];
+              ? viagens.map(v=>v.id===editando.id?{...dados,id,atualizadoEm:new Date().toISOString()}:v)
+              : [...viagens,{...dados,id,criadoEm:new Date().toISOString()}];
             await salvarViagens(nova);
+            // Inserir no fluxo de alçadas se nova viagem
+            if (!editando) {
+              try {
+                const snapAlc = await getDoc(doc(db,"app_data","alcadas_config"));
+                const alcs = snapAlc.exists()?(snapAlc.data().value||[]):[];
+                const alc = alcs.find(a=>a.tipo==="viagem"&&a.ativa);
+                if (alc) {
+                  const snapSol = await getDoc(doc(db,"app_data","alcadas_solicitacoes"));
+                  const sols = snapSol.exists()?(snapSol.data().value||[]):[];
+                  const sol = {
+                    id:"v_"+id, tipo:"viagem",
+                    dados:{ cliente:dados.cliente, motivo:dados.motivo, consultor:dados.consultor, checkIn:dados.checkIn, checkOut:dados.checkOut },
+                    alcadaId:alc.id, niveis:alc.niveis, nivelAtual:0, status:"em_aprovacao", viagemId:id,
+                    historico:[{ acao:"criado", por:nomeLogado, role:currentUser.role, em:new Date().toISOString() }],
+                    criadoPor:nomeLogado, criadoEm:new Date().toISOString(),
+                  };
+                  await setDoc(doc(db,"app_data","alcadas_solicitacoes"),{ value:[...sols,sol] });
+                }
+              } catch(e){ console.warn("Alçada:",e); }
+            }
             setShowForm(false); setEditando(null);
           }}
           onCancelar={()=>{setShowForm(false);setEditando(null);}}
@@ -4767,12 +5310,17 @@ export default function ConsultorDashboard() {
 // DASHBOARD (wrapped — receives auth user)
 // ─────────────────────────────────────────────────────────────────────────────
 function Dashboard({ currentUser, onLogout }) {
-  const isAdmin    = currentUser.role === "admin";
-  const isEditor   = currentUser.role === "editor";
-  const isViewer   = currentUser.role === "viewer";
-  const isConsultor= currentUser.role === "consultor";
-  const canEdit    = isAdmin || isEditor;   // can add/edit/delete entries
-  const canManage  = isAdmin;               // can access Cadastros tab
+  const role = currentUser.role || "viewer";
+  const isAdmin    = role === "admin";
+  const isEditor   = role === "editor";
+  const isViewer   = role === "viewer";
+  const isConsultor= role === "consultor";
+  // Perfis de gestão (podem aprovar viagens, ver OS, etc)
+  const ROLES_GESTORES = ["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"];
+  const isGestor   = ROLES_GESTORES.includes(role);
+  const canEdit    = isAdmin || isEditor;        // pode editar agenda
+  const canManage  = isAdmin;                    // acessa Cadastros
+  const canApprove = isGestor;                   // pode aprovar solicitações
   const [scheduleData, setScheduleData] = useState(SCHEDULE_DATA);
   const [clientList, setClientList] = useState(INITIAL_CLIENTS.map(n=>({ name:n, color:CLIENT_COLORS[n]||CLIENT_COLORS.default })));
   const [projects, setProjects] = useState([]);
@@ -5263,26 +5811,35 @@ function Dashboard({ currentUser, onLogout }) {
   );
 
   // Todos os módulos disponíveis por perfil (fonte única de verdade)
-  const ALL_MODULES_ADMIN = [
+  const ALL_MODULES_GESTOR = [
     { id:"home",     icon:"⬡",  label:"Dashboard",            desc:"Visão geral do sistema" },
     { id:"agenda",   icon:"📅", label:"Agenda",                desc:"Agenda de consultores" },
     { id:"os",       icon:"📋", label:"Ordens de Serviço",     desc:"Consulta e aprovação de OS" },
     { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Solicitações de viagem e hospedagem" },
     { id:"projetos", icon:"📁", label:"Projetos",              desc:"Gestão de projetos" },
+    { id:"alcadas",  icon:"🔀", label:"Alçadas",               desc:"Hierarquia de aprovação" },
   ];
   const ALL_MODULES_CONSULTOR = [
     { id:"agenda",   icon:"📅", label:"Agenda",                desc:"Minha agenda" },
     { id:"grade",    icon:"🎓", label:"Grade de Conhecimento", desc:"Meus conhecimentos" },
     { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Minhas solicitações" },
   ];
+  const ALL_MODULES_BASICO = [
+    { id:"home",     icon:"⬡",  label:"Dashboard",            desc:"Visão geral" },
+    { id:"agenda",   icon:"📅", label:"Agenda",                desc:"Agenda" },
+    { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Solicitações" },
+  ];
 
-  // Módulos habilitados para este usuário (vem do perfil salvo no Firestore)
-  // Por padrão: todos habilitados
-  const modulosHabilitados = currentUser.modulosHabilitados || null; // null = todos
+  const modulosHabilitados = currentUser.modulosHabilitados || null;
 
-  const MODULES_ADMIN    = ALL_MODULES_ADMIN.filter(m    => !modulosHabilitados || modulosHabilitados.includes(m.id));
-  const MODULES_CONSULTOR= ALL_MODULES_CONSULTOR.filter(m=> !modulosHabilitados || modulosHabilitados.includes(m.id));
-  const MODULES = isConsultor ? MODULES_CONSULTOR : MODULES_ADMIN;
+  const baseModules = isConsultor ? ALL_MODULES_CONSULTOR
+    : isGestor ? ALL_MODULES_GESTOR
+    : ALL_MODULES_BASICO;
+
+  const MODULES_ADMIN    = ALL_MODULES_GESTOR.filter(m => !modulosHabilitados || modulosHabilitados.includes(m.id));
+  const MODULES = isConsultor
+    ? ALL_MODULES_CONSULTOR.filter(m => !modulosHabilitados || modulosHabilitados.includes(m.id))
+    : baseModules.filter(m => !modulosHabilitados || modulosHabilitados.includes(m.id));
 
   const SIDEBAR_W     = sidebarCollapsed ? 60 : 220;
   const SIDEBAR_TRANS = "width .22s cubic-bezier(.4,0,.2,1)";
@@ -5567,6 +6124,20 @@ function Dashboard({ currentUser, onLogout }) {
         )}
 
         {/* ── MODULE: ORDENS DE SERVIÇO ── */}
+        {/* ── MODULE: ALÇADAS DE APROVAÇÃO ── */}
+        {activeModule==="alcadas" && (
+          <div style={{ padding:"28px 32px",flex:1 }}>
+            <ModuloAlcadas
+              currentUser={currentUser}
+              canManage={canManage}
+              canApprove={canApprove}
+              consultores={consultores}
+              usuarios={usuarios}
+              theme={T}
+            />
+          </div>
+        )}
+
         {activeModule==="os" && (
           <div style={{ padding:"28px 32px",flex:1 }}>
             <ModuloOrdemServico
