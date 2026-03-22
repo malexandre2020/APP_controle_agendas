@@ -3691,8 +3691,8 @@ function ViagemCard({ viagem, STATUS_CONFIG, canManage, onEdit, onStatusChange, 
             <div style={{ marginTop:"10px",fontSize:"12px",color:"#f5a623",background:"#f5a62310",borderRadius:"8px",padding:"8px 12px" }}>💬 Gestor: {viagem.comentarioGestor}</div>
           )}
 
-          {/* Upload de PDFs — disponível quando aprovada, para gestores e para o consultor */}
-          {viagem.status === "aprovada" && (
+          {/* Upload de PDFs — disponível apenas para gestor/admin quando aprovada */}
+          {viagem.status === "aprovada" && canManage && (
             <UploadReserva
               viagem={viagem}
               onUpdate={onUpdateGastos}
