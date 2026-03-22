@@ -3716,6 +3716,27 @@ function ViagemCard({ viagem, STATUS_CONFIG, canManage, onEdit, onStatusChange, 
             <div style={{ marginTop:"10px",fontSize:"12px",color:"#f5a623",background:"#f5a62310",borderRadius:"8px",padding:"8px 12px" }}>💬 Gestor: {viagem.comentarioGestor}</div>
           )}
 
+          {/* PDFs de reserva — visualização para consultor, upload para gestor */}
+          {viagem.status === "aprovada" && (viagem.pdfHotel || viagem.pdfVoo) && !canManage && (
+            <div style={{ marginTop:"14px",background:"#0d0d14",borderRadius:"12px",border:"1px solid #22d3a033",padding:"12px 16px" }}>
+              <div style={{ fontSize:"10px",color:"#22d3a0",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",marginBottom:"10px" }}>📎 Documentos da Reserva</div>
+              <div style={{ display:"flex",gap:"8px",flexWrap:"wrap" }}>
+                {viagem.pdfHotel && (
+                  <a href={viagem.pdfHotel} target="_blank" rel="noreferrer"
+                    style={{ display:"flex",alignItems:"center",gap:"6px",padding:"7px 14px",borderRadius:"9px",border:"1px solid #22d3a044",background:"#22d3a018",color:"#22d3a0",fontSize:"12px",fontWeight:700,textDecoration:"none" }}>
+                    🏨 {viagem.pdfHotelName||"Reserva Hotel.pdf"}
+                  </a>
+                )}
+                {viagem.pdfVoo && (
+                  <a href={viagem.pdfVoo} target="_blank" rel="noreferrer"
+                    style={{ display:"flex",alignItems:"center",gap:"6px",padding:"7px 14px",borderRadius:"9px",border:"1px solid #a78bfa44",background:"#a78bfa18",color:"#a78bfa",fontSize:"12px",fontWeight:700,textDecoration:"none" }}>
+                    ✈️ {viagem.pdfVooName||"Passagem.pdf"}
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Upload de PDFs — disponível apenas para gestor/admin quando aprovada */}
           {viagem.status === "aprovada" && canManage && (
             <UploadReserva
@@ -4831,47 +4852,6 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientLis
   };
 
   // Painel de viagens aprovadas — visível ao consultor
-  const ViagemAprovadaConsultor = () => {
-    const [notifs, setNotifs] = useState([]);
-    useEffect(()=>{
-      const key = "notif_viagem_"+nomeLogado.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
-      getDoc(doc(db,"app_data",key)).then(snap=>{ if(snap.exists()) setNotifs(snap.data().value||[]); }).catch(()=>{});
-    },[]);
-    if (!notifs.length) return null;
-    return (
-      <div style={{ background:"#22d3a015",border:"1px solid #22d3a033",borderRadius:"14px",padding:"16px 20px",marginBottom:"20px" }}>
-        <div style={{ fontSize:"12px",fontWeight:700,color:"#22d3a0",marginBottom:"12px" }}>✅ Suas viagens aprovadas</div>
-        {notifs.map((v,i)=>(
-          <div key={v.id||i} style={{ background:"#111118",borderRadius:"10px",border:"1px solid #22d3a022",padding:"12px 14px",marginBottom:"8px",fontSize:"12px" }}>
-            <div style={{ fontWeight:700,color:"#f0f0fa",marginBottom:"6px" }}>{v.cliente||"(sem cliente)"}{v.motivo?" — "+v.motivo:""}</div>
-            <div style={{ display:"flex",gap:"16px",flexWrap:"wrap",color:"#6e6e88",marginBottom:"8px" }}>
-              {v.cidadeHospedagem && <span>🏨 {v.cidadeHospedagem} · {v.checkIn} → {v.checkOut}</span>}
-              {v.incluirVoo && <span>✈️ {v.aeroportoOrigem} → {v.aeroportoDestino} · ida: {v.dataVooIda}{v.horarioIda?" ("+v.horarioIda+")":""}{v.dataVooVolta?" · volta: "+v.dataVooVolta:""}{v.horarioVolta?" ("+v.horarioVolta+")":""}</span>}
-              {v.enderecoCliente && <span>📍 {v.enderecoCliente}</span>}
-            </div>
-            {/* PDFs anexados */}
-            {(v.pdfHotel || v.pdfVoo) && (
-              <div style={{ display:"flex",gap:"8px",flexWrap:"wrap",paddingTop:"8px",borderTop:"1px solid #1f1f2e" }}>
-                {v.pdfHotel && (
-                  <a href={v.pdfHotel} target="_blank" rel="noreferrer"
-                    style={{ display:"flex",alignItems:"center",gap:"6px",padding:"5px 12px",borderRadius:"8px",border:"1px solid #22d3a044",background:"#22d3a018",color:"#22d3a0",fontSize:"11px",fontWeight:700,textDecoration:"none" }}>
-                    🏨 {v.pdfHotelName||"Reserva Hotel.pdf"}
-                  </a>
-                )}
-                {v.pdfVoo && (
-                  <a href={v.pdfVoo} target="_blank" rel="noreferrer"
-                    style={{ display:"flex",alignItems:"center",gap:"6px",padding:"5px 12px",borderRadius:"8px",border:"1px solid #a78bfa44",background:"#a78bfa18",color:"#a78bfa",fontSize:"11px",fontWeight:700,textDecoration:"none" }}>
-                    ✈️ {v.pdfVooName||"Passagem.pdf"}
-                  </a>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   if (loading) return <div style={{ textAlign:"center",padding:"60px" }}><div style={{ width:"28px",height:"28px",border:"3px solid #1f1f2e",borderTop:"3px solid #6c63ff",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto" }}/></div>;
 
   return (
@@ -4888,8 +4868,6 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientLis
           </button>
         </div>
       </div>
-
-      {isConsultor && <ViagemAprovadaConsultor/>}
 
       {showForm && (
         <FormViagem inicial={editando}
