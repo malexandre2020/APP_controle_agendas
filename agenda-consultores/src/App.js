@@ -3337,17 +3337,17 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #2a2a3a", background:"#0d0d14", color:"#c8c8d8", fontSize:"13px", width:"100%", boxSizing:"border-box" };
 
   // Módulos disponíveis por perfil
-  const MODULOS_GESTORES = [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"alcadas",icon:"🔀",label:"Alçadas de Aprovação"}];
+  const MODULOS_GESTORES = [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"traslado",icon:"🚗",label:"Traslado"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"alcadas",icon:"🔀",label:"Alçadas de Aprovação"}];
   const MODULOS_POR_PERFIL = {
-    admin:             [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"alcadas",icon:"🔀",label:"Alçadas"},{ id:"cadastros",icon:"🗂",label:"Cadastros"}],
+    admin:             [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"traslado",icon:"🚗",label:"Traslado"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"alcadas",icon:"🔀",label:"Alçadas"},{ id:"cadastros",icon:"🗂",label:"Cadastros"}],
     editor:            MODULOS_GESTORES,
     diretor_executivo: MODULOS_GESTORES,
     diretor:           MODULOS_GESTORES,
     gerente_executivo: MODULOS_GESTORES,
     gerente:           MODULOS_GESTORES,
-    coordenador:       [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"alcadas",icon:"🔀",label:"Alçadas"}],
+    coordenador:       [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"traslado",icon:"🚗",label:"Traslado"},{ id:"alcadas",icon:"🔀",label:"Alçadas"}],
     viewer:            [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"}],
-    consultor:         [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"grade",icon:"🎓",label:"Grade de Conhecimento"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"}],
+    consultor:         [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"grade",icon:"🎓",label:"Grade de Conhecimento"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"traslado",icon:"🚗",label:"Traslado"}],
     administrativo:    [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"}],
   };
 
@@ -3753,6 +3753,573 @@ function ViagemCard({ viagem, STATUS_CONFIG, canManage, onEdit, onStatusChange, 
 // ─────────────────────────────────────────────────────────────────────────────
 // MÓDULO: ALÇADAS DE APROVAÇÃO
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// MÓDULO: TRASLADO — Cadastro de unidades + RDA
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ITENS_DESPESA = [
+  { cod:"000001", desc:"KILOMETRAGEM",    unit:"KM",   teto:0 },
+  { cod:"000002", desc:"PEDAGIO",         unit:"UN",   teto:0 },
+  { cod:"000003", desc:"ESTACIONAMENTO",  unit:"UN",   teto:0 },
+  { cod:"000004", desc:"ALIMENTAÇÃO",     unit:"UN",   teto:0 },
+  { cod:"000005", desc:"COMBUSTIVEL",     unit:"LT",   teto:0 },
+  { cod:"000006", desc:"TAXI/UBER",       unit:"UN",   teto:0 },
+  { cod:"000007", desc:"OUTROS",          unit:"UN",   teto:0 },
+];
+
+const MOTIVOS_RDA = [
+  "1 - VIAGEM C/ PERNOITE",
+  "2 - VIAGEM S/ PERNOITE",
+  "3 - ATENDIMENTO LOCAL",
+  "4 - DESLOCAMENTO DIÁRIO",
+];
+
+function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clientList, theme: T }) {
+  const [aba,          setAba]         = useState("rda");      // rda | cadastro
+  const [unidades,     setUnidades]    = useState([]);         // unidades por cliente
+  const [rdas,         setRdas]        = useState([]);
+  const [loading,      setLoading]     = useState(true);
+  const [showFormUn,   setShowFormUn]  = useState(false);
+  const [editUn,       setEditUn]      = useState(null);
+  const [showFormRda,  setShowFormRda] = useState(false);
+  const [editRda,      setEditRda]     = useState(null);
+  const [filtroCliente,setFiltroCliente]= useState("");
+
+  const isConsultor = currentUser.role === "consultor";
+  const nomeLogado  = currentUser.consultorName || currentUser.nome || currentUser.username || "";
+  const codTecnico  = currentUser.codigo || currentUser.consultorName?.split(" ").map(n=>n[0]).join("").toUpperCase() || "";
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [snapU, snapR] = await Promise.all([
+          getDoc(doc(db,"app_data","traslado_unidades")),
+          getDoc(doc(db,"app_data","traslado_rdas")),
+        ]);
+        if (snapU.exists()) setUnidades(snapU.data().value||[]);
+        if (snapR.exists()) setRdas(snapR.data().value||[]);
+      } catch(e) { console.warn(e); }
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const salvarUnidades = async (lista) => { setUnidades(lista); await setDoc(doc(db,"app_data","traslado_unidades"),{value:lista}); };
+  const salvarRdas     = async (lista) => { setRdas(lista);     await setDoc(doc(db,"app_data","traslado_rdas"),    {value:lista}); };
+
+  const inp = { padding:"9px 13px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",width:"100%",boxSizing:"border-box",fontFamily:"inherit",outline:"none" };
+  const lbl = { fontSize:"11px",color:"#6e6e88",fontWeight:700,display:"block",marginBottom:"5px",letterSpacing:"0.5px",textTransform:"uppercase" };
+
+  // ── Formulário de Unidade do Cliente ──
+  const FormUnidade = ({ inicial, onSalvar, onCancelar }) => {
+    const [form, setForm] = useState(inicial || { cliente:"", nomeUnidade:"", endereco:"", cidade:"", estado:"", kmConsultoria:0, observacoes:"" });
+    const set = (k,v) => setForm(p=>({...p,[k]:v}));
+    return (
+      <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",padding:"22px",maxWidth:"640px",marginBottom:"20px" }}>
+        <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"15px",fontWeight:900,color:"#f0f0fa",margin:"0 0 18px" }}>
+          {inicial?"✏️ Editar Unidade":"🏢 Cadastrar Unidade do Cliente"}
+        </h3>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px" }}>
+          <div>
+            <label style={lbl}>Cliente *</label>
+            <select value={form.cliente} onChange={e=>set("cliente",e.target.value)} style={inp}>
+              <option value="">Selecione...</option>
+              {(clientList||[]).map(c=><option key={c.name} value={c.name}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Nome / Identificação da Unidade *</label>
+            <input value={form.nomeUnidade} onChange={e=>set("nomeUnidade",e.target.value)} placeholder="Ex: Matriz, Filial SP, Unidade Norte" style={inp}/>
+          </div>
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={lbl}>Endereço completo *</label>
+            <input value={form.endereco} onChange={e=>set("endereco",e.target.value)} placeholder="Rua, número, bairro" style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Cidade</label>
+            <input value={form.cidade} onChange={e=>set("cidade",e.target.value)} placeholder="Ex: São Paulo" style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Estado</label>
+            <select value={form.estado} onChange={e=>set("estado",e.target.value)} style={inp}>
+              <option value="">UF</option>
+              {["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"].map(s=><option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Distância da consultoria (KM) *</label>
+            <input type="number" min="0" step="0.1" value={form.kmConsultoria} onChange={e=>set("kmConsultoria",e.target.value)} placeholder="0" style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Valor KM (R$)</label>
+            <input type="number" min="0" step="0.01" value={form.valorKm||""} onChange={e=>set("valorKm",e.target.value)} placeholder="Ex: 0,35" style={inp}/>
+          </div>
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={lbl}>Observações</label>
+            <input value={form.observacoes} onChange={e=>set("observacoes",e.target.value)} placeholder="Informações adicionais" style={inp}/>
+          </div>
+        </div>
+        <div style={{ display:"flex",gap:"10px",marginTop:"16px",justifyContent:"flex-end" }}>
+          <button onClick={onCancelar} style={{ padding:"8px 18px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>Cancelar</button>
+          <button onClick={()=>onSalvar(form)} disabled={!form.cliente||!form.nomeUnidade||!form.endereco}
+            style={{ padding:"8px 22px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44",opacity:(!form.cliente||!form.nomeUnidade||!form.endereco)?0.5:1 }}>
+            💾 Salvar
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Formulário RDA ──
+  const FormRDA = ({ inicial, onSalvar, onCancelar }) => {
+    const hoje = new Date().toISOString().slice(0,10);
+    const [form, setForm] = useState(inicial || {
+      codRda:"", nFluig:"", dataEmissao:hoje, dataInicio:"", dataFinal:"",
+      codTecnico: codTecnico, nomeSolicitante: nomeLogado,
+      motivo: MOTIVOS_RDA[0], despesas:"", unidadeOrigem:"TOTVS CONSULTORIA",
+      codCliente:"", loja:"", nomeCliente:"", projeto:"", nomeProjeto:"",
+      centroCusto:"", observacoes:"", itens:[], status:"rascunho",
+    });
+    const set = (k,v) => setForm(p=>({...p,[k]:v}));
+    const [buscaItem, setBuscaItem] = useState("");
+    const [showBuscaItem, setShowBuscaItem] = useState(null); // índice do item com busca aberta
+
+    const addItem = () => setForm(p=>({...p, itens:[...p.itens, { id:Date.now().toString(36), data:"", codItem:"", descItem:"", qtd:"", valorUnit:"", valorTeto:"", total:0, observacao:"", foto:null }]}));
+    const removeItem = (idx) => setForm(p=>({...p, itens:p.itens.filter((_,i)=>i!==idx)}));
+    const setItem = (idx,k,v) => {
+      setForm(p=>({...p, itens:p.itens.map((it,i)=>{
+        if (i!==idx) return it;
+        const updated = {...it,[k]:v};
+        if (k==="qtd"||k==="valorUnit") updated.total = (Number(k==="qtd"?v:it.qtd)||0)*(Number(k==="valorUnit"?v:it.valorUnit)||0);
+        return updated;
+      })}));
+    };
+    const selecionarItem = (idx, item) => {
+      setItem(idx,"codItem",item.cod);
+      setItem(idx,"descItem",item.desc);
+      setShowBuscaItem(null); setBuscaItem("");
+    };
+
+    // Buscar unidade do cliente ao selecionar
+    const handleClienteChange = (nome) => {
+      set("nomeCliente",nome);
+      const cli = (clientList||[]).find(c=>c.name===nome);
+      if (cli?.codigo) set("codCliente",cli.codigo);
+      const un = unidades.filter(u=>u.cliente===nome);
+      if (un.length===1) { set("unidadeDestino",un[0].nomeUnidade); }
+    };
+
+    const totalGeral = form.itens.reduce((s,it)=>s+Number(it.total||0),0);
+    const itensFiltrados = ITENS_DESPESA.filter(i=>!buscaItem||i.desc.includes(buscaItem.toUpperCase())||i.cod.includes(buscaItem));
+
+    const secHeader = (label, color="#6c63ff", icon="") => (
+      <div style={{ background:"#09090f",borderRadius:"10px 10px 0 0",padding:"10px 16px",display:"flex",alignItems:"center",gap:"8px",marginTop:"20px",marginBottom:0,border:"1px solid #2a2a3a",borderBottom:"none" }}>
+        <span style={{ fontSize:"16px" }}>{icon}</span>
+        <span style={{ fontSize:"12px",fontWeight:800,color:"#fff",letterSpacing:"1px",textTransform:"uppercase" }}>{label}</span>
+      </div>
+    );
+    const secBody = { background:"#111118",borderRadius:"0 0 10px 10px",border:"1px solid #2a2a3a",padding:"16px",marginBottom:"4px" };
+
+    return (
+      <div style={{ maxWidth:"900px" }}>
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"20px",flexWrap:"wrap",gap:"10px" }}>
+          <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"17px",fontWeight:900,color:"#f0f0fa",margin:0 }}>
+            {inicial?"✏️ Editar RDA":"🚗 Nova RDA — Relatório de Despesas de Atendimento"}
+          </h3>
+          <div style={{ display:"flex",gap:"8px" }}>
+            <button onClick={onCancelar} style={{ padding:"8px 16px",borderRadius:"9px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"12px",fontFamily:"inherit" }}>Cancelar</button>
+            <button onClick={()=>onSalvar({...form,status:"rascunho"})}
+              style={{ padding:"8px 16px",borderRadius:"9px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontWeight:700,fontSize:"12px",fontFamily:"inherit" }}>💾 Salvar rascunho</button>
+            <button onClick={()=>onSalvar({...form,status:"enviada"})}
+              style={{ padding:"8px 18px",borderRadius:"9px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"12px",fontFamily:"inherit",boxShadow:"0 4px 14px #6c63ff44" }}>✅ Enviar RDA</button>
+          </div>
+        </div>
+
+        {/* Seção RDA */}
+        {secHeader("RDA — Relatório de Despesas de Atendimento","#6c63ff","🚗")}
+        <div style={secBody}>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:"10px" }}>
+            <div>
+              <label style={lbl}>Código RDA</label>
+              <input value={form.codRda} onChange={e=>set("codRda",e.target.value)} placeholder="Auto" style={{...inp,background:"#0a0a12",color:"#6e6e88"}} readOnly/>
+            </div>
+            <div>
+              <label style={lbl}>Nº Fluig</label>
+              <input value={form.nFluig} onChange={e=>set("nFluig",e.target.value)} placeholder="" style={inp}/>
+            </div>
+            <div>
+              <label style={lbl}>Data Emissão</label>
+              <input type="date" value={form.dataEmissao} onChange={e=>set("dataEmissao",e.target.value)} style={{...inp,background:"#0a0a12",color:"#6e6e88"}} readOnly/>
+            </div>
+            <div>
+              <label style={lbl}>Data Início *</label>
+              <input type="date" value={form.dataInicio} onChange={e=>set("dataInicio",e.target.value)} style={inp}/>
+            </div>
+            <div>
+              <label style={lbl}>Data Final *</label>
+              <input type="date" value={form.dataFinal} onChange={e=>set("dataFinal",e.target.value)} style={inp}/>
+            </div>
+          </div>
+          <div style={{ display:"grid",gridTemplateColumns:"160px 1fr 1fr 160px",gap:"10px",marginTop:"10px" }}>
+            <div>
+              <label style={lbl}>Cód. Técnico *</label>
+              <input value={form.codTecnico} onChange={e=>set("codTecnico",e.target.value)} style={inp}/>
+            </div>
+            <div>
+              <label style={lbl}>Nome Solicitante *</label>
+              <input value={form.nomeSolicitante} onChange={e=>set("nomeSolicitante",e.target.value)} style={inp}/>
+            </div>
+            <div>
+              <label style={lbl}>Motivo *</label>
+              <select value={form.motivo} onChange={e=>set("motivo",e.target.value)} style={inp}>
+                {MOTIVOS_RDA.map(m=><option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Despesas</label>
+              <input value={form.despesas} onChange={e=>set("despesas",e.target.value)} placeholder="R$" style={inp}/>
+            </div>
+          </div>
+          <div style={{ marginTop:"10px" }}>
+            <label style={lbl}>Unidade de Origem *</label>
+            <select value={form.unidadeOrigem} onChange={e=>set("unidadeOrigem",e.target.value)} style={{...inp,maxWidth:"320px"}}>
+              <option value="TOTVS CONSULTORIA">TOTVS CONSULTORIA</option>
+              <option value="TOTVS SERRA DO MAR">TOTVS SERRA DO MAR</option>
+              <option value="RESIDÊNCIA">RESIDÊNCIA</option>
+              <option value="OUTRO">OUTRO</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Seção Cliente */}
+        {secHeader("CLIENTE","#22d3a0","🏢")}
+        <div style={secBody}>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 120px 1fr",gap:"10px",marginBottom:"10px" }}>
+            <div>
+              <label style={lbl}>Nome Cliente</label>
+              <select value={form.nomeCliente} onChange={e=>handleClienteChange(e.target.value)} style={inp}>
+                <option value="">Preencha com o nome do cliente</option>
+                {(clientList||[]).map(c=><option key={c.name} value={c.name}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Código Cliente</label>
+              <input value={form.codCliente} onChange={e=>set("codCliente",e.target.value)} placeholder="" style={inp}/>
+            </div>
+            <div>
+              <label style={lbl}>Loja</label>
+              <input value={form.loja} onChange={e=>set("loja",e.target.value)} placeholder="" style={inp}/>
+            </div>
+          </div>
+          <div style={{ display:"grid",gridTemplateColumns:"220px 1fr 160px",gap:"10px",marginBottom:"10px" }}>
+            <div>
+              <label style={lbl}>Unidade de Destino</label>
+              <select value={form.unidadeDestino||""} onChange={e=>set("unidadeDestino",e.target.value)} style={inp}>
+                <option value="">Selecione...</option>
+                {unidades.filter(u=>!form.nomeCliente||u.cliente===form.nomeCliente).map(u=>(
+                  <option key={u.id} value={u.nomeUnidade}>{u.nomeUnidade} — {u.kmConsultoria}km</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Endereço destino</label>
+              <input value={form.enderecoDestino||unidades.find(u=>u.nomeUnidade===form.unidadeDestino&&u.cliente===form.nomeCliente)?.endereco||""} onChange={e=>set("enderecoDestino",e.target.value)} placeholder="Preenchido automaticamente" style={inp}/>
+            </div>
+            <div>
+              <label style={lbl}>KM até cliente</label>
+              <input value={form.kmDestino||unidades.find(u=>u.nomeUnidade===form.unidadeDestino&&u.cliente===form.nomeCliente)?.kmConsultoria||""} onChange={e=>set("kmDestino",e.target.value)} placeholder="0" style={inp}/>
+            </div>
+          </div>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 160px",gap:"10px",marginBottom:"10px" }}>
+            <div>
+              <label style={lbl}>Projeto</label>
+              <input value={form.projeto} onChange={e=>set("projeto",e.target.value)} placeholder="Preencha o código do projeto" style={inp}/>
+            </div>
+            <div>
+              <label style={lbl}>Nome Projeto</label>
+              <input value={form.nomeProjeto} onChange={e=>set("nomeProjeto",e.target.value)} style={inp}/>
+            </div>
+            <div>
+              <label style={lbl}>Centro Custo *</label>
+              <input value={form.centroCusto} onChange={e=>set("centroCusto",e.target.value)} placeholder="Ex: 1030003" style={inp}/>
+            </div>
+          </div>
+          <div>
+            <label style={lbl}>Observações *</label>
+            <textarea value={form.observacoes} onChange={e=>set("observacoes",e.target.value)} rows={2} style={{...inp,resize:"vertical",lineHeight:1.5}}/>
+          </div>
+        </div>
+
+        {/* Seção Declarações de Itens */}
+        {secHeader("DECLARAÇÕES DE ITENS","#f5a623","$")}
+        <div style={secBody}>
+          {form.itens.map((item,idx)=>(
+            <div key={item.id||idx} style={{ background:"#0d0d14",borderRadius:"10px",border:"1px solid #2a2a3a",padding:"14px",marginBottom:"10px" }}>
+              <div style={{ display:"grid",gridTemplateColumns:"160px 120px 1fr",gap:"10px",marginBottom:"10px",alignItems:"end" }}>
+                <div>
+                  <label style={lbl}>Data Item *</label>
+                  <input type="date" value={item.data} onChange={e=>setItem(idx,"data",e.target.value)} style={inp}/>
+                </div>
+                <div>
+                  <label style={lbl}>Cód. Item *</label>
+                  <input value={item.codItem} readOnly style={{...inp,background:"#18181f",color:"#a78bfa",fontWeight:700}}/>
+                </div>
+                <div style={{ position:"relative" }}>
+                  <label style={lbl}>Descrição Item *</label>
+                  <div style={{ display:"flex",gap:"6px" }}>
+                    <input value={item.descItem} readOnly placeholder="Selecione o item" style={{...inp,flex:1,background:"#18181f"}}/>
+                    <button onClick={()=>{ setShowBuscaItem(showBuscaItem===idx?null:idx); setBuscaItem(""); }}
+                      style={{ padding:"9px 12px",borderRadius:"9px",border:"1px solid #2a2a3a",background:"#18181f",color:"#6e6e88",cursor:"pointer",fontSize:"14px" }}>🔍</button>
+                  </div>
+                  {showBuscaItem===idx && (
+                    <div style={{ position:"absolute",top:"100%",left:0,right:0,zIndex:200,background:"#111118",border:"1px solid #2a2a3a",borderRadius:"10px",boxShadow:"0 8px 32px rgba(0,0,0,0.6)",marginTop:"4px",maxHeight:"240px",overflowY:"auto" }}>
+                      <div style={{ padding:"8px" }}>
+                        <input value={buscaItem} onChange={e=>setBuscaItem(e.target.value)} placeholder="Buscando..." autoFocus style={{...inp,fontSize:"12px"}}/>
+                      </div>
+                      <div style={{ padding:"4px 8px 8px",fontSize:"10px",color:"#3e3e55",fontWeight:700,letterSpacing:"0.5px",display:"grid",gridTemplateColumns:"100px 1fr",paddingLeft:"12px" }}>
+                        <span>CÓDIGO</span><span>DESCRIÇÃO</span>
+                      </div>
+                      {itensFiltrados.map(it=>(
+                        <div key={it.cod} onClick={()=>selecionarItem(idx,it)}
+                          style={{ display:"grid",gridTemplateColumns:"100px 1fr",padding:"10px 12px",cursor:"pointer",borderTop:"1px solid #1f1f2e",transition:"background .1s" }}
+                          onMouseEnter={e=>e.currentTarget.style.background="#18181f"}
+                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                          <span style={{ fontSize:"12px",fontWeight:700,color:"#a78bfa" }}>{it.cod}</span>
+                          <span style={{ fontSize:"12px",color:"#f0f0fa",fontWeight:700 }}>{it.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 140px 140px 140px 140px",gap:"10px",alignItems:"end" }}>
+                <div>
+                  <label style={lbl}>Observação</label>
+                  <input value={item.observacao} onChange={e=>setItem(idx,"observacao",e.target.value)} style={inp}/>
+                </div>
+                <div>
+                  <label style={lbl}>QTD *</label>
+                  <input type="number" min="0" step="0.01" value={item.qtd} onChange={e=>setItem(idx,"qtd",e.target.value)} style={inp}/>
+                </div>
+                <div>
+                  <label style={lbl}>Valor Unit *</label>
+                  <input type="number" min="0" step="0.01" value={item.valorUnit} onChange={e=>setItem(idx,"valorUnit",e.target.value)} style={inp}/>
+                </div>
+                <div>
+                  <label style={lbl}>Valor Teto *</label>
+                  <input type="number" min="0" step="0.01" value={item.valorTeto} onChange={e=>setItem(idx,"valorTeto",e.target.value)} style={inp}/>
+                </div>
+                <div>
+                  <label style={lbl}>Total *</label>
+                  <input value={item.total?Number(item.total).toFixed(2):""} readOnly style={{...inp,background:"#18181f",color:"#22d3a0",fontWeight:800}}/>
+                </div>
+              </div>
+              <div style={{ display:"flex",gap:"8px",marginTop:"10px" }}>
+                <label style={{ padding:"6px 14px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#18181f",color:"#6e6e88",fontSize:"11px",fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
+                  📷 INSIRA FOTO
+                  <input type="file" accept="image/*" style={{ display:"none" }} onChange={e=>setItem(idx,"foto",e.target.files[0]?.name||null)}/>
+                </label>
+                {item.foto && <span style={{ fontSize:"11px",color:"#22d3a0",alignSelf:"center" }}>📎 {item.foto}</span>}
+                <button onClick={()=>removeItem(idx)} style={{ padding:"6px 14px",borderRadius:"8px",border:"1px solid #f04f5e44",background:"#f04f5e18",color:"#f04f5e",fontSize:"11px",fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>REMOVER ITEM</button>
+              </div>
+            </div>
+          ))}
+          <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"8px" }}>
+            <button onClick={addItem} style={{ padding:"9px 20px",borderRadius:"9px",border:"1px solid #2a2a3a",background:"#18181f",color:"#c8c8d8",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>+ NOVA DESPESA</button>
+            {form.itens.length>0 && <div style={{ fontSize:"14px",fontWeight:800,color:"#22d3a0" }}>Total Geral: R$ {totalGeral.toFixed(2)}</div>}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const STATUS_RDA = {
+    rascunho: { label:"Rascunho", color:"#6e6e88", bg:"#6e6e8818" },
+    enviada:  { label:"Enviada",  color:"#6c63ff", bg:"#6c63ff18" },
+    aprovada: { label:"Aprovada", color:"#22d3a0", bg:"#22d3a018" },
+    rejeitada:{ label:"Rejeitada",color:"#f04f5e", bg:"#f04f5e18" },
+  };
+
+  const rdasFiltradas = isConsultor
+    ? rdas.filter(r => r.nomeSolicitante===nomeLogado || r.codTecnico===codTecnico)
+    : filtroCliente ? rdas.filter(r=>r.nomeCliente===filtroCliente) : rdas;
+
+  if (loading) return <div style={{ textAlign:"center",padding:"60px" }}><div style={{ width:"28px",height:"28px",border:"3px solid #1f1f2e",borderTop:"3px solid #6c63ff",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto" }}/></div>;
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"24px",flexWrap:"wrap",gap:"12px" }}>
+        <div>
+          <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>🚗 Traslado</h2>
+          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>{rdasFiltradas.length} RDA{rdasFiltradas.length!==1?"s":""}</p>
+        </div>
+        <div style={{ display:"flex",gap:"6px",alignItems:"center" }}>
+          <div style={{ display:"flex",gap:"2px",background:"#0d0d14",borderRadius:"10px",padding:"3px",border:"1px solid #2a2a3a" }}>
+            {[{id:"rda",l:"📄 RDAs"},{id:"cadastro",l:"🏢 Unidades"}].map(t=>(
+              <button key={t.id} onClick={()=>setAba(t.id)}
+                style={{ padding:"6px 14px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"12px",fontFamily:"inherit",background:aba===t.id?"#6c63ff":"transparent",color:aba===t.id?"#fff":"#6e6e88" }}>{t.l}</button>
+            ))}
+          </div>
+          {aba==="rda" && <button onClick={()=>{setEditRda(null);setShowFormRda(true);}}
+            style={{ padding:"8px 18px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>+ Nova RDA</button>}
+          {aba==="cadastro" && (canManage||canApprove) && <button onClick={()=>{setEditUn(null);setShowFormUn(true);}}
+            style={{ padding:"8px 18px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>+ Nova Unidade</button>}
+        </div>
+      </div>
+
+      {/* ABA: CADASTRO DE UNIDADES */}
+      {aba==="cadastro" && (
+        <div>
+          {showFormUn && (
+            <FormUnidade inicial={editUn}
+              onSalvar={async (dados)=>{
+                const nova = editUn
+                  ? unidades.map(u=>u.id===editUn.id?{...dados,id:editUn.id}:u)
+                  : [...unidades,{...dados,id:Date.now().toString(36)}];
+                await salvarUnidades(nova);
+                setShowFormUn(false); setEditUn(null);
+              }}
+              onCancelar={()=>{setShowFormUn(false);setEditUn(null);}}
+            />
+          )}
+          {/* Filtro por cliente */}
+          <div style={{ marginBottom:"14px" }}>
+            <select value={filtroCliente} onChange={e=>setFiltroCliente(e.target.value)}
+              style={{...inp,maxWidth:"280px"}}>
+              <option value="">Todos os clientes</option>
+              {[...new Set(unidades.map(u=>u.cliente))].sort().map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          {unidades.length===0 && !showFormUn && (
+            <div style={{ textAlign:"center",padding:"60px",background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e" }}>
+              <div style={{ fontSize:"40px",marginBottom:"12px" }}>🏢</div>
+              <div style={{ fontSize:"14px",color:"#3e3e55",marginBottom:"16px" }}>Nenhuma unidade cadastrada</div>
+              {(canManage||canApprove) && <button onClick={()=>setShowFormUn(true)} style={{ padding:"9px 20px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit" }}>Cadastrar primeira unidade</button>}
+            </div>
+          )}
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:"12px" }}>
+            {(filtroCliente?unidades.filter(u=>u.cliente===filtroCliente):unidades).map(un=>{
+              const cli = (clientList||[]).find(c=>c.name===un.cliente);
+              return (
+                <div key={un.id} style={{ background:"#111118",borderRadius:"12px",border:"1px solid #1f1f2e",padding:"16px",position:"relative",overflow:"hidden" }}>
+                  <div style={{ position:"absolute",top:0,left:0,right:0,height:"3px",background:cli?.color||"#6c63ff" }}/>
+                  <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"8px" }}>
+                    <div>
+                      <div style={{ fontSize:"13px",fontWeight:700,color:"#f0f0fa" }}>{un.nomeUnidade}</div>
+                      <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"2px" }}>🏢 {un.cliente}</div>
+                    </div>
+                    {(canManage||canApprove) && (
+                      <div style={{ display:"flex",gap:"5px" }}>
+                        <button onClick={()=>{setEditUn(un);setShowFormUn(true);}} style={{ padding:"4px 9px",borderRadius:"7px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontSize:"11px",fontWeight:700,fontFamily:"inherit" }}>✏️</button>
+                        <button onClick={async()=>{ if(window.confirm("Excluir?")) await salvarUnidades(unidades.filter(u2=>u2.id!==un.id)); }} style={{ padding:"4px 9px",borderRadius:"7px",border:"1px solid #f04f5e44",background:"#f04f5e18",color:"#f04f5e",cursor:"pointer",fontSize:"11px",fontWeight:700,fontFamily:"inherit" }}>🗑</button>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize:"12px",color:"#c8c8d8",marginBottom:"4px" }}>📍 {un.endereco}{un.cidade?", "+un.cidade:""}{un.estado?" / "+un.estado:""}</div>
+                  <div style={{ display:"flex",gap:"14px",fontSize:"11px",color:"#6e6e88",marginTop:"6px" }}>
+                    <span style={{ color:"#22d3a0",fontWeight:700 }}>🚗 {un.kmConsultoria} km</span>
+                    {un.valorKm && <span>R$ {Number(un.valorKm).toFixed(2)}/km</span>}
+                    {un.observacoes && <span>💬 {un.observacoes}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ABA: RDAs */}
+      {aba==="rda" && (
+        <div>
+          {showFormRda && (
+            <FormRDA inicial={editRda}
+              onSalvar={async (dados)=>{
+                // Gerar código RDA sequencial
+                let codRda = dados.codRda;
+                if (!codRda) {
+                  try {
+                    const snap = await getDoc(doc(db,"app_data","rda_sequencial"));
+                    const n = snap.exists()?(snap.data().value||0):0;
+                    codRda = "RDA-"+String(n+1).padStart(5,"0");
+                    await setDoc(doc(db,"app_data","rda_sequencial"),{value:n+1});
+                  } catch(_) { codRda = "RDA-"+Date.now().toString().slice(-5); }
+                }
+                const final = {...dados,codRda};
+                const nova = editRda
+                  ? rdas.map(r=>r.id===editRda.id?{...final,id:editRda.id}:r)
+                  : [...rdas,{...final,id:Date.now().toString(36),criadoEm:new Date().toISOString()}];
+                await salvarRdas(nova);
+                setShowFormRda(false); setEditRda(null);
+              }}
+              onCancelar={()=>{setShowFormRda(false);setEditRda(null);}}
+            />
+          )}
+
+          {!showFormRda && (
+            <>
+              {!isConsultor && (
+                <div style={{ marginBottom:"14px" }}>
+                  <select value={filtroCliente} onChange={e=>setFiltroCliente(e.target.value)} style={{...inp,maxWidth:"260px"}}>
+                    <option value="">Todos os clientes</option>
+                    {[...new Set(rdas.map(r=>r.nomeCliente).filter(Boolean))].sort().map(c=><option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {rdasFiltradas.length===0 && (
+                <div style={{ textAlign:"center",padding:"60px",background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e" }}>
+                  <div style={{ fontSize:"40px",marginBottom:"12px" }}>🚗</div>
+                  <div style={{ fontSize:"14px",color:"#3e3e55",marginBottom:"16px" }}>Nenhuma RDA encontrada</div>
+                  <button onClick={()=>setShowFormRda(true)} style={{ padding:"9px 20px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit" }}>Criar primeira RDA</button>
+                </div>
+              )}
+
+              <div style={{ display:"flex",flexDirection:"column",gap:"8px" }}>
+                {rdasFiltradas.sort((a,b)=>new Date(b.criadoEm||0)-new Date(a.criadoEm||0)).map(rda=>{
+                  const st = STATUS_RDA[rda.status]||STATUS_RDA.rascunho;
+                  const total = (rda.itens||[]).reduce((s,it)=>s+Number(it.total||0),0);
+                  return (
+                    <div key={rda.id} style={{ background:"#111118",borderRadius:"12px",border:"1px solid #1f1f2e",padding:"14px 18px",display:"flex",alignItems:"center",gap:"14px",flexWrap:"wrap" }}>
+                      <div style={{ minWidth:"100px" }}>
+                        <div style={{ fontSize:"12px",fontWeight:800,color:"#a78bfa" }}>{rda.codRda||"—"}</div>
+                        <div style={{ fontSize:"10px",color:"#3e3e55",marginTop:"2px" }}>{rda.dataEmissao}</div>
+                      </div>
+                      <div style={{ flex:1,minWidth:0 }}>
+                        <div style={{ fontSize:"13px",fontWeight:700,color:"#f0f0fa" }}>{rda.nomeCliente||"(sem cliente)"}</div>
+                        <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"2px",display:"flex",gap:"10px",flexWrap:"wrap" }}>
+                          <span>👤 {rda.nomeSolicitante}</span>
+                          <span>📅 {rda.dataInicio}{rda.dataFinal?" → "+rda.dataFinal:""}</span>
+                          <span>📌 {rda.motivo?.split(" - ")[1]||rda.motivo}</span>
+                          {total>0&&<span style={{ color:"#22d3a0",fontWeight:700 }}>R$ {total.toFixed(2)}</span>}
+                        </div>
+                      </div>
+                      <span style={{ padding:"4px 12px",borderRadius:"99px",background:st.bg,border:"1px solid "+st.color+"44",fontSize:"11px",fontWeight:700,color:st.color,whiteSpace:"nowrap" }}>{st.label}</span>
+                      <div style={{ display:"flex",gap:"6px" }}>
+                        <button onClick={()=>{setEditRda(rda);setShowFormRda(true);}}
+                          style={{ padding:"6px 12px",borderRadius:"8px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontSize:"11px",fontWeight:700,fontFamily:"inherit" }}>
+                          {rda.status==="rascunho"?"✏️ Editar":"👁 Ver"}
+                        </button>
+                        {(canManage||canApprove) && (
+                          <>
+                            {rda.status==="enviada"&&<button onClick={async()=>{ await salvarRdas(rdas.map(r=>r.id===rda.id?{...r,status:"aprovada"}:r)); }} style={{ padding:"6px 12px",borderRadius:"8px",border:"1px solid #22d3a044",background:"#22d3a018",color:"#22d3a0",cursor:"pointer",fontSize:"11px",fontWeight:700,fontFamily:"inherit" }}>✅ Aprovar</button>}
+                            {rda.status==="enviada"&&<button onClick={async()=>{ await salvarRdas(rdas.map(r=>r.id===rda.id?{...r,status:"rejeitada"}:r)); }} style={{ padding:"6px 12px",borderRadius:"8px",border:"1px solid #f04f5e44",background:"#f04f5e18",color:"#f04f5e",cursor:"pointer",fontSize:"11px",fontWeight:700,fontFamily:"inherit" }}>❌ Rejeitar</button>}
+                          </>
+                        )}
+                        {rda.status==="rascunho"&&<button onClick={async()=>{ if(window.confirm("Excluir esta RDA?")) await salvarRdas(rdas.filter(r=>r.id!==rda.id)); }} style={{ padding:"6px 12px",borderRadius:"8px",border:"1px solid #f04f5e44",background:"#f04f5e18",color:"#f04f5e",cursor:"pointer",fontSize:"11px",fontWeight:700,fontFamily:"inherit" }}>🗑</button>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const ROLES_LABELS = {
   admin:"Admin", editor:"Editor", viewer:"Visualizador",
   diretor_executivo:"Diretor Executivo", diretor:"Diretor",
@@ -5844,6 +6411,7 @@ function Dashboard({ currentUser, onLogout }) {
     { id:"agenda",   icon:"📅", label:"Agenda",                desc:"Agenda de consultores" },
     { id:"os",       icon:"📋", label:"Ordens de Serviço",     desc:"Consulta e aprovação de OS" },
     { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Solicitações de viagem e hospedagem" },
+    { id:"traslado", icon:"🚗", label:"Traslado",              desc:"RDA e gestão de traslados" },
     { id:"projetos", icon:"📁", label:"Projetos",              desc:"Gestão de projetos" },
     { id:"alcadas",  icon:"🔀", label:"Alçadas",               desc:"Hierarquia de aprovação" },
   ];
@@ -5851,6 +6419,7 @@ function Dashboard({ currentUser, onLogout }) {
     { id:"agenda",   icon:"📅", label:"Agenda",                desc:"Minha agenda" },
     { id:"grade",    icon:"🎓", label:"Grade de Conhecimento", desc:"Meus conhecimentos" },
     { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Minhas solicitações" },
+    { id:"traslado", icon:"🚗", label:"Traslado",              desc:"RDA de traslado" },
   ];
   const ALL_MODULES_BASICO = [
     { id:"home",     icon:"⬡",  label:"Dashboard",            desc:"Visão geral" },
@@ -6152,6 +6721,20 @@ function Dashboard({ currentUser, onLogout }) {
         )}
 
         {/* ── MODULE: ORDENS DE SERVIÇO ── */}
+        {/* ── MODULE: TRASLADO ── */}
+        {activeModule==="traslado" && (
+          <div style={{ padding:"28px 32px",flex:1 }}>
+            <ModuloTraslado
+              currentUser={currentUser}
+              canManage={canManage}
+              canApprove={canApprove}
+              consultores={consultores}
+              clientList={clientList}
+              theme={T}
+            />
+          </div>
+        )}
+
         {/* ── MODULE: ALÇADAS DE APROVAÇÃO ── */}
         {activeModule==="alcadas" && (
           <div style={{ padding:"28px 32px",flex:1 }}>
