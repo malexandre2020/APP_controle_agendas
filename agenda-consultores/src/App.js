@@ -744,7 +744,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 // ─────────────────────────────────────────────────────────────────────────────
 // MODAL ORDEM DE SERVIÇO (consultor preenche OS em agenda existente)
 // ─────────────────────────────────────────────────────────────────────────────
-function OrdemServicoModal({ entry, consultorName, onSave, onClose }) {
+function OrdemServicoModal({ entry, consultorName, emailConfig, onSave, onClose }) {
   const [horaInicio,  setHoraInicio]  = useState(entry.horaInicio  || "08:00");
   const [horaFim,     setHoraFim]     = useState(entry.horaFim     || "17:00");
   const [intervalo,   setIntervalo]   = useState(entry.intervalo   || "");
@@ -754,6 +754,10 @@ function OrdemServicoModal({ entry, consultorName, onSave, onClose }) {
   const [osSistema,   setOsSistema]   = useState(entry.osSistema   || "");
   const [osStatus,    setOsStatus]    = useState(entry.osStatus    || "em_andamento");
   const [saving,      setSaving]      = useState(false);
+  const [sendingEmail,setSendingEmail]= useState(false);
+  const [emailStatus, setEmailStatus] = useState(null); // "ok" | "erro" | null
+  const [emailDest,   setEmailDest]   = useState(entry.osEmailDest || "");
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
   const OS_STATUS = {
     em_andamento: { label:"Em andamento", color:"#6c63ff", bg:"#6c63ff18" },
@@ -761,6 +765,25 @@ function OrdemServicoModal({ entry, consultorName, onSave, onClose }) {
     pendente:     { label:"Pendente",     color:"#f5a623", bg:"#f5a62318" },
     cancelada:    { label:"Cancelada",    color:"#f04f5e", bg:"#f04f5e18" },
   };
+
+  // Gerar número sequencial ao abrir (somente se não tiver ainda)
+  useEffect(() => {
+    if (entry.osNumero) return; // já tem número
+    const gerarNumero = async () => {
+      try {
+        const snap = await getDoc(doc(db, "app_data", "os_sequencial"));
+        const atual = snap.exists() ? (snap.data().value || 0) : 0;
+        const proximo = atual + 1;
+        const numero = "OS-" + String(proximo).padStart(4, "0");
+        await setDoc(doc(db, "app_data", "os_sequencial"), { value: proximo });
+        setOsNumero(numero);
+      } catch(e) {
+        // fallback: usar timestamp se Firestore falhar
+        setOsNumero("OS-" + Date.now().toString().slice(-6));
+      }
+    };
+    gerarNumero();
+  }, []);
 
   const duracaoUtil = () => {
     if (!horaInicio || !horaFim || horaInicio >= horaFim) return null;
@@ -772,21 +795,103 @@ function OrdemServicoModal({ entry, consultorName, onSave, onClose }) {
     return `${h}h${m>0?" "+m+"min":""}`;
   };
 
+  const buildOsData = () => ({
+    ...entry,
+    horaInicio, horaFim, intervalo,
+    atividades: atividades.trim(),
+    osNumero,
+    osDescricao: osDescricao.trim(),
+    osSistema: osSistema.trim(),
+    osStatus,
+    osEmailDest: emailDest,
+    osPreenchidaEm: new Date().toISOString(),
+    osPreenchidaPor: consultorName,
+  });
+
   const handleSave = async () => {
     setSaving(true);
-    await onSave({
-      ...entry,
-      horaInicio, horaFim, intervalo,
-      atividades: atividades.trim(),
-      osNumero: osNumero.trim(),
-      osDescricao: osDescricao.trim(),
-      osSistema: osSistema.trim(),
-      osStatus,
-      osPreenchidaEm: new Date().toISOString(),
-      osPreenchidaPor: consultorName,
-    });
+    await onSave(buildOsData());
     setSaving(false);
     onClose();
+  };
+
+  const handleEnviarEmail = async () => {
+    if (!emailDest.trim()) { setEmailStatus("erro_dest"); return; }
+    const cfg = emailConfig || {};
+    if (!cfg.enabled || !cfg.publicKey || !cfg.serviceId || !cfg.templateId) {
+      setEmailStatus("sem_config"); return;
+    }
+    setSendingEmail(true);
+    setEmailStatus(null);
+    try {
+      // Salvar antes de enviar
+      const osData = buildOsData();
+      await onSave(osData);
+
+      // Carregar EmailJS
+      const loadEJ = () => new Promise((res, rej) => {
+        if (window.emailjs) { window.emailjs.init({ publicKey: cfg.publicKey }); res(window.emailjs); return; }
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";
+        s.onload = () => { window.emailjs.init({ publicKey: cfg.publicKey }); res(window.emailjs); };
+        s.onerror = rej;
+        document.head.appendChild(s);
+      });
+      const ej = await loadEJ();
+
+      const dur = duracaoUtil();
+      const horarioTexto = [horaInicio, horaFim?"→ "+horaFim:"", intervalo?"(intervalo: "+intervalo+"min)":""].filter(Boolean).join(" ") || "—";
+
+      const corpo = `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
+          <div style="background:linear-gradient(135deg,#6c63ff,#a78bfa);padding:20px 24px">
+            <h2 style="color:#fff;margin:0;font-size:18px">📋 Ordem de Serviço — ${osNumero}</h2>
+            <p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:13px">${osData.osStatus ? OS_STATUS[osData.osStatus]?.label : ""}</p>
+          </div>
+          <div style="padding:20px 24px;background:#fff">
+            <table style="width:100%;border-collapse:collapse;font-size:14px">
+              ${[
+                ["Consultor", consultorName],
+                ["Cliente",   entry.client||"—"],
+                ["Data",      `Dia ${entry.day} · ${entry.month} ${entry.year||""}`],
+                ["Modalidade",entry.modalidade==="remoto"?"💻 Remoto":"🏢 Presencial"],
+                ["Horário",   horarioTexto],
+                dur ? ["Tempo útil", dur] : null,
+                osSistema ? ["Sistema/Módulo", osSistema] : null,
+                osDescricao ? ["Descrição da OS", osDescricao] : null,
+              ].filter(Boolean).map(([k,v])=>`
+                <tr style="border-bottom:1px solid #f0f0f0">
+                  <td style="padding:8px 0;color:#666;width:140px;font-weight:600">${k}</td>
+                  <td style="padding:8px 0;color:#333">${v}</td>
+                </tr>
+              `).join("")}
+            </table>
+            ${atividades ? `
+              <div style="margin-top:16px;padding:14px;background:#f8f8ff;border-radius:6px;border-left:3px solid #6c63ff">
+                <div style="font-size:12px;font-weight:700;color:#6c63ff;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Atividades Realizadas</div>
+                <div style="font-size:14px;color:#444;line-height:1.6;white-space:pre-wrap">${atividades}</div>
+              </div>` : ""}
+            <p style="margin-top:20px;font-size:12px;color:#aaa;text-align:center">
+              Enviado por ${consultorName} em ${new Date().toLocaleString("pt-BR")} · Sistema GSC
+            </p>
+          </div>
+        </div>`;
+
+      await ej.send(cfg.serviceId, cfg.templateId, {
+        to_email:  emailDest.trim(),
+        to_name:   emailDest.trim(),
+        subject:   `OS ${osNumero} — ${entry.client||""} · Dia ${entry.day} ${entry.month}`,
+        html_body: corpo,
+        message:   `OS ${osNumero}\nConsultor: ${consultorName}\nCliente: ${entry.client||"—"}\nData: Dia ${entry.day} ${entry.month} ${entry.year||""}\nHorário: ${horarioTexto}\nAtividades: ${atividades||"—"}`,
+        from_name: `GSC - ${consultorName}`,
+      });
+      setEmailStatus("ok");
+    } catch(e) {
+      console.error(e);
+      setEmailStatus("erro");
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   const inp = { padding:"9px 13px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",width:"100%",boxSizing:"border-box",fontFamily:"inherit" };
@@ -799,11 +904,17 @@ function OrdemServicoModal({ entry, consultorName, onSave, onClose }) {
         {/* Header */}
         <div style={{ padding:"22px 24px 16px",borderBottom:"1px solid #1f1f2e",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"12px" }}>
           <div>
-            <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"17px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>📋 Ordem de Serviço</h2>
+            <div style={{ display:"flex",alignItems:"center",gap:"10px",marginBottom:"4px" }}>
+              <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"17px",fontWeight:900,color:"#f0f0fa",margin:0,letterSpacing:"-0.3px" }}>📋 Ordem de Serviço</h2>
+              {osNumero
+                ? <span style={{ padding:"3px 10px",borderRadius:"99px",background:"#6c63ff22",border:"1px solid #6c63ff44",fontSize:"12px",fontWeight:700,color:"#a78bfa" }}>{osNumero}</span>
+                : <span style={{ padding:"3px 10px",borderRadius:"99px",background:"#1f1f2e",fontSize:"11px",color:"#3e3e55" }}>Gerando nº...</span>
+              }
+            </div>
             <div style={{ fontSize:"12px",color:"#3e3e55",display:"flex",gap:"10px",flexWrap:"wrap" }}>
               <span>🏢 {entry.client||entry.type}</span>
               <span>📅 Dia {entry.day} · {entry.month} {entry.year||""}</span>
-              <span style={{ color: entry.modalidade==="remoto"?"#a78bfa":"#22d3a0" }}>
+              <span style={{ color:entry.modalidade==="remoto"?"#a78bfa":"#22d3a0" }}>
                 {entry.modalidade==="remoto"?"💻 Remoto":"🏢 Presencial"}
               </span>
             </div>
@@ -819,7 +930,10 @@ function OrdemServicoModal({ entry, consultorName, onSave, onClose }) {
             <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px" }}>
               <div>
                 <label style={lbl}>Nº da OS</label>
-                <input value={osNumero} onChange={e=>setOsNumero(e.target.value)} placeholder="Ex: OS-2025-001" style={inp}/>
+                <div style={{ ...inp, background:"#18181f", color:"#6e6e88", display:"flex", alignItems:"center", gap:"8px", userSelect:"text" }}>
+                  <span style={{ fontSize:"12px" }}>🔒</span>
+                  <span style={{ fontWeight:700, color:"#a78bfa" }}>{osNumero || "Gerando..."}</span>
+                </div>
               </div>
               <div>
                 <label style={lbl}>Sistema / Módulo</label>
@@ -870,15 +984,60 @@ function OrdemServicoModal({ entry, consultorName, onSave, onClose }) {
             )}
           </div>
 
-          {/* Atividades realizadas */}
+          {/* Atividades */}
           <div>
             <label style={lbl}>📝 Atividades realizadas</label>
             <textarea value={atividades} onChange={e=>setAtividades(e.target.value)} rows={4}
-              placeholder={"Descreva detalhadamente as atividades realizadas durante este atendimento...\n\nEx:\n- Configuração do módulo SIGAFIN\n- Treinamento de usuários\n- Validação de relatórios"}
+              placeholder={"Descreva as atividades realizadas durante este atendimento...\n\nEx:\n- Configuração do módulo SIGAFIN\n- Treinamento de usuários\n- Validação de relatórios"}
               style={{...inp,resize:"vertical",lineHeight:1.6,minHeight:"100px"}}/>
           </div>
 
-          {/* Resumo rápido se já tinha OS */}
+          {/* Envio de e-mail */}
+          <div style={{ background:"#0d0d14",borderRadius:"12px",border:"1px solid #1f1f2e",padding:"14px 16px" }}>
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:showEmailForm?"12px":"0" }}>
+              <div style={{ fontSize:"11px",color:"#f5a623",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase" }}>✉️ Enviar por E-mail</div>
+              <button onClick={()=>setShowEmailForm(v=>!v)}
+                style={{ fontSize:"11px",background:"none",border:"none",color:"#6c63ff",cursor:"pointer",fontWeight:600,fontFamily:"inherit" }}>
+                {showEmailForm?"▴ Ocultar":"▾ Expandir"}
+              </button>
+            </div>
+            {showEmailForm && (
+              <div>
+                <label style={lbl}>Destinatário(s)</label>
+                <input value={emailDest} onChange={e=>setEmailDest(e.target.value)}
+                  placeholder="email@empresa.com ou email1@a.com, email2@b.com"
+                  style={inp}/>
+                <div style={{ marginTop:"10px" }}>
+                  <button onClick={handleEnviarEmail} disabled={sendingEmail||!osNumero}
+                    style={{ width:"100%",padding:"10px",borderRadius:"10px",border:"none",background:sendingEmail?"#2a2a3a":"linear-gradient(135deg,#f5a623,#f59e0b)",color:"#fff",fontWeight:700,fontSize:"13px",cursor:sendingEmail||!osNumero?"not-allowed":"pointer",fontFamily:"inherit",opacity:!osNumero?0.5:1 }}>
+                    {sendingEmail?"⏳ Enviando...":"📧 Enviar OS por e-mail"}
+                  </button>
+                </div>
+                {emailStatus==="ok" && (
+                  <div style={{ marginTop:"8px",padding:"8px 12px",borderRadius:"8px",background:"#22d3a015",border:"1px solid #22d3a044",fontSize:"12px",color:"#22d3a0",fontWeight:600 }}>
+                    ✅ E-mail enviado com sucesso!
+                  </div>
+                )}
+                {emailStatus==="erro" && (
+                  <div style={{ marginTop:"8px",padding:"8px 12px",borderRadius:"8px",background:"#f04f5e15",border:"1px solid #f04f5e44",fontSize:"12px",color:"#f04f5e" }}>
+                    ❌ Falha ao enviar. Verifique as configurações de e-mail em Cadastros.
+                  </div>
+                )}
+                {emailStatus==="sem_config" && (
+                  <div style={{ marginTop:"8px",padding:"8px 12px",borderRadius:"8px",background:"#f5a62315",border:"1px solid #f5a62344",fontSize:"12px",color:"#f5a623" }}>
+                    ⚠️ E-mail não configurado. Configure em Cadastros → E-mail.
+                  </div>
+                )}
+                {emailStatus==="erro_dest" && (
+                  <div style={{ marginTop:"8px",padding:"8px 12px",borderRadius:"8px",background:"#f5a62315",border:"1px solid #f5a62344",fontSize:"12px",color:"#f5a623" }}>
+                    ⚠️ Informe o e-mail do destinatário.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Última atualização */}
           {entry.osPreenchidaEm && (
             <div style={{ fontSize:"10px",color:"#3e3e55",textAlign:"right" }}>
               Última atualização: {new Date(entry.osPreenchidaEm).toLocaleString("pt-BR")} por {entry.osPreenchidaPor}
@@ -888,8 +1047,8 @@ function OrdemServicoModal({ entry, consultorName, onSave, onClose }) {
           {/* Ações */}
           <div style={{ display:"flex",gap:"10px",justifyContent:"flex-end",paddingTop:"4px" }}>
             <button onClick={onClose} style={{ padding:"10px 20px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>Cancelar</button>
-            <button onClick={handleSave} disabled={saving}
-              style={{ padding:"10px 24px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44",opacity:saving?0.7:1 }}>
+            <button onClick={handleSave} disabled={saving||!osNumero}
+              style={{ padding:"10px 24px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44",opacity:saving||!osNumero?0.7:1 }}>
               {saving?"⏳ Salvando...":"💾 Salvar OS"}
             </button>
           </div>
@@ -4818,6 +4977,7 @@ function Dashboard({ currentUser, onLogout }) {
         <OrdemServicoModal
           entry={osEntry}
           consultorName={currentUser.consultorName||currentUser.username||""}
+          emailConfig={emailConfig}
           onSave={async (updatedEntry) => {
             const name = updatedEntry.consultor||currentUser.consultorName;
             const novaLista = (scheduleData[name]||[]).map(e => e.id===updatedEntry.id ? updatedEntry : e);
