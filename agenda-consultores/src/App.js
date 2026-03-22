@@ -484,7 +484,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
   const [editC, setEditC] = useState(null); // { idx, name, codigo, email }
 
   // ── Cliente form ──
-  const [newCl, setNewCl] = useState({ name:"", codigo:"", email:"", color:"#6c63ff" });
+  const [newCl, setNewCl] = useState({ name:"", codigo:"", email:"", emailOS:"", color:"#6c63ff" });
   const [editCl, setEditCl] = useState(null);
 
   // ── Projeto form ──
@@ -603,8 +603,9 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
                 </div>
               </div>
               <div>
-                <label style={lbl}>E-mail</label>
-                <input type="email" value={editCl?editCl.email:newCl.email} onChange={e=>editCl?setEditCl(x=>({...x,email:e.target.value})):setNewCl(x=>({...x,email:e.target.value}))} placeholder="contato@cliente.com" style={inp}/>
+                <label style={lbl}>E-mail — Responsável por receber OS</label>
+                <input value={editCl?editCl.emailOS||editCl.email||"":newCl.emailOS||""} onChange={e=>editCl?setEditCl(x=>({...x,emailOS:e.target.value})):setNewCl(x=>({...x,emailOS:e.target.value}))} placeholder="responsavel@cliente.com" style={inp}/>
+                <div style={{ fontSize:"10px",color:"#3e3e55",marginTop:"5px" }}>Para múltiplos e-mails, separe por vírgula: email1@a.com, email2@b.com</div>
               </div>
               <div>
                 <label style={lbl}>Cor identificadora</label>
@@ -622,7 +623,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
                     <button onClick={()=>setEditCl(null)} style={{ ...btnBlue,background:"#2a2a3a",width:"auto",padding:"10px 16px" }}>Cancelar</button>
                   </>
                 ) : (
-                  <button onClick={()=>{ if(!newCl.name.trim()) return; onAddClient(newCl); setNewCl({name:"",codigo:"",email:"",color:"#6c63ff"}); }} style={btnGreen}>✅ Cadastrar Cliente</button>
+                  <button onClick={()=>{ if(!newCl.name.trim()) return; onAddClient(newCl); setNewCl({name:"",codigo:"",email:"",emailOS:"",color:"#6c63ff"}); }} style={btnGreen}>✅ Cadastrar Cliente</button>
                 )}
               </div>
             </div>
@@ -642,7 +643,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
                           {c.name}
                           {c.codigo && <span style={{ fontSize:"10px",background:"#2a2a3a",color:"#6e6e88",padding:"1px 6px",borderRadius:"10px" }}>{c.codigo}</span>}
                         </div>
-                        {c.email && <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>✉️ {c.email}</div>}
+                        {(c.emailOS||c.email) && <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>✉️ OS: {c.emailOS||c.email}</div>}
                       </div>
                     </div>
                     <div style={{ display:"flex",gap:"6px",flexShrink:0,marginLeft:"8px" }}>
@@ -744,7 +745,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 // ─────────────────────────────────────────────────────────────────────────────
 // MODAL ORDEM DE SERVIÇO (consultor preenche OS em agenda existente)
 // ─────────────────────────────────────────────────────────────────────────────
-function OrdemServicoModal({ entry, consultorName, emailConfig, onSave, onClose }) {
+function OrdemServicoModal({ entry, consultorName, emailConfig, clientList, onSave, onClose }) {
   const [horaInicio,  setHoraInicio]  = useState(entry.horaInicio  || "08:00");
   const [horaFim,     setHoraFim]     = useState(entry.horaFim     || "17:00");
   const [intervalo,   setIntervalo]   = useState(entry.intervalo   || "");
@@ -755,9 +756,17 @@ function OrdemServicoModal({ entry, consultorName, emailConfig, onSave, onClose 
   const [osStatus,    setOsStatus]    = useState(entry.osStatus    || "em_andamento");
   const [saving,      setSaving]      = useState(false);
   const [sendingEmail,setSendingEmail]= useState(false);
-  const [emailStatus, setEmailStatus] = useState(null); // "ok" | "erro" | null
-  const [emailDest,   setEmailDest]   = useState(entry.osEmailDest || "");
+  const [emailStatus, setEmailStatus] = useState(null);
   const [showEmailForm, setShowEmailForm] = useState(false);
+
+  // Buscar e-mail OS do cliente cadastrado (emailOS tem prioridade, fallback para email)
+  const clienteCadastrado = (clientList||[]).find(c =>
+    c.name && entry.client && c.name.toUpperCase() === entry.client.toUpperCase()
+  );
+  const emailClienteOS = clienteCadastrado?.emailOS || clienteCadastrado?.email || "";
+
+  // Preencher destinatário: preferência ao salvo na OS, fallback ao cadastro do cliente
+  const [emailDest, setEmailDest] = useState(entry.osEmailDest || emailClienteOS);
 
   const OS_STATUS = {
     em_andamento: { label:"Em andamento", color:"#6c63ff", bg:"#6c63ff18" },
@@ -1003,10 +1012,30 @@ function OrdemServicoModal({ entry, consultorName, emailConfig, onSave, onClose 
             </div>
             {showEmailForm && (
               <div>
-                <label style={lbl}>Destinatário(s)</label>
-                <input value={emailDest} onChange={e=>setEmailDest(e.target.value)}
-                  placeholder="email@empresa.com ou email1@a.com, email2@b.com"
-                  style={inp}/>
+            <div>
+                <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"6px" }}>
+                  <label style={lbl}>Destinatário(s)</label>
+                  {emailClienteOS && emailDest !== emailClienteOS && (
+                    <button onClick={()=>setEmailDest(emailClienteOS)}
+                      style={{ fontSize:"10px",background:"none",border:"none",color:"#6c63ff",cursor:"pointer",fontWeight:600,fontFamily:"inherit" }}>
+                      ↩ Usar e-mail do cliente
+                    </button>
+                  )}
+                </div>
+                <div style={{ position:"relative" }}>
+                  <input value={emailDest} onChange={e=>{setEmailDest(e.target.value);setEmailStatus(null);}}
+                    placeholder="responsavel@cliente.com"
+                    style={{...inp, paddingRight: emailClienteOS?"110px":"13px"}}/>
+                  {emailClienteOS && emailDest === emailClienteOS && (
+                    <span style={{ position:"absolute",right:"10px",top:"50%",transform:"translateY(-50%)",fontSize:"9px",color:"#22d3a0",fontWeight:700,background:"#22d3a015",padding:"2px 6px",borderRadius:"99px",pointerEvents:"none",whiteSpace:"nowrap" }}>
+                      📋 do cadastro
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize:"10px",color:"#3e3e55",marginTop:"5px",lineHeight:1.5 }}>
+                  Para múltiplos destinatários, separe por <strong style={{ color:"#6e6e88" }}>vírgula</strong>: <span style={{ color:"#6e6e88" }}>email1@a.com, email2@b.com</span>
+                </div>
+              </div>
                 <div style={{ marginTop:"10px" }}>
                   <button onClick={handleEnviarEmail} disabled={sendingEmail||!osNumero}
                     style={{ width:"100%",padding:"10px",borderRadius:"10px",border:"none",background:sendingEmail?"#2a2a3a":"linear-gradient(135deg,#f5a623,#f59e0b)",color:"#fff",fontWeight:700,fontSize:"13px",cursor:sendingEmail||!osNumero?"not-allowed":"pointer",fontFamily:"inherit",opacity:!osNumero?0.5:1 }}>
@@ -4978,6 +5007,7 @@ function Dashboard({ currentUser, onLogout }) {
           entry={osEntry}
           consultorName={currentUser.consultorName||currentUser.username||""}
           emailConfig={emailConfig}
+          clientList={clientList}
           onSave={async (updatedEntry) => {
             const name = updatedEntry.consultor||currentUser.consultorName;
             const novaLista = (scheduleData[name]||[]).map(e => e.id===updatedEntry.id ? updatedEntry : e);
