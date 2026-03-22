@@ -3660,10 +3660,10 @@ function ViagemCard({ viagem, STATUS_CONFIG, canManage, onEdit, onStatusChange, 
           </div>
 
           <div style={{ display:"flex",gap:"8px",flexWrap:"wrap" }}>
-            <button onClick={(e)=>{e.stopPropagation();onEdit(viagem);setExpandido(false);}}
-              style={{ padding:"7px 16px",borderRadius:"8px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontSize:"12px",fontWeight:600,fontFamily:"inherit" }}>✏️ Editar</button>
             {canManage && (
               <>
+                <button onClick={(e)=>{e.stopPropagation();onEdit(viagem);setExpandido(false);}}
+                  style={{ padding:"7px 16px",borderRadius:"8px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontSize:"12px",fontWeight:600,fontFamily:"inherit" }}>✏️ Editar</button>
                 {[{k:"aprovada",label:"✅ Aprovar",color:"#22d3a0"},{k:"rejeitada",label:"❌ Rejeitar",color:"#f04f5e"},{k:"realizada",label:"🏁 Realizada",color:"#6c63ff"}].filter(btn=>btn.k!==viagem.status).map(btn=>(
                   <button key={btn.k} onClick={(e)=>{e.stopPropagation();setAcaoAtiva(acaoAtiva===btn.k?null:btn.k);}}
                     style={{ padding:"7px 14px",borderRadius:"8px",border:"1px solid "+btn.color+"44",background:acaoAtiva===btn.k?btn.color+"22":"transparent",color:btn.color,cursor:"pointer",fontSize:"11px",fontWeight:600,fontFamily:"inherit" }}>
