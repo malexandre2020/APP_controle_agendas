@@ -3330,8 +3330,8 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
 
   // Módulos disponíveis por perfil
   const MODULOS_POR_PERFIL = {
-    admin:     [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"✈️",label:"Viagens"},{ id:"projetos",icon:"📋",label:"Projetos"},{ id:"cadastros",icon:"🗂",label:"Cadastros"}],
-    editor:    [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"✈️",label:"Viagens"},{ id:"projetos",icon:"📋",label:"Projetos"}],
+    admin:     [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"✈️",label:"Viagens"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"cadastros",icon:"🗂",label:"Cadastros"}],
+    editor:    [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"✈️",label:"Viagens"},{ id:"projetos",icon:"📁",label:"Projetos"}],
     viewer:    [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"✈️",label:"Viagens"}],
     consultor: [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"grade",icon:"🎓",label:"Grade de Conhecimento"},{ id:"viagens",icon:"✈️",label:"Viagens"}],
   };
@@ -3536,6 +3536,349 @@ function ViagemCard({ viagem, STATUS_CONFIG, canManage, onEdit, onStatusChange, 
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MÓDULO: PAINEL DE ORDENS DE SERVIÇO (editor / admin)
+// ─────────────────────────────────────────────────────────────────────────────
+function ModuloOrdemServico({ consultores, clientList, scheduleData, emailConfig, currentUser, theme: T }) {
+  const [loading,      setLoading]      = useState(true);
+  const [allOS,        setAllOS]        = useState([]);   // todas as OS extraídas das agendas
+  const [filtroCliente,setFiltroCliente]= useState("");
+  const [filtroConsult,setFiltroConsult]= useState("");
+  const [filtroStatus, setFiltroStatus] = useState("");
+  const [busca,        setBusca]        = useState("");
+  const [osSelecionada,setOsSelecionada]= useState(null);  // OS em detalhe/ação
+  const [acao,         setAcao]         = useState(null);  // "aprovar"|"rejeitar"|"contestar"
+  const [comentario,   setComentario]   = useState("");
+  const [salvando,     setSalvando]     = useState(false);
+  const [enviandoEmail,setEnviandoEmail]= useState(false);
+  const [emailStatus,  setEmailStatus]  = useState(null);
+
+  const OS_STATUS = {
+    em_andamento: { label:"Em andamento", color:"#6c63ff", bg:"#6c63ff18", icon:"⚙️" },
+    concluida:    { label:"Concluída",    color:"#22d3a0", bg:"#22d3a018", icon:"✅" },
+    pendente:     { label:"Pendente",     color:"#f5a623", bg:"#f5a62318", icon:"⏳" },
+    cancelada:    { label:"Cancelada",    color:"#f04f5e", bg:"#f04f5e18", icon:"❌" },
+    aprovada:     { label:"Aprovada",     color:"#22d3a0", bg:"#22d3a018", icon:"👍" },
+    rejeitada:    { label:"Rejeitada",    color:"#f04f5e", bg:"#f04f5e18", icon:"👎" },
+    contestada:   { label:"Contestada",   color:"#f5a623", bg:"#f5a62318", icon:"⚠️" },
+  };
+
+  // Extrair todas as OS das agendas
+  useEffect(() => {
+    const lista = [];
+    for (const [consultor, entries] of Object.entries(scheduleData||{})) {
+      for (const e of (entries||[])) {
+        if (e.osNumero) {
+          lista.push({ ...e, consultor });
+        }
+      }
+    }
+    lista.sort((a,b) => {
+      const na = parseInt(a.osNumero?.replace(/\D/g,""))||0;
+      const nb = parseInt(b.osNumero?.replace(/\D/g,""))||0;
+      return nb - na; // mais recente primeiro
+    });
+    setAllOS(lista);
+    setLoading(false);
+  }, [scheduleData]);
+
+  // Salvar alteração de status no scheduleData via Firestore
+  const salvarStatus = async (os, novoStatus, obs) => {
+    setSalvando(true);
+    try {
+      const snap = await getDoc(doc(db, "app_data", "schedule_"+os.consultor));
+      const lista = snap.exists() ? (snap.data().value||[]) : (scheduleData[os.consultor]||[]);
+      const nova = lista.map(e => e.id===os.id
+        ? { ...e, osStatus:novoStatus, osComentarioGestor:obs, osAvaliadoPor:currentUser.nome||currentUser.username, osAvaliadoEm:new Date().toISOString() }
+        : e
+      );
+      await setDoc(doc(db, "app_data", "schedule_"+os.consultor), { value: nova });
+      // Atualizar lista local
+      setAllOS(prev => prev.map(o => o.id===os.id&&o.consultor===os.consultor
+        ? { ...o, osStatus:novoStatus, osComentarioGestor:obs, osAvaliadoPor:currentUser.nome||currentUser.username, osAvaliadoEm:new Date().toISOString() }
+        : o
+      ));
+    } catch(e) { console.error(e); }
+    setSalvando(false);
+  };
+
+  const handleAcao = async () => {
+    if (!osSelecionada || !acao) return;
+    const novoStatus = acao==="aprovar"?"aprovada":acao==="rejeitar"?"rejeitada":"contestada";
+    await salvarStatus(osSelecionada, novoStatus, comentario);
+    // Enviar e-mail de notificação se configurado
+    if (emailConfig?.enabled && osSelecionada.osEmailDest) {
+      await enviarEmailNotificacao(osSelecionada, novoStatus, comentario);
+    }
+    setOsSelecionada(null); setAcao(null); setComentario("");
+  };
+
+  const enviarEmailNotificacao = async (os, status, obs) => {
+    setEnviandoEmail(true);
+    const cfg = emailConfig;
+    if (!cfg?.enabled || !cfg.publicKey || !cfg.serviceId || !cfg.templateId) { setEnviandoEmail(false); return; }
+    try {
+      const loadEJ = () => new Promise((res, rej) => {
+        if (window.emailjs) { window.emailjs.init({ publicKey: cfg.publicKey }); res(window.emailjs); return; }
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";
+        s.onload = () => { window.emailjs.init({ publicKey: cfg.publicKey }); res(window.emailjs); };
+        s.onerror = rej; document.head.appendChild(s);
+      });
+      const ej = await loadEJ();
+      const st = OS_STATUS[status]||OS_STATUS.em_andamento;
+      const corpo = `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
+          <div style="background:linear-gradient(135deg,${st.color},${st.color}99);padding:20px 24px">
+            <h2 style="color:#fff;margin:0;font-size:18px">${st.icon} OS ${os.osNumero} — ${st.label}</h2>
+            <p style="color:rgba(255,255,255,0.85);margin:4px 0 0;font-size:13px">Avaliada por ${currentUser.nome||currentUser.username}</p>
+          </div>
+          <div style="padding:20px 24px;background:#fff">
+            <table style="width:100%;border-collapse:collapse;font-size:14px">
+              ${[["Consultor",os.consultor],["Cliente",os.client||"—"],["Data",`Dia ${os.day} · ${os.month} ${os.year||""}`],["Status",st.label]].map(([k,v])=>`
+                <tr style="border-bottom:1px solid #f0f0f0"><td style="padding:8px 0;color:#666;width:130px;font-weight:600">${k}</td><td style="padding:8px 0;color:#333">${v}</td></tr>
+              `).join("")}
+            </table>
+            ${obs?`<div style="margin-top:16px;padding:14px;background:#fffbf0;border-radius:6px;border-left:3px solid ${st.color}">
+              <div style="font-size:12px;font-weight:700;color:${st.color};text-transform:uppercase;margin-bottom:6px">Comentário do gestor</div>
+              <div style="font-size:14px;color:#444;line-height:1.6">${obs}</div>
+            </div>`:""}
+          </div>
+        </div>`;
+      const dests = os.osEmailDest.split(/[,;]/).map(e=>e.trim()).filter(Boolean);
+      for (const dest of dests) {
+        await ej.send(cfg.serviceId, cfg.templateId, {
+          to_email: dest, to_name: dest,
+          subject: `OS ${os.osNumero} ${st.label} — ${os.client||""}`,
+          html_body: corpo, message: `OS ${os.osNumero} foi ${st.label.toLowerCase()} por ${currentUser.nome||currentUser.username}.${obs?" Comentário: "+obs:""}`,
+          from_name: `GSC - ${currentUser.nome||currentUser.username}`,
+        });
+      }
+      setEmailStatus("ok");
+    } catch(e) { console.error(e); setEmailStatus("erro"); }
+    setEnviandoEmail(false);
+  };
+
+  // Filtros aplicados
+  const osFiltradas = allOS.filter(os => {
+    if (filtroCliente && os.client !== filtroCliente) return false;
+    if (filtroConsult && os.consultor !== filtroConsult) return false;
+    if (filtroStatus  && os.osStatus  !== filtroStatus)  return false;
+    if (busca.trim()) {
+      const q = busca.toLowerCase();
+      return (os.osNumero||"").toLowerCase().includes(q)
+          || (os.client||"").toLowerCase().includes(q)
+          || (os.consultor||"").toLowerCase().includes(q)
+          || (os.osDescricao||"").toLowerCase().includes(q)
+          || (os.osSistema||"").toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  const clientesUnicos  = [...new Set(allOS.map(o=>o.client).filter(Boolean))].sort();
+  const consultoresUnicos = [...new Set(allOS.map(o=>o.consultor).filter(Boolean))].sort();
+
+  const inp = { padding:"8px 13px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"12px",fontFamily:"inherit",outline:"none" };
+
+  if (loading) return (
+    <div style={{ textAlign:"center",padding:"60px",color:"#3e3e55" }}>
+      <div style={{ width:"28px",height:"28px",border:"3px solid #1f1f2e",borderTop:"3px solid #6c63ff",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto 12px" }}/>
+    </div>
+  );
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"24px",flexWrap:"wrap",gap:"12px" }}>
+        <div>
+          <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>📋 Ordens de Serviço</h2>
+          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>{allOS.length} OS registradas · {osFiltradas.length} exibidas</p>
+        </div>
+        {/* Contadores por status */}
+        <div style={{ display:"flex",gap:"8px",flexWrap:"wrap" }}>
+          {Object.entries(OS_STATUS).map(([k,v])=>{
+            const n = allOS.filter(o=>o.osStatus===k).length;
+            if (!n) return null;
+            return (
+              <button key={k} onClick={()=>setFiltroStatus(filtroStatus===k?"":k)}
+                style={{ padding:"5px 12px",borderRadius:"99px",border:"1px solid "+(filtroStatus===k?v.color:"#2a2a3a"),background:filtroStatus===k?v.bg:"transparent",color:filtroStatus===k?v.color:"#6e6e88",fontSize:"11px",fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
+                {v.icon} {v.label} <span style={{ opacity:0.7 }}>({n})</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",padding:"14px 16px",marginBottom:"16px",display:"flex",gap:"10px",flexWrap:"wrap",alignItems:"center" }}>
+        {/* Busca */}
+        <div style={{ position:"relative",flex:1,minWidth:"180px" }}>
+          <span style={{ position:"absolute",left:"10px",top:"50%",transform:"translateY(-50%)",fontSize:"12px",color:"#3e3e55",pointerEvents:"none" }}>🔍</span>
+          <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nº OS, cliente, consultor..."
+            style={{...inp,width:"100%",boxSizing:"border-box",paddingLeft:"30px"}}/>
+        </div>
+        <select value={filtroConsult} onChange={e=>setFiltroConsult(e.target.value)} style={{...inp,minWidth:"160px"}}>
+          <option value="">Todos os consultores</option>
+          {consultoresUnicos.map(c=><option key={c} value={c}>{c.split(" ")[0]}</option>)}
+        </select>
+        <select value={filtroCliente} onChange={e=>setFiltroCliente(e.target.value)} style={{...inp,minWidth:"160px"}}>
+          <option value="">Todos os clientes</option>
+          {clientesUnicos.map(c=><option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} style={{...inp,minWidth:"150px"}}>
+          <option value="">Todos os status</option>
+          {Object.entries(OS_STATUS).map(([k,v])=><option key={k} value={k}>{v.icon} {v.label}</option>)}
+        </select>
+        {(busca||filtroConsult||filtroCliente||filtroStatus) && (
+          <button onClick={()=>{setBusca("");setFiltroConsult("");setFiltroCliente("");setFiltroStatus("");}}
+            style={{ padding:"7px 12px",borderRadius:"9px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontSize:"11px",fontFamily:"inherit" }}>✕ Limpar</button>
+        )}
+      </div>
+
+      {/* Lista de OS */}
+      {osFiltradas.length===0 && (
+        <div style={{ textAlign:"center",padding:"60px",background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e" }}>
+          <div style={{ fontSize:"40px",marginBottom:"12px" }}>📋</div>
+          <div style={{ fontSize:"14px",color:"#3e3e55" }}>Nenhuma OS encontrada para os filtros selecionados</div>
+        </div>
+      )}
+
+      <div style={{ display:"flex",flexDirection:"column",gap:"8px" }}>
+        {osFiltradas.map(os=>{
+          const st = OS_STATUS[os.osStatus]||OS_STATUS.em_andamento;
+          const isSel = osSelecionada?.id===os.id&&osSelecionada?.consultor===os.consultor;
+          const dur = (() => {
+            if (!os.horaInicio||!os.horaFim||os.horaInicio>=os.horaFim) return null;
+            const [hi,mi]=os.horaInicio.split(":").map(Number);
+            const [hf,mf]=os.horaFim.split(":").map(Number);
+            const t=(hf*60+mf)-(hi*60+mi)-(Number(os.intervalo)||0);
+            if(t<=0)return null;
+            return `${Math.floor(t/60)}h${t%60>0?" "+t%60+"min":""}`;
+          })();
+          return (
+            <div key={os.id+os.consultor} style={{ background:"#111118",borderRadius:"14px",border:"1px solid "+(isSel?"#6c63ff44":"#1f1f2e"),overflow:"hidden",transition:"border-color .15s" }}>
+              {/* Linha principal */}
+              <div style={{ padding:"14px 18px",display:"flex",alignItems:"center",gap:"14px",flexWrap:"wrap",cursor:"pointer" }}
+                onClick={()=>{ setOsSelecionada(isSel?null:os); setAcao(null); setComentario(""); setEmailStatus(null); }}>
+                {/* Nº OS */}
+                <div style={{ minWidth:"90px" }}>
+                  <div style={{ fontSize:"12px",fontWeight:800,color:"#a78bfa" }}>{os.osNumero}</div>
+                  <div style={{ fontSize:"10px",color:"#3e3e55",marginTop:"1px" }}>Dia {os.day} {os.month} {os.year||""}</div>
+                </div>
+                {/* Cliente */}
+                <div style={{ flex:1,minWidth:"120px" }}>
+                  <div style={{ fontSize:"13px",fontWeight:700,color:"#f0f0fa" }}>{os.client||"—"}</div>
+                  <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"1px" }}>
+                    {os.osSistema && <span>🖥 {os.osSistema} · </span>}
+                    👤 {os.consultor?.split(" ")[0]}
+                  </div>
+                </div>
+                {/* Horário */}
+                {(os.horaInicio||os.horaFim) && (
+                  <div style={{ fontSize:"11px",color:"#6e6e88",whiteSpace:"nowrap" }}>
+                    🕐 {os.horaInicio||"?"}{os.horaFim?" → "+os.horaFim:""}
+                    {dur && <span style={{ color:"#22d3a0",marginLeft:"6px" }}>({dur})</span>}
+                  </div>
+                )}
+                {/* Status */}
+                <span style={{ padding:"4px 12px",borderRadius:"99px",background:st.bg,border:"1px solid "+st.color+"44",fontSize:"11px",fontWeight:700,color:st.color,whiteSpace:"nowrap" }}>
+                  {st.icon} {st.label}
+                </span>
+                <span style={{ color:"#3e3e55",fontSize:"12px" }}>{isSel?"▴":"▾"}</span>
+              </div>
+
+              {/* Painel expandido */}
+              {isSel && (
+                <div style={{ borderTop:"1px solid #1f1f2e",padding:"16px 18px" }}>
+                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px",marginBottom:"16px" }}>
+                    {/* Detalhes */}
+                    <div>
+                      <div style={{ fontSize:"10px",color:"#3e3e55",fontWeight:700,letterSpacing:"0.8px",textTransform:"uppercase",marginBottom:"8px" }}>Detalhes</div>
+                      <div style={{ display:"flex",flexDirection:"column",gap:"5px",fontSize:"12px" }}>
+                        {os.osDescricao && <div><span style={{ color:"#6e6e88" }}>Descrição: </span><span style={{ color:"#c8c8d8" }}>{os.osDescricao}</span></div>}
+                        <div><span style={{ color:"#6e6e88" }}>Consultor: </span><span style={{ color:"#c8c8d8" }}>{os.consultor}</span></div>
+                        <div><span style={{ color:"#6e6e88" }}>Modalidade: </span><span style={{ color:"#c8c8d8" }}>{os.modalidade==="remoto"?"💻 Remoto":"🏢 Presencial"}</span></div>
+                        {os.osEmailDest && <div><span style={{ color:"#6e6e88" }}>E-mail: </span><span style={{ color:"#c8c8d8" }}>{os.osEmailDest}</span></div>}
+                        {os.osPreenchidaEm && <div><span style={{ color:"#6e6e88" }}>Preenchida em: </span><span style={{ color:"#3e3e55" }}>{new Date(os.osPreenchidaEm).toLocaleString("pt-BR")}</span></div>}
+                        {os.osAvaliadoPor && <div><span style={{ color:"#6e6e88" }}>Avaliada por: </span><span style={{ color:"#c8c8d8" }}>{os.osAvaliadoPor} em {os.osAvaliadoEm?new Date(os.osAvaliadoEm).toLocaleString("pt-BR"):""}</span></div>}
+                      </div>
+                    </div>
+                    {/* Atividades */}
+                    <div>
+                      <div style={{ fontSize:"10px",color:"#3e3e55",fontWeight:700,letterSpacing:"0.8px",textTransform:"uppercase",marginBottom:"8px" }}>Atividades realizadas</div>
+                      <div style={{ fontSize:"12px",color:"#c8c8d8",lineHeight:1.6,whiteSpace:"pre-wrap",maxHeight:"140px",overflowY:"auto" }}>
+                        {os.atividades||<span style={{ color:"#3e3e55" }}>Não preenchido</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Comentário anterior do gestor */}
+                  {os.osComentarioGestor && (
+                    <div style={{ background:st.bg,borderRadius:"10px",border:"1px solid "+st.color+"33",padding:"10px 14px",marginBottom:"14px",fontSize:"12px" }}>
+                      <span style={{ color:st.color,fontWeight:700 }}>{st.icon} Comentário do gestor: </span>
+                      <span style={{ color:"#c8c8d8" }}>{os.osComentarioGestor}</span>
+                    </div>
+                  )}
+
+                  {/* Botões de ação */}
+                  <div style={{ display:"flex",gap:"8px",flexWrap:"wrap",marginBottom: acao?"14px":"0" }}>
+                    {[
+                      { id:"aprovar",   label:"👍 Aprovar",    color:"#22d3a0", bg:"#22d3a018", border:"#22d3a044" },
+                      { id:"rejeitar",  label:"👎 Rejeitar",   color:"#f04f5e", bg:"#f04f5e18", border:"#f04f5e44" },
+                      { id:"contestar", label:"⚠️ Contestar",  color:"#f5a623", bg:"#f5a62318", border:"#f5a62344" },
+                    ].map(btn=>(
+                      <button key={btn.id} onClick={()=>setAcao(acao===btn.id?null:btn.id)}
+                        style={{ padding:"8px 18px",borderRadius:"10px",border:"1px solid "+(acao===btn.id?btn.color:btn.border),background:acao===btn.id?btn.bg:"transparent",color:btn.color,fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s" }}>
+                        {btn.label}
+                      </button>
+                    ))}
+                    {/* Enviar e-mail de notificação avulso */}
+                    {os.osEmailDest && (
+                      <button onClick={async()=>{ setEnviandoEmail(true); await enviarEmailNotificacao(os, os.osStatus||"em_andamento",""); setEnviandoEmail(false); }}
+                        disabled={enviandoEmail}
+                        style={{ padding:"8px 18px",borderRadius:"10px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginLeft:"auto" }}>
+                        {enviandoEmail?"⏳":"📧"} Enviar e-mail
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Painel de comentário */}
+                  {acao && (
+                    <div style={{ background:"#0d0d14",borderRadius:"12px",border:"1px solid #2a2a3a",padding:"14px",marginBottom:"12px" }}>
+                      <div style={{ fontSize:"11px",color:"#6e6e88",fontWeight:700,marginBottom:"8px",textTransform:"uppercase",letterSpacing:"0.5px" }}>
+                        {acao==="aprovar"?"👍 Aprovar OS":acao==="rejeitar"?"👎 Rejeitar OS":"⚠️ Contestar OS"} — Comentário {acao!=="aprovar"?"(obrigatório)":"(opcional)"}
+                      </div>
+                      <textarea value={comentario} onChange={e=>setComentario(e.target.value)} rows={3}
+                        placeholder={acao==="aprovar"?"Observações sobre a aprovação (opcional)...":acao==="rejeitar"?"Descreva o motivo da rejeição...":"Descreva o ponto de contestação..."}
+                        style={{ width:"100%",padding:"9px 13px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#111118",color:"#c8c8d8",fontSize:"12px",fontFamily:"inherit",outline:"none",resize:"vertical",lineHeight:1.5,boxSizing:"border-box" }}/>
+                      {(acao==="rejeitar"||acao==="contestar") && !comentario.trim() && (
+                        <div style={{ fontSize:"10px",color:"#f5a623",marginTop:"5px" }}>⚠️ Comentário obrigatório para {acao==="rejeitar"?"rejeição":"contestação"}</div>
+                      )}
+                      <div style={{ display:"flex",gap:"8px",marginTop:"10px",justifyContent:"flex-end" }}>
+                        <button onClick={()=>{setAcao(null);setComentario("");}} style={{ padding:"8px 16px",borderRadius:"9px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"12px",fontFamily:"inherit" }}>Cancelar</button>
+                        <button onClick={handleAcao}
+                          disabled={salvando||((acao==="rejeitar"||acao==="contestar")&&!comentario.trim())}
+                          style={{ padding:"8px 20px",borderRadius:"9px",border:"none",
+                            background:acao==="aprovar"?"linear-gradient(135deg,#22d3a0,#10b981)":acao==="rejeitar"?"linear-gradient(135deg,#f04f5e,#e11d48)":"linear-gradient(135deg,#f5a623,#d97706)",
+                            color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"12px",fontFamily:"inherit",opacity:salvando?0.6:1 }}>
+                          {salvando?"⏳ Salvando...":`Confirmar ${acao==="aprovar"?"aprovação":acao==="rejeitar"?"rejeição":"contestação"}`}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {emailStatus==="ok" && <div style={{ padding:"8px 12px",borderRadius:"8px",background:"#22d3a015",border:"1px solid #22d3a044",fontSize:"11px",color:"#22d3a0",fontWeight:600 }}>✅ E-mail enviado!</div>}
+                  {emailStatus==="erro" && <div style={{ padding:"8px 12px",borderRadius:"8px",background:"#f04f5e15",border:"1px solid #f04f5e44",fontSize:"11px",color:"#f04f5e" }}>❌ Falha ao enviar e-mail</div>}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -4663,8 +5006,9 @@ function Dashboard({ currentUser, onLogout }) {
   const ALL_MODULES_ADMIN = [
     { id:"home",     icon:"⬡",  label:"Dashboard",            desc:"Visão geral do sistema" },
     { id:"agenda",   icon:"📅", label:"Agenda",                desc:"Agenda de consultores" },
+    { id:"os",       icon:"📋", label:"Ordens de Serviço",     desc:"Consulta e aprovação de OS" },
     { id:"viagens",  icon:"✈️",  label:"Viagens",              desc:"Solicitações de viagem" },
-    { id:"projetos", icon:"📋", label:"Projetos",              desc:"Gestão de projetos" },
+    { id:"projetos", icon:"📁", label:"Projetos",              desc:"Gestão de projetos" },
   ];
   const ALL_MODULES_CONSULTOR = [
     { id:"agenda",   icon:"📅", label:"Agenda",                desc:"Minha agenda" },
@@ -4853,6 +5197,7 @@ function Dashboard({ currentUser, onLogout }) {
             <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:"16px",marginBottom:"32px" }}>
               {[
                 { id:"agenda",   icon:"📅", label:"Agenda de Consultores", desc:"Gerencie as agendas e cronogramas dos consultores",  color:"#6c63ff", stat:Object.values(scheduleData).flat().filter(e=>e.type==="client").length, statLabel:"dias agendados" },
+                { id:"os",       icon:"📋", label:"Ordens de Serviço",     desc:"Consulte, aprove ou rejeite as OS dos consultores",   color:"#a78bfa", stat:Object.values(scheduleData).flat().filter(e=>e.osNumero).length, statLabel:"OS registradas" },
                 { id:"viagens",  icon:"✈️",  label:"Solicitações de Viagem",desc:"Controle pedidos de viagem, aprovações e reembolsos", color:"#22d3a0", stat:0, statLabel:"solicitações" },
                 { id:"projetos", icon:"📋", label:"Gestão de Projetos",    desc:"Acompanhe projetos, tarefas e horas trabalhadas",    color:"#f5a623", stat:projects.length, statLabel:"projetos ativos" },
                 ...(canManage?[{ id:"cadastros",icon:"🗂", label:"Cadastros", desc:"Consultores, clientes, projetos e configurações", color:"#a78bfa", stat:consultores.length, statLabel:"consultores" }]:[]),
@@ -4958,6 +5303,20 @@ function Dashboard({ currentUser, onLogout }) {
         {activeModule==="grade" && (
           <div style={{ padding:"28px 32px",flex:1 }}>
             <GradeConhecimento consultorName={currentUser.consultorName||currentUser.nome||currentUser.username||""} userId={currentUser.uid} readOnly={false}/>
+          </div>
+        )}
+
+        {/* ── MODULE: ORDENS DE SERVIÇO ── */}
+        {activeModule==="os" && (
+          <div style={{ padding:"28px 32px",flex:1 }}>
+            <ModuloOrdemServico
+              consultores={consultores}
+              clientList={clientList}
+              scheduleData={scheduleData}
+              emailConfig={emailConfig}
+              currentUser={currentUser}
+              theme={T}
+            />
           </div>
         )}
 
