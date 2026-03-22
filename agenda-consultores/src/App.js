@@ -3825,7 +3825,7 @@ function ModuloAlcadas({ currentUser, canManage, canApprove, consultores, usuari
       if (sol.nivelAtual >= sol.niveis.length - 1) {
         novoStatus = "aprovado"; // todos os níveis aprovaram
       } else {
-        novoNivel  = sol.nivelAtual + 1; // avança para próximo nível
+        novoNivel  = sol.nivelAtual + 1;
         novoStatus = "em_aprovacao";
       }
     } else if (acao === "rejeitado") {
@@ -3838,6 +3838,50 @@ function ModuloAlcadas({ currentUser, canManage, canApprove, consultores, usuari
     const updated = { ...sol, nivelAtual: novoNivel, status: novoStatus, historico: hist, atualizadoEm: new Date().toISOString() };
     const novas = solicitacoes.map(s => s.id === solId ? updated : s);
     await salvarSolicitacoes(novas);
+
+    // ── Aprovação final: atualizar viagem e notificar consultor ──
+    if (novoStatus === "aprovado" && sol.tipo === "viagem" && sol.viagemId) {
+      try {
+        // 1. Atualizar status da viagem em viagens_all
+        const snapV = await getDoc(doc(db,"app_data","viagens_all"));
+        if (snapV.exists()) {
+          const listaV = (snapV.data().value||[]).map(v =>
+            v.id === sol.viagemId ? {...v, status:"aprovada", avaliadoEm:new Date().toISOString()} : v
+          );
+          await setDoc(doc(db,"app_data","viagens_all"), { value: listaV });
+
+          // 2. Criar notificação para o consultor
+          const viagem = listaV.find(v => v.id === sol.viagemId);
+          if (viagem?.consultor) {
+            const keyN = "notif_viagem_" + viagem.consultor.trim().toLowerCase()
+              .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+              .replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+            const snapN = await getDoc(doc(db,"app_data",keyN));
+            const notifs = snapN.exists() ? (snapN.data().value||[]) : [];
+            const jaExiste = notifs.some(n => n.id === viagem.id);
+            if (!jaExiste) {
+              await setDoc(doc(db,"app_data",keyN), {
+                value: [...notifs, {...viagem, status:"aprovada"}]
+              });
+            }
+          }
+        }
+      } catch(e) { console.warn("Sync viagem aprovada:", e); }
+    }
+
+    // ── Rejeição: atualizar status da viagem também ──
+    if (novoStatus === "rejeitado" && sol.tipo === "viagem" && sol.viagemId) {
+      try {
+        const snapV = await getDoc(doc(db,"app_data","viagens_all"));
+        if (snapV.exists()) {
+          const listaV = (snapV.data().value||[]).map(v =>
+            v.id === sol.viagemId ? {...v, status:"rejeitada", comentarioGestor:obs, avaliadoEm:new Date().toISOString()} : v
+          );
+          await setDoc(doc(db,"app_data","viagens_all"), { value: listaV });
+        }
+      } catch(e) { console.warn("Sync viagem rejeitada:", e); }
+    }
+
     setAcaoSel(null); setComentario("");
   };
 
@@ -5338,6 +5382,7 @@ function Dashboard({ currentUser, onLogout }) {
   const [theme, setTheme] = useState("dark");
   const [activeModule, setActiveModule] = useState(isConsultor ? "agenda" : "home");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [viaCount, setViaCount] = useState(0); // contador de solicitações de viagem
   const [usuarios, setUsuarios] = useState([]);
   const [emailConfig, setEmailConfig] = useState(EMAIL_CONFIG_DEFAULT);
   const [consultorViewMode, setConsultorViewMode] = useState("mensal");
@@ -5397,6 +5442,11 @@ function Dashboard({ currentUser, onLogout }) {
       // Carregar configuração de e-mail
       const ec = await loadFromFirestore("emailConfig", EMAIL_CONFIG_DEFAULT);
       setEmailConfig(ec);
+      // Carregar count de viagens para o dashboard home
+      try {
+        const snapV = await getDoc(doc(db,"app_data","viagens_all"));
+        if (snapV.exists()) setViaCount((snapV.data().value||[]).length);
+      } catch(e) {}
       setDbLoaded(true);
     }
     loadData();
@@ -6015,7 +6065,7 @@ function Dashboard({ currentUser, onLogout }) {
               {[
                 { id:"agenda",   icon:"📅", label:"Agenda de Consultores", desc:"Gerencie as agendas e cronogramas dos consultores",  color:"#6c63ff", stat:Object.values(scheduleData).flat().filter(e=>e.type==="client").length, statLabel:"dias agendados" },
                 { id:"os",       icon:"📋", label:"Ordens de Serviço",     desc:"Consulte, aprove ou rejeite as OS dos consultores",   color:"#a78bfa", stat:Object.values(scheduleData).flat().filter(e=>e.osNumero).length, statLabel:"OS registradas" },
-                { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Solicitações de viagem, hospedagem e voos", color:"#22d3a0", stat:0, statLabel:"solicitações" },
+                { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Solicitações de viagem, hospedagem e voos", color:"#22d3a0", stat:viaCount, statLabel:"solicitações" },
                 { id:"projetos", icon:"📋", label:"Gestão de Projetos",    desc:"Acompanhe projetos, tarefas e horas trabalhadas",    color:"#f5a623", stat:projects.length, statLabel:"projetos ativos" },
                 ...(canManage?[{ id:"cadastros",icon:"🗂", label:"Cadastros", desc:"Consultores, clientes, projetos e configurações", color:"#a78bfa", stat:consultores.length, statLabel:"consultores" }]:[]),
               ].map(mod=>(
