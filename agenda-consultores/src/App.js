@@ -742,6 +742,164 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MODAL ORDEM DE SERVIÇO (consultor preenche OS em agenda existente)
+// ─────────────────────────────────────────────────────────────────────────────
+function OrdemServicoModal({ entry, consultorName, onSave, onClose }) {
+  const [horaInicio,  setHoraInicio]  = useState(entry.horaInicio  || "08:00");
+  const [horaFim,     setHoraFim]     = useState(entry.horaFim     || "17:00");
+  const [intervalo,   setIntervalo]   = useState(entry.intervalo   || "");
+  const [atividades,  setAtividades]  = useState(entry.atividades  || "");
+  const [osNumero,    setOsNumero]    = useState(entry.osNumero    || "");
+  const [osDescricao, setOsDescricao] = useState(entry.osDescricao || "");
+  const [osSistema,   setOsSistema]   = useState(entry.osSistema   || "");
+  const [osStatus,    setOsStatus]    = useState(entry.osStatus    || "em_andamento");
+  const [saving,      setSaving]      = useState(false);
+
+  const OS_STATUS = {
+    em_andamento: { label:"Em andamento", color:"#6c63ff", bg:"#6c63ff18" },
+    concluida:    { label:"Concluída",    color:"#22d3a0", bg:"#22d3a018" },
+    pendente:     { label:"Pendente",     color:"#f5a623", bg:"#f5a62318" },
+    cancelada:    { label:"Cancelada",    color:"#f04f5e", bg:"#f04f5e18" },
+  };
+
+  const duracaoUtil = () => {
+    if (!horaInicio || !horaFim || horaInicio >= horaFim) return null;
+    const [hi,mi] = horaInicio.split(":").map(Number);
+    const [hf,mf] = horaFim.split(":").map(Number);
+    const total = (hf*60+mf) - (hi*60+mi) - (Number(intervalo)||0);
+    if (total <= 0) return null;
+    const h = Math.floor(total/60), m = total%60;
+    return `${h}h${m>0?" "+m+"min":""}`;
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave({
+      ...entry,
+      horaInicio, horaFim, intervalo,
+      atividades: atividades.trim(),
+      osNumero: osNumero.trim(),
+      osDescricao: osDescricao.trim(),
+      osSistema: osSistema.trim(),
+      osStatus,
+      osPreenchidaEm: new Date().toISOString(),
+      osPreenchidaPor: consultorName,
+    });
+    setSaving(false);
+    onClose();
+  };
+
+  const inp = { padding:"9px 13px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",width:"100%",boxSizing:"border-box",fontFamily:"inherit" };
+  const lbl = { fontSize:"11px",color:"#3e3e55",fontWeight:700,marginBottom:"6px",display:"block",letterSpacing:"0.5px",textTransform:"uppercase" };
+
+  return (
+    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",backdropFilter:"blur(6px)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px" }}>
+      <div style={{ background:"#111118",borderRadius:"20px",width:"100%",maxWidth:"540px",maxHeight:"92vh",overflowY:"auto",border:"1px solid #1f1f2e",boxShadow:"0 32px 80px rgba(0,0,0,0.8)",animation:"fadeUp .2s cubic-bezier(.4,0,.2,1)" }}>
+
+        {/* Header */}
+        <div style={{ padding:"22px 24px 16px",borderBottom:"1px solid #1f1f2e",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"12px" }}>
+          <div>
+            <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"17px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>📋 Ordem de Serviço</h2>
+            <div style={{ fontSize:"12px",color:"#3e3e55",display:"flex",gap:"10px",flexWrap:"wrap" }}>
+              <span>🏢 {entry.client||entry.type}</span>
+              <span>📅 Dia {entry.day} · {entry.month} {entry.year||""}</span>
+              <span style={{ color: entry.modalidade==="remoto"?"#a78bfa":"#22d3a0" }}>
+                {entry.modalidade==="remoto"?"💻 Remoto":"🏢 Presencial"}
+              </span>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background:"#1f1f2e",border:"1px solid #2a2a3a",color:"#6e6e88",borderRadius:"10px",width:"32px",height:"32px",cursor:"pointer",fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>✕</button>
+        </div>
+
+        <div style={{ padding:"20px 24px",display:"flex",flexDirection:"column",gap:"16px" }}>
+
+          {/* Dados da OS */}
+          <div style={{ background:"#0d0d14",borderRadius:"12px",border:"1px solid #1f1f2e",padding:"14px 16px" }}>
+            <div style={{ fontSize:"11px",color:"#6c63ff",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",marginBottom:"12px" }}>Dados da OS</div>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px" }}>
+              <div>
+                <label style={lbl}>Nº da OS</label>
+                <input value={osNumero} onChange={e=>setOsNumero(e.target.value)} placeholder="Ex: OS-2025-001" style={inp}/>
+              </div>
+              <div>
+                <label style={lbl}>Sistema / Módulo</label>
+                <input value={osSistema} onChange={e=>setOsSistema(e.target.value)} placeholder="Ex: Protheus SIGAFIN" style={inp}/>
+              </div>
+              <div style={{ gridColumn:"1/-1" }}>
+                <label style={lbl}>Descrição da OS</label>
+                <textarea value={osDescricao} onChange={e=>setOsDescricao(e.target.value)} rows={2}
+                  placeholder="Descreva o objetivo e escopo da ordem de serviço..."
+                  style={{...inp,resize:"vertical",lineHeight:1.5}}/>
+              </div>
+              <div style={{ gridColumn:"1/-1" }}>
+                <label style={lbl}>Status</label>
+                <div style={{ display:"flex",gap:"6px",flexWrap:"wrap" }}>
+                  {Object.entries(OS_STATUS).map(([k,v])=>(
+                    <button key={k} onClick={()=>setOsStatus(k)}
+                      style={{ padding:"6px 14px",borderRadius:"99px",border:"1px solid "+(osStatus===k?v.color:"#2a2a3a"),background:osStatus===k?v.bg:"transparent",color:osStatus===k?v.color:"#6e6e88",fontSize:"12px",fontWeight:osStatus===k?700:400,cursor:"pointer",fontFamily:"inherit",transition:"all .15s" }}>
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Horários */}
+          <div style={{ background:"#0d0d14",borderRadius:"12px",border:"1px solid #1f1f2e",padding:"14px 16px" }}>
+            <div style={{ fontSize:"11px",color:"#22d3a0",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",marginBottom:"12px" }}>⏰ Controle de Tempo</div>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"12px" }}>
+              <div>
+                <label style={lbl}>Início</label>
+                <input type="time" value={horaInicio} onChange={e=>setHoraInicio(e.target.value)} style={inp}/>
+              </div>
+              <div>
+                <label style={lbl}>Fim</label>
+                <input type="time" value={horaFim} onChange={e=>setHoraFim(e.target.value)} style={inp}/>
+              </div>
+              <div>
+                <label style={lbl}>Intervalo (min)</label>
+                <input type="number" min="0" max="240" step="15" value={intervalo} onChange={e=>setIntervalo(e.target.value)} placeholder="Ex: 60" style={inp}/>
+              </div>
+            </div>
+            {duracaoUtil() && (
+              <div style={{ marginTop:"10px",padding:"8px 12px",borderRadius:"8px",background:"#22d3a010",border:"1px solid #22d3a030",fontSize:"12px",color:"#22d3a0",fontWeight:600 }}>
+                ⏱ Tempo útil: <strong>{duracaoUtil()}</strong>
+                {intervalo && <span style={{ color:"#6e6e88",fontWeight:400 }}> (descontando {intervalo}min de intervalo)</span>}
+              </div>
+            )}
+          </div>
+
+          {/* Atividades realizadas */}
+          <div>
+            <label style={lbl}>📝 Atividades realizadas</label>
+            <textarea value={atividades} onChange={e=>setAtividades(e.target.value)} rows={4}
+              placeholder={"Descreva detalhadamente as atividades realizadas durante este atendimento...\n\nEx:\n- Configuração do módulo SIGAFIN\n- Treinamento de usuários\n- Validação de relatórios"}
+              style={{...inp,resize:"vertical",lineHeight:1.6,minHeight:"100px"}}/>
+          </div>
+
+          {/* Resumo rápido se já tinha OS */}
+          {entry.osPreenchidaEm && (
+            <div style={{ fontSize:"10px",color:"#3e3e55",textAlign:"right" }}>
+              Última atualização: {new Date(entry.osPreenchidaEm).toLocaleString("pt-BR")} por {entry.osPreenchidaPor}
+            </div>
+          )}
+
+          {/* Ações */}
+          <div style={{ display:"flex",gap:"10px",justifyContent:"flex-end",paddingTop:"4px" }}>
+            <button onClick={onClose} style={{ padding:"10px 20px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>Cancelar</button>
+            <button onClick={handleSave} disabled={saving}
+              style={{ padding:"10px 24px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44",opacity:saving?0.7:1 }}>
+              {saving?"⏳ Salvando...":"💾 Salvar OS"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GRADE ADMIN VIEW — busca por produto/módulo + visualização por consultor
 // ─────────────────────────────────────────────────────────────────────────────
 function GradeAdminView({ consultores }) {
@@ -1603,7 +1761,7 @@ function GradeConhecimento({ consultorName, userId, readOnly }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // VISUALIZAÇÃO SEMANAL GLOBAL (todos os consultores, semana a semana)
 // ─────────────────────────────────────────────────────────────────────────────
-function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEdit, onEdit, onNewEntry, theme: T }) {
+function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEdit, onEdit, onNewEntry, onOsClick, theme: T }) {
   const { days, consultores: allConsultores } = weeklyData;
   const WD_SHORT = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
   const today = new Date(); today.setHours(0,0,0,0);
@@ -1885,6 +2043,11 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
                               {(entry.horaInicio||entry.horaFim) && (
                                 <div style={{ fontSize:"9px",color:"rgba(255,255,255,0.75)",marginTop:"2px" }}>{entry.horaInicio||""}{entry.horaFim?"→"+entry.horaFim:""}</div>
                               )}
+                              {entry.osNumero && (
+                                <div style={{ fontSize:"8px",color:"rgba(255,255,255,0.6)",marginTop:"1px",display:"flex",alignItems:"center",gap:"2px" }}>
+                                  <span>📋</span><span style={{ overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{entry.osNumero}</span>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -1968,14 +2131,23 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
               </div>
             )}
 
-            {/* Botão editar (só para quem pode) */}
-            {canEdit && onEdit && (
-              <button onMouseDown={e=>e.stopPropagation()}
-                onClick={()=>{ onEdit(popup.entry, popup.name); setPopup(null); }}
-                style={{ width:"100%",padding:"9px",borderRadius:"9px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",marginTop:"12px",boxShadow:"0 4px 14px #6c63ff44" }}>
-                ✏️ Editar agenda
-              </button>
-            )}
+            {/* Botões de ação */}
+            <div style={{ display:"flex",flexDirection:"column",gap:"7px",marginTop:"12px" }}>
+              {onOsClick && (
+                <button onMouseDown={e=>e.stopPropagation()}
+                  onClick={()=>{ onOsClick({...popup.entry, consultor:popup.name}); setPopup(null); }}
+                  style={{ width:"100%",padding:"9px",borderRadius:"9px",border:"1px solid #22d3a044",background:"#22d3a015",color:"#22d3a0",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit" }}>
+                  📋 Preencher Ordem de Serviço
+                </button>
+              )}
+              {canEdit && onEdit && (
+                <button onMouseDown={e=>e.stopPropagation()}
+                  onClick={()=>{ onEdit(popup.entry, popup.name); setPopup(null); }}
+                  style={{ width:"100%",padding:"9px",borderRadius:"9px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 14px #6c63ff44" }}>
+                  ✏️ Editar agenda
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1986,7 +2158,7 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
 // ─────────────────────────────────────────────────────────────────────────────
 // CALENDÁRIO MENSAL
 // ─────────────────────────────────────────────────────────────────────────────
-function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientColors, onEdit, onDelete, onNewEntry, readonly }) {
+function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientColors, onEdit, onDelete, onNewEntry, onOsClick, readonly }) {
   const [calMes, setCalMes] = React.useState(selectedMonth !== "Todos" ? selectedMonth : allMonths[1] || "Setembro");
   const [calAno, setCalAno] = React.useState(new Date().getFullYear());
   const [popup, setPopup] = React.useState(null);
@@ -2352,12 +2524,18 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                       <span style={{ fontSize:"10px",color:"#6e6e88",fontStyle:"italic" }}>Sem histórico</span>
                     )}
                     {/* Actions */}
-                    {!readonly && (
-                      <div style={{ display:"flex",gap:"6px",marginTop:"8px" }}>
-                        <button onClick={()=>{ onEdit({...entry,consultor:popup.name,month:calMes}); setPopup(null); }} style={{ flex:1,padding:"5px",borderRadius:"5px",border:"none",background:"#6c63ff",color:"#fff",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>✏️ Editar</button>
-                        <button onClick={()=>{ onDelete(popup.name,entry.id); setPopup(null); }} style={{ padding:"5px 10px",borderRadius:"5px",border:"1px solid #ef4444",background:"transparent",color:"#ef4444",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>🗑</button>
-                      </div>
-                    )}
+                    <div style={{ display:"flex",gap:"6px",marginTop:"8px",flexWrap:"wrap" }}>
+                      {onOsClick && (
+                        <button onClick={()=>{ onOsClick({...entry,consultor:popup.name,month:calMes}); setPopup(null); }}
+                          style={{ flex:1,padding:"5px 8px",borderRadius:"5px",border:"1px solid #22d3a044",background:"#22d3a015",color:"#22d3a0",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>📋 OS</button>
+                      )}
+                      {!readonly && (
+                        <>
+                          <button onClick={()=>{ onEdit({...entry,consultor:popup.name,month:calMes}); setPopup(null); }} style={{ flex:1,padding:"5px",borderRadius:"5px",border:"none",background:"#6c63ff",color:"#fff",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>✏️ Editar</button>
+                          <button onClick={()=>{ onDelete(popup.name,entry.id); setPopup(null); }} style={{ padding:"5px 10px",borderRadius:"5px",border:"1px solid #ef4444",background:"transparent",color:"#ef4444",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>🗑</button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -3815,6 +3993,7 @@ function Dashboard({ currentUser, onLogout }) {
   const [view, setView] = useState("calendario");
   const [showModal, setShowModal] = useState(false);
   const [editEntry, setEditEntry] = useState(null);
+  const [osEntry, setOsEntry] = useState(null); // entrada selecionada para OS
   const [toast, setToast] = useState(null);
   const [showUserMgmt, setShowUserMgmt] = useState(false);
   const [theme, setTheme] = useState("dark");
@@ -4507,7 +4686,7 @@ function Dashboard({ currentUser, onLogout }) {
             {/* Resumo rápido da semana */}
             <div style={{ background:T.surface,borderRadius:"16px",border:"1px solid "+T.border,padding:"20px" }}>
               <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"15px",fontWeight:700,color:T.heading,margin:"0 0 16px" }}>📅 Agenda desta semana</h3>
-              <WeeklyGlobalView weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={false} onEdit={null} onNewEntry={null} theme={T}/>
+              <WeeklyGlobalView weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={false} onEdit={null} onNewEntry={null} onOsClick={isConsultor?(e)=>setOsEntry(e):null} theme={T}/>
             </div>
           </div>
         )}
@@ -4566,7 +4745,7 @@ function Dashboard({ currentUser, onLogout }) {
                     ? selectedMonth!=="Todos"&&calendarData
                       ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
                       : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}><div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>Selecione um mês específico para ver a visualização semanal</div>
-                    : <CalendarioMensal data={{[selectedConsultor]: scheduleData[selectedConsultor]||[]}} selectedMonth={selectedMonth} allMonths={allMonths} consultores={[selectedConsultor]} clientColors={clientColorMap} readonly={!canEdit} onEdit={canEdit?(entry)=>{setEditEntry(entry);setShowModal(true);}:null} onDelete={canEdit?handleDeleteEntry:null} onNewEntry={canEdit?({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); }:null}/>
+                    : <CalendarioMensal data={{[selectedConsultor]: scheduleData[selectedConsultor]||[]}} selectedMonth={selectedMonth} allMonths={allMonths} consultores={[selectedConsultor]} clientColors={clientColorMap} readonly={!canEdit} onEdit={canEdit?(entry)=>{setEditEntry(entry);setShowModal(true);}:null} onDelete={canEdit?handleDeleteEntry:null} onNewEntry={canEdit?({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); }:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null}/>
                   : <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:"16px" }}>
                       {Object.entries(filteredData).filter(([,e])=>e.length>0).map(([name,entries])=>(
                         <ConsultorCard key={name} name={name} entries={entries} idx={consultores.indexOf(name)} onClick={()=>!isConsultor&&setSelectedConsultor(selectedConsultor===name?null:name)} selected={selectedConsultor===name}/>
@@ -4578,9 +4757,9 @@ function Dashboard({ currentUser, onLogout }) {
                   ? selectedMonth!=="Todos"&&calendarData
                     ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
                     : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}><div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>Selecione um mês específico para ver a visualização semanal</div>
-                  : <CalendarioMensal data={filteredData} selectedMonth={selectedMonth} allMonths={allMonths} consultores={isConsultor?[currentUser.consultorName]:consultores} clientColors={clientColorMap} readonly={!canEdit} onEdit={canEdit?(entry)=>{setEditEntry(entry);setShowModal(true);}:null} onDelete={canEdit?handleDeleteEntry:null} onNewEntry={canEdit?({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); }:null}/>
+                  : <CalendarioMensal data={filteredData} selectedMonth={selectedMonth} allMonths={allMonths} consultores={isConsultor?[currentUser.consultorName]:consultores} clientColors={clientColorMap} readonly={!canEdit} onEdit={canEdit?(entry)=>{setEditEntry(entry);setShowModal(true);}:null} onDelete={canEdit?handleDeleteEntry:null} onNewEntry={canEdit?({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); }:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null}/>
               )}
-              {view==="semanal" && <WeeklyGlobalView weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={canEdit} onEdit={(entry,name)=>{setEditEntry({...entry,consultor:name});setShowModal(true);}} onNewEntry={canEdit?({consultor,month,day,year})=>{setEditEntry({consultor,month,day,year,prefill:true});setShowModal(true);}:null} theme={T}/>}
+              {view==="semanal" && <WeeklyGlobalView weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={canEdit} onEdit={(entry,name)=>{setEditEntry({...entry,consultor:name});setShowModal(true);}} onNewEntry={canEdit?({consultor,month,day,year})=>{setEditEntry({consultor,month,day,year,prefill:true});setShowModal(true);}:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null} theme={T}/>}
               {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
               {view==="stats" && <StatsView stats={stats}/>}
             </div>
@@ -4632,6 +4811,21 @@ function Dashboard({ currentUser, onLogout }) {
       {/* MODAL */}
       {showModal && canEdit && (
         <AgendaModal consultores={consultores} clients={clientList.map(c=>c.name)} months={MONTHS_ORDER} editEntry={editEntry} onSave={handleSaveEntry} onClose={()=>{setShowModal(false);setEditEntry(null);}}/>
+      )}
+
+      {/* MODAL ORDEM DE SERVIÇO */}
+      {osEntry && (
+        <OrdemServicoModal
+          entry={osEntry}
+          consultorName={currentUser.consultorName||currentUser.username||""}
+          onSave={async (updatedEntry) => {
+            const name = updatedEntry.consultor||currentUser.consultorName;
+            const novaLista = (scheduleData[name]||[]).map(e => e.id===updatedEntry.id ? updatedEntry : e);
+            setScheduleData(prev => ({...prev, [name]: novaLista}));
+            await saveToFirestore("schedule_"+name, novaLista);
+          }}
+          onClose={()=>setOsEntry(null)}
+        />
       )}
 
       {showUserMgmt && (
