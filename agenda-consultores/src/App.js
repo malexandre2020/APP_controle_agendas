@@ -3330,8 +3330,8 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
 
   // Módulos disponíveis por perfil
   const MODULOS_POR_PERFIL = {
-    admin:     [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"✈️",label:"Viagens"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"cadastros",icon:"🗂",label:"Cadastros"}],
-    editor:    [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"✈️",label:"Viagens"},{ id:"projetos",icon:"📁",label:"Projetos"}],
+    admin:     [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"cadastros",icon:"🗂",label:"Cadastros"}],
+    editor:    [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"projetos",icon:"📁",label:"Projetos"}],
     viewer:    [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"viagens",icon:"✈️",label:"Viagens"}],
     consultor: [{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"grade",icon:"🎓",label:"Grade de Conhecimento"},{ id:"viagens",icon:"✈️",label:"Viagens"}],
   };
@@ -3494,46 +3494,95 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
 // ─────────────────────────────────────────────────────────────────────────────
 function ViagemCard({ viagem, STATUS_CONFIG, canManage, onEdit, onStatusChange, onDelete, onUpdateGastos }) {
   const [expandido, setExpandido] = useState(false);
+  const [comentario, setComentario] = useState("");
+  const [acaoAtiva, setAcaoAtiva]   = useState(null);
   const st = STATUS_CONFIG[viagem.status]||STATUS_CONFIG.pendente;
-  const totalGastos = (viagem.gastos||[]).reduce((s,g)=>s+Number(g.valor||0),0);
+  const temVoo  = viagem.incluirVoo === true;
+  const temHosp = !!viagem.cidadeHospedagem;
+
   return (
     <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",overflow:"hidden" }}>
-      <div style={{ padding:"16px 20px",display:"flex",alignItems:"center",gap:"14px",flexWrap:"wrap",cursor:"pointer" }} onClick={()=>setExpandido(e=>!e)}>
-        <div style={{ fontSize:"22px" }}>✈️</div>
+      <div style={{ padding:"14px 20px",display:"flex",alignItems:"center",gap:"14px",flexWrap:"wrap",cursor:"pointer" }} onClick={()=>setExpandido(e=>!e)}>
+        <div style={{ fontSize:"22px" }}>{temVoo?"✈️":"🏨"}</div>
         <div style={{ flex:1,minWidth:0 }}>
-          <div style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa" }}>{viagem.destino||"(sem destino)"}</div>
+          <div style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa" }}>
+            {viagem.cliente||viagem.destino||"(sem cliente)"}
+            {viagem.consultor && <span style={{ fontSize:"11px",color:"#6e6e88",fontWeight:400,marginLeft:"8px" }}>— {viagem.consultor.split(" ")[0]}</span>}
+          </div>
           <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"2px",display:"flex",gap:"10px",flexWrap:"wrap" }}>
             <span>👤 {viagem.solicitante}</span>
-            {viagem.dataIda && <span>📅 {viagem.dataIda}{viagem.dataVolta?" → "+viagem.dataVolta:""}</span>}
-            {viagem.transporte && <span>🚗 {viagem.transporte}</span>}
-            {totalGastos>0 && <span style={{ color:"#22d3a0" }}>💰 R$ {totalGastos.toFixed(2)}</span>}
+            {viagem.checkIn && <span>🏨 {viagem.checkIn}{viagem.checkOut?" → "+viagem.checkOut:""}</span>}
+            {temVoo && viagem.dataVooIda && <span>✈️ {viagem.dataVooIda}</span>}
+            {viagem.motivo && <span>📌 {viagem.motivo}</span>}
           </div>
         </div>
+        {temVoo  && <span style={{ fontSize:"10px",padding:"2px 8px",borderRadius:"99px",background:"#6c63ff18",border:"1px solid #6c63ff33",color:"#a78bfa",fontWeight:700 }}>✈️ Voo</span>}
+        {temHosp && <span style={{ fontSize:"10px",padding:"2px 8px",borderRadius:"99px",background:"#22d3a018",border:"1px solid #22d3a033",color:"#22d3a0",fontWeight:700 }}>🏨 Hosp.</span>}
         <span style={{ padding:"4px 12px",borderRadius:"99px",background:st.bg,border:"1px solid "+st.color+"44",fontSize:"11px",fontWeight:700,color:st.color,whiteSpace:"nowrap" }}>{st.label}</span>
         <span style={{ color:"#3e3e55",fontSize:"12px" }}>{expandido?"▴":"▾"}</span>
       </div>
+
       {expandido && (
         <div style={{ borderTop:"1px solid #1f1f2e",padding:"16px 20px" }}>
-          {viagem.motivo && <p style={{ fontSize:"13px",color:"#c8c8d8",lineHeight:1.6,marginBottom:"14px" }}><strong style={{ color:"#6e6e88" }}>Motivo:</strong> {viagem.motivo}</p>}
-          {viagem.observacoes && <p style={{ fontSize:"13px",color:"#c8c8d8",lineHeight:1.6,marginBottom:"14px" }}><strong style={{ color:"#6e6e88" }}>Obs:</strong> {viagem.observacoes}</p>}
-          <div style={{ marginBottom:"16px" }}>
-            <div style={{ fontSize:"11px",color:"#6e6e88",fontWeight:700,letterSpacing:"0.5px",textTransform:"uppercase",marginBottom:"10px" }}>Lançamento de gastos</div>
-            <GastosViagem viagem={viagem} onAtualizar={onUpdateGastos}/>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"14px",marginBottom:"14px",fontSize:"12px" }}>
+            <div style={{ background:"#0d0d14",borderRadius:"10px",padding:"12px 14px" }}>
+              <div style={{ fontSize:"10px",color:"#6c63ff",fontWeight:700,letterSpacing:"0.8px",textTransform:"uppercase",marginBottom:"8px" }}>Solicitação</div>
+              {[["Solicitante",viagem.solicitante],["Setor",viagem.setor],["Consultor",viagem.consultor],["Cliente",viagem.cliente],["Endereço",viagem.enderecoCliente],["Motivo",viagem.motivo],["Cobrança",viagem.destinoCobranca],["Observações",viagem.observacoes]].filter(([,v])=>v).map(([k,v])=>(
+                <div key={k} style={{ marginBottom:"4px" }}><span style={{ color:"#6e6e88" }}>{k}: </span><span style={{ color:"#c8c8d8" }}>{v}</span></div>
+              ))}
+            </div>
+            <div style={{ background:"#0d0d14",borderRadius:"10px",padding:"12px 14px" }}>
+              <div style={{ fontSize:"10px",color:"#22d3a0",fontWeight:700,letterSpacing:"0.8px",textTransform:"uppercase",marginBottom:"8px" }}>🏨 Hospedagem</div>
+              {viagem.cidadeHospedagem
+                ? [["Cidade",viagem.cidadeHospedagem],["Check-in",viagem.checkIn],["Check-out",viagem.checkOut]].filter(([,v])=>v).map(([k,v])=>(
+                    <div key={k} style={{ marginBottom:"4px" }}><span style={{ color:"#6e6e88" }}>{k}: </span><span style={{ color:"#c8c8d8" }}>{v}</span></div>
+                  ))
+                : <div style={{ color:"#3e3e55",fontSize:"11px" }}>Sem hospedagem</div>
+              }
+            </div>
+            {temVoo && (
+              <div style={{ gridColumn:"1/-1",background:"#0d0d14",borderRadius:"10px",padding:"12px 14px" }}>
+                <div style={{ fontSize:"10px",color:"#a78bfa",fontWeight:700,letterSpacing:"0.8px",textTransform:"uppercase",marginBottom:"8px" }}>✈️ Voo</div>
+                <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px" }}>
+                  {[["Origem",viagem.aeroportoOrigem],["Destino",viagem.aeroportoDestino],["Data ida",viagem.dataVooIda],["Horário ida",viagem.horarioIda],["Data volta",viagem.dataVooVolta],["Horário volta",viagem.horarioVolta]].filter(([,v])=>v).map(([k,v])=>(
+                    <div key={k}><span style={{ color:"#6e6e88" }}>{k}: </span><span style={{ color:"#c8c8d8" }}>{v}</span></div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+
           <div style={{ display:"flex",gap:"8px",flexWrap:"wrap" }}>
             <button onClick={(e)=>{e.stopPropagation();onEdit(viagem);setExpandido(false);}}
               style={{ padding:"7px 16px",borderRadius:"8px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontSize:"12px",fontWeight:600,fontFamily:"inherit" }}>✏️ Editar</button>
             {canManage && (
               <>
-                {Object.entries(STATUS_CONFIG).filter(([k])=>k!==viagem.status).map(([k,v])=>(
-                  <button key={k} onClick={(e)=>{e.stopPropagation();onStatusChange(viagem.id,k);}}
-                    style={{ padding:"7px 14px",borderRadius:"8px",border:"1px solid "+v.color+"44",background:v.bg,color:v.color,cursor:"pointer",fontSize:"11px",fontWeight:600,fontFamily:"inherit" }}>→ {v.label}</button>
+                {[{k:"aprovada",label:"✅ Aprovar",color:"#22d3a0"},{k:"rejeitada",label:"❌ Rejeitar",color:"#f04f5e"},{k:"realizada",label:"🏁 Realizada",color:"#6c63ff"}].filter(btn=>btn.k!==viagem.status).map(btn=>(
+                  <button key={btn.k} onClick={(e)=>{e.stopPropagation();setAcaoAtiva(acaoAtiva===btn.k?null:btn.k);}}
+                    style={{ padding:"7px 14px",borderRadius:"8px",border:"1px solid "+btn.color+"44",background:acaoAtiva===btn.k?btn.color+"22":"transparent",color:btn.color,cursor:"pointer",fontSize:"11px",fontWeight:600,fontFamily:"inherit" }}>
+                    {btn.label}
+                  </button>
                 ))}
                 <button onClick={(e)=>{e.stopPropagation();onDelete(viagem.id);}}
-                  style={{ padding:"7px 14px",borderRadius:"8px",border:"1px solid #f04f5e44",background:"#f04f5e18",color:"#f04f5e",cursor:"pointer",fontSize:"11px",fontWeight:600,fontFamily:"inherit" }}>🗑 Excluir</button>
+                  style={{ padding:"7px 14px",borderRadius:"8px",border:"1px solid #f04f5e44",background:"#f04f5e18",color:"#f04f5e",cursor:"pointer",fontSize:"11px",fontWeight:600,fontFamily:"inherit" }}>🗑</button>
               </>
             )}
           </div>
+
+          {acaoAtiva && (
+            <div style={{ marginTop:"12px",background:"#0d0d14",borderRadius:"10px",padding:"12px" }}>
+              <textarea value={comentario} onChange={e=>setComentario(e.target.value)} rows={2} placeholder="Comentário (opcional)..."
+                style={{ width:"100%",padding:"8px 12px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#111118",color:"#c8c8d8",fontSize:"12px",fontFamily:"inherit",resize:"none",outline:"none",boxSizing:"border-box" }}/>
+              <div style={{ display:"flex",gap:"8px",marginTop:"8px",justifyContent:"flex-end" }}>
+                <button onClick={()=>{setAcaoAtiva(null);setComentario("");}} style={{ padding:"6px 14px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontSize:"11px",fontFamily:"inherit" }}>Cancelar</button>
+                <button onClick={(e)=>{e.stopPropagation();onStatusChange(viagem.id,acaoAtiva,comentario);setAcaoAtiva(null);setComentario("");}}
+                  style={{ padding:"6px 16px",borderRadius:"8px",border:"none",background:"#22d3a0",color:"#fff",cursor:"pointer",fontSize:"11px",fontWeight:700,fontFamily:"inherit" }}>Confirmar</button>
+              </div>
+            </div>
+          )}
+          {viagem.comentarioGestor && (
+            <div style={{ marginTop:"10px",fontSize:"12px",color:"#f5a623",background:"#f5a62310",borderRadius:"8px",padding:"8px 12px" }}>💬 Gestor: {viagem.comentarioGestor}</div>
+          )}
         </div>
       )}
     </div>
@@ -3883,25 +3932,25 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, emailConfig
   );
 }
 
-function ModuloViagens({ currentUser, canEdit, canManage, consultores, theme: T }) {
-  const [viagens, setViagens] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editando, setEditando] = useState(null);
-  const [abaAtiva, setAbaAtiva] = useState("lista"); // lista | nova | relatorio
+// ─────────────────────────────────────────────────────────────────────────────
+// MÓDULO: VIAGEM E HOSPEDAGEM
+// ─────────────────────────────────────────────────────────────────────────────
+function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientList, theme: T }) {
+  const [viagens,   setViagens]   = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [showForm,  setShowForm]  = useState(false);
+  const [editando,  setEditando]  = useState(null);
 
   const isConsultor = currentUser.role === "consultor";
-  const nomeUsuario = currentUser.consultorName || currentUser.nome || currentUser.username || "";
+  const nomeLogado  = currentUser.consultorName || currentUser.nome || currentUser.username || "";
 
   const STATUS_CONFIG = {
     pendente:  { label:"Pendente",   color:"#f5a623", bg:"#f5a62318" },
     aprovada:  { label:"Aprovada",   color:"#22d3a0", bg:"#22d3a018" },
     rejeitada: { label:"Rejeitada",  color:"#f04f5e", bg:"#f04f5e18" },
     realizada: { label:"Realizada",  color:"#6c63ff", bg:"#6c63ff18" },
-    reembolso: { label:"Reembolso",  color:"#a78bfa", bg:"#a78bfa18" },
   };
 
-  // Carregar do Firestore
   useEffect(() => {
     const load = async () => {
       try {
@@ -3918,81 +3967,181 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, theme: T 
     await setDoc(doc(db, "app_data", "viagens_all"), { value: lista });
   };
 
+  const handleStatusChange = async (id, status, comentario="") => {
+    const viagem = viagens.find(v=>v.id===id);
+    const novas = viagens.map(v=>v.id===id?{...v,status,comentarioGestor:comentario,avaliadoEm:new Date().toISOString()}:v);
+    await salvarViagens(novas);
+    if (status==="aprovada" && viagem?.consultor) {
+      try {
+        const key = "notif_viagem_"+viagem.consultor.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+        const snap = await getDoc(doc(db, "app_data", key));
+        const atual = snap.exists() ? (snap.data().value||[]) : [];
+        const jaExiste = atual.some(n=>n.id===id);
+        if (!jaExiste) await setDoc(doc(db, "app_data", key), { value: [...atual, {...viagem,status:"aprovada",id}] });
+      } catch(e) { console.warn(e); }
+    }
+  };
+
   const viagensFiltradas = isConsultor
-    ? viagens.filter(v => v.solicitante === nomeUsuario)
+    ? viagens.filter(v => v.consultor===nomeLogado || v.solicitante===nomeLogado)
     : viagens;
 
-  const card = { background:T.surface,borderRadius:"14px",border:"1px solid "+T.border,padding:"18px 20px",marginBottom:"10px" };
-  const inp  = { padding:"9px 13px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",width:"100%",boxSizing:"border-box",fontFamily:"inherit" };
-  const lbl  = { fontSize:"11px",color:"#6e6e88",fontWeight:700,display:"block",marginBottom:"6px",letterSpacing:"0.5px",textTransform:"uppercase" };
+  const inp = { padding:"9px 13px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",width:"100%",boxSizing:"border-box",fontFamily:"inherit" };
+  const lbl = { fontSize:"11px",color:"#6e6e88",fontWeight:700,display:"block",marginBottom:"6px",letterSpacing:"0.5px",textTransform:"uppercase" };
 
   const FormViagem = ({ inicial, onSalvar, onCancelar }) => {
-    const [form, setForm] = useState(inicial || {
-      solicitante: nomeUsuario, destino:"", dataIda:"", dataVolta:"", motivo:"",
-      transporte:"aéreo", hospedagem:false, adiantamento:"", observacoes:"",
-      status:"pendente", gastos:[], docs:[]
-    });
+    const vazio = {
+      solicitante:nomeLogado, setor:"Serviços", consultor:isConsultor?nomeLogado:"",
+      cliente:"", enderecoCliente:"", motivo:"Atendimento Presencial",
+      observacoes:"", destinoCobranca:"TSM",
+      cidadeHospedagem:"", checkIn:"", checkOut:"",
+      incluirVoo:false, aeroportoOrigem:"", dataVooIda:"", horarioIda:"",
+      aeroportoDestino:"", dataVooVolta:"", horarioVolta:"",
+      status:"pendente",
+    };
+    const [form, setForm] = useState(inicial||vazio);
     const set = (k,v) => setForm(p=>({...p,[k]:v}));
+
+    const handleClienteChange = (nome) => {
+      set("cliente", nome);
+      const cli = (clientList||[]).find(c=>c.name===nome);
+      if (cli?.endereco) set("enderecoCliente", cli.endereco);
+    };
+
+    const noites = form.checkIn&&form.checkOut ? Math.round((new Date(form.checkOut)-new Date(form.checkIn))/86400000) : 0;
+
     return (
-      <div style={{ background:T.surface,borderRadius:"16px",border:"1px solid "+T.border,padding:"24px",maxWidth:"680px" }}>
+      <div style={{ background:"#111118",borderRadius:"16px",border:"1px solid #1f1f2e",padding:"24px",maxWidth:"720px",marginBottom:"24px" }}>
         <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"17px",fontWeight:900,color:"#f0f0fa",margin:"0 0 20px",letterSpacing:"-0.3px" }}>
-          {inicial?"✏️ Editar Solicitação":"✈️ Nova Solicitação de Viagem"}
+          {inicial?"✏️ Editar Solicitação":"🏨 Nova Solicitação de Viagem e Hospedagem"}
         </h3>
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"14px" }}>
-          {canManage && (
-            <div style={{ gridColumn:"1/-1" }}>
-              <label style={lbl}>Consultor solicitante</label>
-              <select value={form.solicitante} onChange={e=>set("solicitante",e.target.value)} style={inp}>
-                {consultores.map(c=><option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          )}
-          <div style={{ gridColumn:"1/-1" }}>
-            <label style={lbl}>Destino</label>
-            <input value={form.destino} onChange={e=>set("destino",e.target.value)} placeholder="Ex: São Paulo, SP" style={inp}/>
+
+        {/* Solicitação */}
+        <div style={{ fontSize:"11px",color:"#6c63ff",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",marginBottom:"12px" }}>Solicitação</div>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"20px" }}>
+          <div>
+            <label style={lbl}>Solicitante</label>
+            <div style={{...inp,background:"#18181f",color:"#6e6e88",cursor:"default",display:"flex",alignItems:"center" }}>{form.solicitante}</div>
           </div>
           <div>
-            <label style={lbl}>Data de ida</label>
-            <input type="date" value={form.dataIda} onChange={e=>set("dataIda",e.target.value)} style={inp}/>
-          </div>
-          <div>
-            <label style={lbl}>Data de volta</label>
-            <input type="date" value={form.dataVolta} onChange={e=>set("dataVolta",e.target.value)} style={inp}/>
-          </div>
-          <div>
-            <label style={lbl}>Transporte</label>
-            <select value={form.transporte} onChange={e=>set("transporte",e.target.value)} style={inp}>
-              {["aéreo","rodoviário","veículo próprio","locação"].map(t=><option key={t} value={t}>{t}</option>)}
+            <label style={lbl}>Setor</label>
+            <select value={form.setor} onChange={e=>set("setor",e.target.value)} style={inp}>
+              {["Comercial","Serviços","Marketing","Administrativo"].map(s=><option key={s}>{s}</option>)}
             </select>
           </div>
-          <div style={{ display:"flex",alignItems:"center",gap:"10px",paddingTop:"22px" }}>
-            <input type="checkbox" id="hosp" checked={form.hospedagem} onChange={e=>set("hospedagem",e.target.checked)} style={{ width:"16px",height:"16px",accentColor:"#6c63ff" }}/>
-            <label htmlFor="hosp" style={{ fontSize:"13px",color:"#c8c8d8",cursor:"pointer" }}>Necessita hospedagem</label>
+          <div>
+            <label style={lbl}>Consultor</label>
+            {isConsultor
+              ? <div style={{...inp,background:"#18181f",color:"#6e6e88",cursor:"default",display:"flex",alignItems:"center"}}>{nomeLogado}</div>
+              : <select value={form.consultor} onChange={e=>set("consultor",e.target.value)} style={inp}>
+                  <option value="">Selecione...</option>
+                  {consultores.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+            }
           </div>
           <div>
-            <label style={lbl}>Adiantamento solicitado (R$)</label>
-            <input type="number" value={form.adiantamento} onChange={e=>set("adiantamento",e.target.value)} placeholder="0,00" style={inp}/>
+            <label style={lbl}>Cliente</label>
+            <select value={form.cliente} onChange={e=>handleClienteChange(e.target.value)} style={inp}>
+              <option value="">Selecione...</option>
+              {(clientList||[]).map(c=><option key={c.name} value={c.name}>{c.name}</option>)}
+            </select>
           </div>
           <div style={{ gridColumn:"1/-1" }}>
-            <label style={lbl}>Motivo / Objetivo da viagem</label>
-            <textarea value={form.motivo} onChange={e=>set("motivo",e.target.value)} rows={3} placeholder="Descreva o motivo e objetivo da viagem..." style={{...inp,resize:"vertical",lineHeight:1.5}}/>
+            <label style={lbl}>Endereço do cliente</label>
+            <input value={form.enderecoCliente} onChange={e=>set("enderecoCliente",e.target.value)} placeholder="Preenchido automaticamente ou edite manualmente" style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Motivo da solicitação</label>
+            <select value={form.motivo} onChange={e=>set("motivo",e.target.value)} style={inp}>
+              {["Reunião Comercial","Atendimento Presencial","Expediente em outras unidades","Eventos"].map(m=><option key={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Destino da cobrança</label>
+            <select value={form.destinoCobranca} onChange={e=>set("destinoCobranca",e.target.value)} style={inp}>
+              <option value="TSM">TSM</option>
+              <option value="Cliente">Cliente</option>
+            </select>
           </div>
           <div style={{ gridColumn:"1/-1" }}>
             <label style={lbl}>Observações</label>
             <textarea value={form.observacoes} onChange={e=>set("observacoes",e.target.value)} rows={2} placeholder="Informações adicionais..." style={{...inp,resize:"vertical",lineHeight:1.5}}/>
           </div>
-          {canManage && (
-            <div>
-              <label style={lbl}>Status</label>
-              <select value={form.status} onChange={e=>set("status",e.target.value)} style={inp}>
-                {Object.entries(STATUS_CONFIG).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
-              </select>
-            </div>
-          )}
         </div>
-        <div style={{ display:"flex",gap:"10px",marginTop:"20px",justifyContent:"flex-end" }}>
+
+        {/* Hospedagem */}
+        <div style={{ fontSize:"11px",color:"#22d3a0",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",marginBottom:"12px" }}>🏨 Hospedagem</div>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"12px",marginBottom:"20px" }}>
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={lbl}>Cidade da hospedagem</label>
+            <input value={form.cidadeHospedagem} onChange={e=>set("cidadeHospedagem",e.target.value)} placeholder="Ex: São Paulo, SP (deixe vazio se não precisar de hospedagem)" style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Check-in</label>
+            <input type="date" value={form.checkIn} onChange={e=>set("checkIn",e.target.value)} style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Check-out</label>
+            <input type="date" value={form.checkOut} onChange={e=>set("checkOut",e.target.value)} style={inp}/>
+          </div>
+          <div style={{ display:"flex",alignItems:"center",paddingTop:"22px" }}>
+            {noites>0 && <span style={{ fontSize:"12px",color:"#22d3a0",fontWeight:600 }}>🌙 {noites} noite{noites>1?"s":""}</span>}
+          </div>
+        </div>
+
+        {/* Voo */}
+        <div style={{ display:"flex",alignItems:"center",gap:"14px",marginBottom:"12px" }}>
+          <div style={{ fontSize:"11px",color:"#a78bfa",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase" }}>✈️ Deseja incluir voo?</div>
+          <div style={{ display:"flex",gap:"6px" }}>
+            {[{v:false,l:"Não"},{v:true,l:"Sim"}].map(opt=>(
+              <button key={String(opt.v)} onClick={()=>set("incluirVoo",opt.v)}
+                style={{ padding:"4px 16px",borderRadius:"99px",border:"1px solid "+(form.incluirVoo===opt.v?"#a78bfa":"#2a2a3a"),background:form.incluirVoo===opt.v?"#a78bfa22":"transparent",color:form.incluirVoo===opt.v?"#a78bfa":"#6e6e88",fontSize:"12px",fontWeight:form.incluirVoo===opt.v?700:400,cursor:"pointer",fontFamily:"inherit" }}>{opt.l}</button>
+            ))}
+          </div>
+        </div>
+        {form.incluirVoo && (
+          <div style={{ background:"#0d0d14",borderRadius:"12px",border:"1px solid #2a2a3a",padding:"14px",marginBottom:"20px" }}>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px" }}>
+              <div>
+                <label style={lbl}>Aeroporto de origem</label>
+                <input value={form.aeroportoOrigem} onChange={e=>set("aeroportoOrigem",e.target.value)} placeholder="Ex: GRU — Guarulhos" style={inp}/>
+              </div>
+              <div>
+                <label style={lbl}>Aeroporto de destino</label>
+                <input value={form.aeroportoDestino} onChange={e=>set("aeroportoDestino",e.target.value)} placeholder="Ex: CGH — Congonhas" style={inp}/>
+              </div>
+              <div>
+                <label style={lbl}>Data de ida</label>
+                <input type="date" value={form.dataVooIda} onChange={e=>set("dataVooIda",e.target.value)} style={inp}/>
+              </div>
+              <div>
+                <label style={lbl}>Preferência de horário — ida</label>
+                <input value={form.horarioIda} onChange={e=>set("horarioIda",e.target.value)} placeholder="Ex: Manhã / 07:00" style={inp}/>
+              </div>
+              <div>
+                <label style={lbl}>Data de volta</label>
+                <input type="date" value={form.dataVooVolta} onChange={e=>set("dataVooVolta",e.target.value)} style={inp}/>
+              </div>
+              <div>
+                <label style={lbl}>Preferência de horário — volta</label>
+                <input value={form.horarioVolta} onChange={e=>set("horarioVolta",e.target.value)} placeholder="Ex: Tarde / 18:00" style={inp}/>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {canManage && (
+          <div style={{ marginBottom:"16px" }}>
+            <label style={lbl}>Status</label>
+            <select value={form.status} onChange={e=>set("status",e.target.value)} style={{...inp,maxWidth:"200px"}}>
+              {Object.entries(STATUS_CONFIG).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </div>
+        )}
+
+        <div style={{ display:"flex",gap:"10px",justifyContent:"flex-end" }}>
           <button onClick={onCancelar} style={{ padding:"9px 18px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>Cancelar</button>
-          <button onClick={()=>onSalvar(form)} style={{ padding:"9px 22px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>
+          <button onClick={()=>onSalvar(form)} style={{ padding:"9px 24px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>
             {inicial?"💾 Salvar alterações":"✅ Enviar solicitação"}
           </button>
         </div>
@@ -4000,102 +4149,67 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, theme: T 
     );
   };
 
-  // Relatório de gastos
-  const GastosViagem = ({ viagem, onAtualizar }) => {
-    const [gastos, setGastos] = useState(viagem.gastos||[]);
-    const [novo, setNovo] = useState({ tipo:"alimentação", desc:"", valor:"", data:"" });
-    const tipos = ["alimentação","transporte","hospedagem","combustível","pedágio","outros"];
-    const total = gastos.reduce((s,g)=>s+Number(g.valor||0),0);
-    const adiantar = async () => {
-      const updated = {...viagem, gastos};
-      onAtualizar(updated);
-    };
+  // Painel de viagens aprovadas — visível ao consultor
+  const ViagemAprovadaConsultor = () => {
+    const [notifs, setNotifs] = useState([]);
+    useEffect(()=>{
+      const key = "notif_viagem_"+nomeLogado.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+      getDoc(doc(db,"app_data",key)).then(snap=>{ if(snap.exists()) setNotifs(snap.data().value||[]); }).catch(()=>{});
+    },[]);
+    if (!notifs.length) return null;
     return (
-      <div>
-        <div style={{ marginBottom:"14px",display:"flex",gap:"10px",flexWrap:"wrap" }}>
-          <select value={novo.tipo} onChange={e=>setNovo(p=>({...p,tipo:e.target.value}))} style={{...inp,width:"auto",flex:1}}>
-            {tipos.map(t=><option key={t} value={t}>{t}</option>)}
-          </select>
-          <input value={novo.desc} onChange={e=>setNovo(p=>({...p,desc:e.target.value}))} placeholder="Descrição" style={{...inp,flex:2}}/>
-          <input type="number" value={novo.valor} onChange={e=>setNovo(p=>({...p,valor:e.target.value}))} placeholder="R$ valor" style={{...inp,width:"120px",flex:"none"}}/>
-          <input type="date" value={novo.data} onChange={e=>setNovo(p=>({...p,data:e.target.value}))} style={{...inp,width:"140px",flex:"none"}}/>
-          <button onClick={()=>{ if(!novo.valor) return; const ng=[...gastos,{...novo,id:Date.now()}]; setGastos(ng); setNovo({tipo:"alimentação",desc:"",valor:"",data:""}); onAtualizar({...viagem,gastos:ng}); }}
-            style={{ padding:"9px 16px",borderRadius:"10px",border:"none",background:"#6c63ff",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap" }}>+ Lançar</button>
-        </div>
-        {gastos.length>0 && (
-          <table style={{ width:"100%",borderCollapse:"collapse",fontSize:"12px" }}>
-            <thead><tr style={{ borderBottom:"1px solid #2a2a3a" }}>
-              {["Tipo","Descrição","Data","Valor",""].map(h=><th key={h} style={{ padding:"6px 8px",textAlign:"left",color:"#6e6e88",fontWeight:600 }}>{h}</th>)}
-            </tr></thead>
-            <tbody>
-              {gastos.map((g,i)=>(
-                <tr key={g.id||i} style={{ borderBottom:"1px solid #18181f" }}>
-                  <td style={{ padding:"7px 8px",color:"#c8c8d8" }}>{g.tipo}</td>
-                  <td style={{ padding:"7px 8px",color:"#c8c8d8" }}>{g.desc}</td>
-                  <td style={{ padding:"7px 8px",color:"#6e6e88" }}>{g.data}</td>
-                  <td style={{ padding:"7px 8px",color:"#22d3a0",fontWeight:700 }}>R$ {Number(g.valor).toFixed(2)}</td>
-                  <td><button onClick={()=>{ const ng=gastos.filter((_,j)=>j!==i); setGastos(ng); onAtualizar({...viagem,gastos:ng}); }} style={{ background:"none",border:"none",color:"#f04f5e",cursor:"pointer",fontSize:"13px" }}>✕</button></td>
-                </tr>
-              ))}
-              <tr style={{ borderTop:"2px solid #2a2a3a" }}>
-                <td colSpan={3} style={{ padding:"8px",color:"#6e6e88",fontWeight:700,textAlign:"right" }}>Total:</td>
-                <td style={{ padding:"8px",color:"#22d3a0",fontWeight:800,fontSize:"14px" }}>R$ {total.toFixed(2)}</td>
-                <td/>
-              </tr>
-            </tbody>
-          </table>
-        )}
-        {gastos.length===0 && <div style={{ textAlign:"center",padding:"20px",color:"#3e3e55",fontSize:"12px" }}>Nenhum gasto lançado ainda</div>}
+      <div style={{ background:"#22d3a015",border:"1px solid #22d3a033",borderRadius:"14px",padding:"16px 20px",marginBottom:"20px" }}>
+        <div style={{ fontSize:"12px",fontWeight:700,color:"#22d3a0",marginBottom:"12px" }}>✅ Suas viagens aprovadas</div>
+        {notifs.map((v,i)=>(
+          <div key={v.id||i} style={{ background:"#111118",borderRadius:"10px",border:"1px solid #22d3a022",padding:"12px 14px",marginBottom:"8px",fontSize:"12px" }}>
+            <div style={{ fontWeight:700,color:"#f0f0fa",marginBottom:"6px" }}>{v.cliente||"(sem cliente)"}{v.motivo?" — "+v.motivo:""}</div>
+            <div style={{ display:"flex",gap:"16px",flexWrap:"wrap",color:"#6e6e88" }}>
+              {v.cidadeHospedagem && <span>🏨 {v.cidadeHospedagem} · {v.checkIn} → {v.checkOut}</span>}
+              {v.incluirVoo && <span>✈️ {v.aeroportoOrigem} → {v.aeroportoDestino} · ida: {v.dataVooIda}{v.horarioIda?" ("+v.horarioIda+")":""}{v.dataVooVolta?" · volta: "+v.dataVooVolta:""}{v.horarioVolta?" ("+v.horarioVolta+")":""}</span>}
+              {v.enderecoCliente && <span>📍 {v.enderecoCliente}</span>}
+            </div>
+          </div>
+        ))}
       </div>
     );
   };
 
-  if (loading) return <div style={{ textAlign:"center",padding:"60px",color:"#3e3e55" }}><div style={{ width:"28px",height:"28px",border:"3px solid #1f1f2e",borderTop:"3px solid #6c63ff",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto 12px" }}/></div>;
+  if (loading) return <div style={{ textAlign:"center",padding:"60px" }}><div style={{ width:"28px",height:"28px",border:"3px solid #1f1f2e",borderTop:"3px solid #6c63ff",borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto" }}/></div>;
 
   return (
     <div>
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"24px",flexWrap:"wrap",gap:"12px" }}>
         <div>
-          <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>✈️ Solicitações de Viagem</h2>
+          <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>🏨 Viagem e Hospedagem</h2>
           <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>{viagensFiltradas.length} solicitação{viagensFiltradas.length!==1?"ões":""}</p>
         </div>
-        <div style={{ display:"flex",gap:"8px",alignItems:"center" }}>
-          {/* Resumo por status */}
-          {Object.entries(STATUS_CONFIG).map(([k,v])=>{
-            const qtd = viagensFiltradas.filter(vi=>vi.status===k).length;
-            if (!qtd) return null;
-            return <div key={k} style={{ padding:"4px 10px",borderRadius:"99px",background:v.bg,border:"1px solid "+v.color+"44",fontSize:"11px",fontWeight:700,color:v.color }}>{qtd} {v.label}</div>;
-          })}
-          <button onClick={()=>{setEditando(null);setShowForm(true);}}
-            style={{ padding:"8px 18px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>
+        <div style={{ display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap" }}>
+          {Object.entries(STATUS_CONFIG).map(([k,v])=>{ const qtd=viagensFiltradas.filter(vi=>vi.status===k).length; if(!qtd)return null; return <div key={k} style={{ padding:"4px 10px",borderRadius:"99px",background:v.bg,border:"1px solid "+v.color+"44",fontSize:"11px",fontWeight:700,color:v.color }}>{qtd} {v.label}</div>; })}
+          <button onClick={()=>{setEditando(null);setShowForm(true);}} style={{ padding:"8px 18px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>
             + Nova Solicitação
           </button>
         </div>
       </div>
 
+      {isConsultor && <ViagemAprovadaConsultor/>}
+
       {showForm && (
-        <div style={{ marginBottom:"24px" }}>
-          <FormViagem
-            inicial={editando}
-            onSalvar={async (dados) => {
-              let nova;
-              if (editando) {
-                nova = viagens.map(v=>v.id===editando.id?{...dados,id:editando.id,atualizadoEm:new Date().toISOString()}:v);
-              } else {
-                nova = [...viagens, {...dados, id:Date.now().toString(36), criadoEm:new Date().toISOString()}];
-              }
-              await salvarViagens(nova);
-              setShowForm(false); setEditando(null);
-            }}
-            onCancelar={()=>{setShowForm(false);setEditando(null);}}
-          />
-        </div>
+        <FormViagem inicial={editando}
+          onSalvar={async (dados)=>{
+            const nova = editando
+              ? viagens.map(v=>v.id===editando.id?{...dados,id:editando.id,atualizadoEm:new Date().toISOString()}:v)
+              : [...viagens,{...dados,id:Date.now().toString(36),criadoEm:new Date().toISOString()}];
+            await salvarViagens(nova);
+            setShowForm(false); setEditando(null);
+          }}
+          onCancelar={()=>{setShowForm(false);setEditando(null);}}
+        />
       )}
 
       {viagensFiltradas.length===0 && !showForm && (
         <div style={{ textAlign:"center",padding:"60px",background:"#111118",borderRadius:"16px",border:"1px solid #1f1f2e" }}>
-          <div style={{ fontSize:"48px",marginBottom:"14px" }}>✈️</div>
-          <div style={{ fontSize:"14px",color:"#3e3e55",marginBottom:"16px" }}>Nenhuma solicitação de viagem</div>
+          <div style={{ fontSize:"48px",marginBottom:"14px" }}>🏨</div>
+          <div style={{ fontSize:"14px",color:"#3e3e55",marginBottom:"16px" }}>Nenhuma solicitação encontrada</div>
           <button onClick={()=>setShowForm(true)} style={{ padding:"9px 22px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit" }}>Criar primeira solicitação</button>
         </div>
       )}
@@ -4104,9 +4218,9 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, theme: T 
         {viagensFiltradas.sort((a,b)=>new Date(b.criadoEm||0)-new Date(a.criadoEm||0)).map(viagem=>(
           <ViagemCard key={viagem.id} viagem={viagem} STATUS_CONFIG={STATUS_CONFIG} canManage={canManage}
             onEdit={(v)=>{setEditando(v);setShowForm(true);}}
-            onStatusChange={async (id,status)=>{ const nova=viagens.map(x=>x.id===id?{...x,status}:x); await salvarViagens(nova); }}
-            onDelete={async (id)=>{ if(window.confirm("Excluir esta solicitação?")) await salvarViagens(viagens.filter(x=>x.id!==id)); }}
-            onUpdateGastos={async (v)=>{ const nova=viagens.map(x=>x.id===v.id?v:x); await salvarViagens(nova); }}
+            onStatusChange={handleStatusChange}
+            onDelete={async (id)=>{ if(window.confirm("Excluir?")) await salvarViagens(viagens.filter(x=>x.id!==id)); }}
+            onUpdateGastos={async (v)=>{ await salvarViagens(viagens.map(x=>x.id===v.id?v:x)); }}
           />
         ))}
       </div>
@@ -5007,13 +5121,13 @@ function Dashboard({ currentUser, onLogout }) {
     { id:"home",     icon:"⬡",  label:"Dashboard",            desc:"Visão geral do sistema" },
     { id:"agenda",   icon:"📅", label:"Agenda",                desc:"Agenda de consultores" },
     { id:"os",       icon:"📋", label:"Ordens de Serviço",     desc:"Consulta e aprovação de OS" },
-    { id:"viagens",  icon:"✈️",  label:"Viagens",              desc:"Solicitações de viagem" },
+    { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Solicitações de viagem e hospedagem" },
     { id:"projetos", icon:"📁", label:"Projetos",              desc:"Gestão de projetos" },
   ];
   const ALL_MODULES_CONSULTOR = [
     { id:"agenda",   icon:"📅", label:"Agenda",                desc:"Minha agenda" },
     { id:"grade",    icon:"🎓", label:"Grade de Conhecimento", desc:"Meus conhecimentos" },
-    { id:"viagens",  icon:"✈️",  label:"Viagens",              desc:"Minhas viagens" },
+    { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Minhas solicitações" },
   ];
 
   // Módulos habilitados para este usuário (vem do perfil salvo no Firestore)
@@ -5198,7 +5312,7 @@ function Dashboard({ currentUser, onLogout }) {
               {[
                 { id:"agenda",   icon:"📅", label:"Agenda de Consultores", desc:"Gerencie as agendas e cronogramas dos consultores",  color:"#6c63ff", stat:Object.values(scheduleData).flat().filter(e=>e.type==="client").length, statLabel:"dias agendados" },
                 { id:"os",       icon:"📋", label:"Ordens de Serviço",     desc:"Consulte, aprove ou rejeite as OS dos consultores",   color:"#a78bfa", stat:Object.values(scheduleData).flat().filter(e=>e.osNumero).length, statLabel:"OS registradas" },
-                { id:"viagens",  icon:"✈️",  label:"Solicitações de Viagem",desc:"Controle pedidos de viagem, aprovações e reembolsos", color:"#22d3a0", stat:0, statLabel:"solicitações" },
+                { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Solicitações de viagem, hospedagem e voos", color:"#22d3a0", stat:0, statLabel:"solicitações" },
                 { id:"projetos", icon:"📋", label:"Gestão de Projetos",    desc:"Acompanhe projetos, tarefas e horas trabalhadas",    color:"#f5a623", stat:projects.length, statLabel:"projetos ativos" },
                 ...(canManage?[{ id:"cadastros",icon:"🗂", label:"Cadastros", desc:"Consultores, clientes, projetos e configurações", color:"#a78bfa", stat:consultores.length, statLabel:"consultores" }]:[]),
               ].map(mod=>(
@@ -5323,7 +5437,7 @@ function Dashboard({ currentUser, onLogout }) {
         {/* ── MODULE: VIAGENS ── */}
         {activeModule==="viagens" && (
           <div style={{ padding:"28px 32px",flex:1 }}>
-            <ModuloViagens currentUser={currentUser} canEdit={canEdit} canManage={canManage} consultores={consultores} theme={T}/>
+            <ModuloViagens currentUser={currentUser} canEdit={canEdit} canManage={canManage} consultores={consultores} clientList={clientList} theme={T}/>
           </div>
         )}
 
