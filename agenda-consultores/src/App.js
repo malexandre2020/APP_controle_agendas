@@ -6618,32 +6618,36 @@ function Dashboard({ currentUser, onLogout }) {
                   </>
                 )}
               </div>
-              <div className="side-item" onClick={()=>setShowUserMgmt(true)} title={sidebarCollapsed?"Usuários":""}
-                style={{ padding:sidebarCollapsed?"10px":"10px 12px",display:"flex",alignItems:"center",gap:"10px",justifyContent:sidebarCollapsed?"center":"flex-start",background:"transparent",border:"1px solid transparent" }}>
-                <span style={{ fontSize:"18px",lineHeight:1,flexShrink:0 }}>👥</span>
-                {!sidebarCollapsed && (
-                  <div>
-                    <div style={{ fontSize:"13px",fontWeight:500,color:T.text }}>Usuários</div>
-                    <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px" }}>Gerenciar acessos</div>
-                  </div>
-                )}
-              </div>
             </>
           )}
-        </nav>
 
-        {/* Sobre — fixo no fim da sidebar, antes do user footer */}
-        <div style={{ padding:"8px",borderTop:"1px solid "+T.border,flexShrink:0 }}>
+          {/* Usuários — visível para admin e editor */}
+          {(canManage || isEditor) && (
+            <div className="side-item" onClick={()=>setShowUserMgmt(true)} title={sidebarCollapsed?"Usuários":""}
+              style={{ padding:sidebarCollapsed?"10px":"10px 12px",display:"flex",alignItems:"center",gap:"10px",justifyContent:sidebarCollapsed?"center":"flex-start",background:"transparent",border:"1px solid transparent" }}>
+              <span style={{ fontSize:"18px",lineHeight:1,flexShrink:0 }}>👥</span>
+              {!sidebarCollapsed && (
+                <div>
+                  <div style={{ fontSize:"13px",fontWeight:500,color:T.text }}>Usuários</div>
+                  <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px" }}>Gerenciar acessos</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Sobre — visível para todos os perfis */}
+          <div style={{ height:"1px",background:T.border,margin:"8px 4px" }}/>
           <div className="side-item" onClick={()=>setActiveModule("sobre")} title={sidebarCollapsed?"Sobre":""}
-            style={{ padding:sidebarCollapsed?"10px":"8px 12px",display:"flex",alignItems:"center",gap:"10px",justifyContent:sidebarCollapsed?"center":"flex-start",borderRadius:"10px",background:activeModule==="sobre"?`${T.accent}18`:"transparent",border:activeModule==="sobre"?`1px solid ${T.accent}33`:"1px solid transparent",cursor:"pointer" }}>
-            <span style={{ fontSize:"16px",lineHeight:1,flexShrink:0 }}>ℹ️</span>
+            style={{ padding:sidebarCollapsed?"10px":"10px 12px",display:"flex",alignItems:"center",gap:"10px",justifyContent:sidebarCollapsed?"center":"flex-start",background:activeModule==="sobre"?`${T.accent}18`:"transparent",border:activeModule==="sobre"?`1px solid ${T.accent}33`:"1px solid transparent" }}>
+            <span style={{ fontSize:"18px",lineHeight:1,flexShrink:0 }}>ℹ️</span>
             {!sidebarCollapsed && (
-              <div style={{ fontSize:"12px",fontWeight:activeModule==="sobre"?700:500,color:activeModule==="sobre"?T.accent:T.text3 }}>Sobre</div>
+              <>
+                <div style={{ fontSize:"13px",fontWeight:activeModule==="sobre"?700:500,color:activeModule==="sobre"?T.accent:T.text3 }}>Sobre</div>
+                {activeModule==="sobre" && <div style={{ marginLeft:"auto",width:"4px",height:"20px",borderRadius:"2px",background:T.accent }}/>}
+              </>
             )}
           </div>
-        </div>
-
-        {/* User footer */}
+        </nav>
         <div style={{ padding:"12px",borderTop:"1px solid "+T.border,flexShrink:0 }}>
           <div style={{ display:"flex",alignItems:"center",gap:"8px",justifyContent:sidebarCollapsed?"center":"flex-start" }}>
             <div style={{ width:"30px",height:"30px",borderRadius:"9px",background:`linear-gradient(135deg,${T.accent},${T.accentAlt})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:800,color:"#fff",flexShrink:0 }}>
