@@ -5765,7 +5765,7 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientLis
 // ─────────────────────────────────────────────────────────────────────────────
 // MÓDULO: GESTÃO DE PROJETOS
 // ─────────────────────────────────────────────────────────────────────────────
-function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients, theme: T }) {
+function ModuloProjetos({ currentUser, canEdit, canManage, isGestor, consultores, clients, theme: T }) {
   const [projetos, setProjetos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [projetoAtivo, setProjetoAtivo] = useState(null);
@@ -5804,10 +5804,13 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
     await salvarProjetos(nova);
   };
 
+  const nomeUsuario = currentUser.consultorName || currentUser.nome || currentUser.username || "";
+
   const FormProjeto = ({ inicial, onSalvar, onCancelar }) => {
-    const [form, setForm] = useState(inicial||{ nome:"", cliente:"", descricao:"", consultores:[], dataInicio:"", dataFim:"", status:"planejamento", progresso:0 });
+    const [form, setForm] = useState(inicial||{ nome:"", cliente:"", descricao:"", consultores:[], dataInicio:"", dataFim:"", status:"planejamento", progresso:0, visibilidade:"privado", editores:[], visualizadores:[] });
     const set = (k,v) => setForm(p=>({...p,[k]:v}));
     const toggleCons = (c) => setForm(p=>({...p,consultores:p.consultores.includes(c)?p.consultores.filter(x=>x!==c):[...p.consultores,c]}));
+    const togglePerm = (campo, nome) => setForm(p=>({...p,[campo]:p[campo]?.includes(nome)?p[campo].filter(x=>x!==nome):[...(p[campo]||[]),nome]}));
     return (
       <div style={{ background:T.surface,borderRadius:"16px",border:"1px solid "+T.border,padding:"24px",maxWidth:"680px",marginBottom:"24px" }}>
         <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"17px",fontWeight:900,color:"#f0f0fa",margin:"0 0 20px",letterSpacing:"-0.3px" }}>{inicial?"✏️ Editar Projeto":"📋 Novo Projeto"}</h3>
@@ -5854,6 +5857,39 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
             <label style={lbl}>Progresso ({form.progresso}%)</label>
             <input type="range" min={0} max={100} value={form.progresso} onChange={e=>set("progresso",Number(e.target.value))} style={{ width:"100%",accentColor:"#6c63ff" }}/>
           </div>
+
+          {/* Permissões */}
+          <div style={{ gridColumn:"1/-1", background:"#0d0d14", borderRadius:"12px", border:"1px solid #2a2a3a", padding:"14px 16px" }}>
+            <div style={{ fontSize:"11px", color:"#6c63ff", fontWeight:700, letterSpacing:"0.8px", textTransform:"uppercase", marginBottom:"12px" }}>🔐 Permissões de acesso</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
+              <div>
+                <label style={lbl}>Visibilidade</label>
+                <select value={form.visibilidade||"privado"} onChange={e=>set("visibilidade",e.target.value)} style={inp}>
+                  <option value="privado">🔒 Privado — só o criador</option>
+                  <option value="equipe">👥 Equipe — consultores do projeto</option>
+                  <option value="gestores">🏢 Gestores — admin/editor</option>
+                  <option value="publico">🌐 Público — todos os usuários</option>
+                </select>
+              </div>
+              <div style={{ fontSize:"11px", color:"#6e6e88", paddingTop:"20px", lineHeight:1.6 }}>
+                {form.visibilidade==="privado" && "Apenas você pode visualizar e editar este projeto."}
+                {form.visibilidade==="equipe" && "Consultores adicionados ao projeto podem visualizar. Você controla quem pode editar."}
+                {form.visibilidade==="gestores" && "Visível para todos os gestores (admin, editor, diretores)."}
+                {form.visibilidade==="publico" && "Todos os usuários do sistema podem visualizar."}
+              </div>
+            </div>
+            {(form.visibilidade==="equipe") && (
+              <div style={{ marginTop:"12px" }}>
+                <label style={{...lbl, marginBottom:"8px"}}>Quem pode editar (além do criador)</label>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
+                  {consultores.map(c=>{
+                    const sel = (form.editores||[]).includes(c);
+                    return <button key={c} onClick={()=>togglePerm("editores",c)} style={{ padding:"4px 10px", borderRadius:"8px", border:"1px solid "+(sel?"#22d3a0":"#2a2a3a"), background:sel?"#22d3a018":"transparent", color:sel?"#22d3a0":"#6e6e88", cursor:"pointer", fontSize:"11px", fontWeight:sel?700:400, fontFamily:"inherit" }}>{sel?"✓ ":""}{c.split(" ")[0]}</button>;
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div style={{ display:"flex",gap:"10px",marginTop:"20px",justifyContent:"flex-end" }}>
           <button onClick={onCancelar} style={{ padding:"9px 18px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>Cancelar</button>
@@ -5896,6 +5932,7 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
     };
 
     const st = STATUS_PROJ[proj.status]||STATUS_PROJ.planejamento;
+    const canEditProj = canManage || proj.criadoPor===nomeUsuario || (proj.editores||[]).includes(nomeUsuario);
     return (
       <div>
         {/* Header do projeto */}
@@ -5905,6 +5942,7 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
             <div style={{ display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap" }}>
               <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:0,letterSpacing:"-0.3px" }}>{proj.nome}</h2>
               <span style={{ padding:"4px 12px",borderRadius:"99px",background:st.color+"18",border:"1px solid "+st.color+"44",fontSize:"11px",fontWeight:700,color:st.color }}>{st.label}</span>
+              {!canEditProj && <span style={{ fontSize:"10px",color:"#6e6e88",background:"#1f1f2e",padding:"2px 8px",borderRadius:"99px" }}>👁 Somente leitura</span>}
             </div>
             <div style={{ fontSize:"12px",color:"#6e6e88",marginTop:"4px",display:"flex",gap:"12px",flexWrap:"wrap" }}>
               {proj.cliente && <span>🏢 {proj.cliente}</span>}
@@ -5913,8 +5951,8 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
               <span>⏱ {totalHoras}h registradas</span>
             </div>
           </div>
-          <button onClick={()=>{setEditandoProj(proj);setShowForm(true);setProjetoAtivo(null);}}
-            style={{ padding:"7px 14px",borderRadius:"8px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontSize:"12px",fontWeight:600,fontFamily:"inherit" }}>✏️ Editar</button>
+          {canEditProj && <button onClick={()=>{setEditandoProj(proj);setShowForm(true);setProjetoAtivo(null);}}
+            style={{ padding:"7px 14px",borderRadius:"8px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",cursor:"pointer",fontSize:"12px",fontWeight:600,fontFamily:"inherit" }}>✏️ Editar</button>}
         </div>
 
         {/* Barra de progresso */}
@@ -5955,15 +5993,15 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
                           </div>
                           {t.responsavel && <div style={{ fontSize:"10px",color:"#6e6e88",marginBottom:"6px" }}>👤 {t.responsavel}</div>}
                           <div style={{ display:"flex",gap:"4px",flexWrap:"wrap" }}>
-                            {COLUNAS.filter(c=>c!==col).map(c=>(
+                            {canEditProj && COLUNAS.filter(c=>c!==col).map(c=>(
                               <button key={c} onClick={()=>moverTarefa(t.id,c)} style={{ fontSize:"9px",padding:"2px 7px",borderRadius:"99px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontFamily:"inherit" }}>→ {COL_LABELS[c].split(" ")[1]}</button>
                             ))}
-                            <button onClick={()=>removerTarefa(t.id)} style={{ fontSize:"9px",padding:"2px 7px",borderRadius:"99px",border:"1px solid #f04f5e44",background:"transparent",color:"#f04f5e",cursor:"pointer",fontFamily:"inherit" }}>✕</button>
+                            {canEditProj && <button onClick={()=>removerTarefa(t.id)} style={{ fontSize:"9px",padding:"2px 7px",borderRadius:"99px",border:"1px solid #f04f5e44",background:"transparent",color:"#f04f5e",cursor:"pointer",fontFamily:"inherit" }}>✕</button>}
                           </div>
                         </div>
                       );
                     })}
-                    <button onClick={()=>addTarefa(col)} style={{ width:"100%",padding:"7px",borderRadius:"8px",border:"1px dashed #2a2a3a",background:"transparent",color:"#3e3e55",cursor:"pointer",fontSize:"12px",fontFamily:"inherit",marginTop:"4px" }}>+ Adicionar</button>
+                    {canEditProj && <button onClick={()=>addTarefa(col)} style={{ width:"100%",padding:"7px",borderRadius:"8px",border:"1px dashed #2a2a3a",background:"transparent",color:"#3e3e55",cursor:"pointer",fontSize:"12px",fontFamily:"inherit",marginTop:"4px" }}>+ Adicionar</button>}
                   </div>
                 </div>
               );
@@ -6029,7 +6067,7 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
           <div>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px" }}>
               <div style={{ fontSize:"13px",color:"#c8c8d8" }}>Total: <strong style={{ color:"#22d3a0",fontSize:"18px" }}>{totalHoras}h</strong></div>
-              <button onClick={addHora} style={{ padding:"7px 16px",borderRadius:"8px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"12px",fontFamily:"inherit" }}>+ Registrar horas</button>
+              {canEditProj && <button onClick={addHora} style={{ padding:"7px 16px",borderRadius:"8px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"12px",fontFamily:"inherit" }}>+ Registrar horas</button>}
             </div>
             {horas.length===0 && <div style={{ textAlign:"center",padding:"32px",background:"#111118",borderRadius:"12px",border:"1px solid #1f1f2e",color:"#3e3e55",fontSize:"13px" }}>Nenhuma hora registrada</div>}
             <div style={{ display:"flex",flexDirection:"column",gap:"6px" }}>
@@ -6043,7 +6081,7 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
                     <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"2px" }}>{h.desc||"—"}</div>
                   </div>
                   <div style={{ fontSize:"11px",color:"#3e3e55" }}>{h.data}</div>
-                  <button onClick={()=>atualizarProjeto({...proj,horas:horas.filter((_,j)=>j!==i)})} style={{ background:"none",border:"none",color:"#f04f5e",cursor:"pointer",fontSize:"13px" }}>✕</button>
+                  {canEditProj && <button onClick={()=>atualizarProjeto({...proj,horas:horas.filter((_,j)=>j!==i)})} style={{ background:"none",border:"none",color:"#f04f5e",cursor:"pointer",fontSize:"13px" }}>✕</button>}
                 </div>
               ))}
             </div>
@@ -6054,12 +6092,24 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
   }
 
   // Lista de projetos
+  // Calcular projetos visíveis para o usuário atual
+  const projetosVisiveis = projetos.filter(p => {
+    if (canManage) return true;
+    if (p.criadoPor === nomeUsuario) return true;
+    const vis = p.visibilidade || "privado";
+    if (vis === "publico") return true;
+    if (vis === "gestores" && isGestor) return true;
+    if (vis === "equipe" && (p.consultores||[]).includes(nomeUsuario)) return true;
+    if ((p.editores||[]).includes(nomeUsuario)) return true;
+    return false;
+  });
+
   return (
     <div>
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"24px",flexWrap:"wrap",gap:"12px" }}>
         <div>
           <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>📋 Gestão de Projetos</h2>
-          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>{projetos.length} projeto{projetos.length!==1?"s":""} cadastrado{projetos.length!==1?"s":""}</p>
+          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>{projetosVisiveis.length} projeto{projetosVisiveis.length!==1?"s":""} visível{projetosVisiveis.length!==1?"is":""}</p>
         </div>
         {canEdit && <button onClick={()=>{setEditandoProj(null);setShowForm(true);}} style={{ padding:"8px 18px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44" }}>+ Novo Projeto</button>}
       </div>
@@ -6068,8 +6118,11 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
         <FormProjeto inicial={editandoProj}
           onSalvar={async (dados)=>{
             let nova;
-            if (editandoProj) nova=projetos.map(p=>p.id===editandoProj.id?{...dados,id:editandoProj.id}:p);
-            else nova=[...projetos,{...dados,id:Date.now().toString(36),tarefas:[],horas:[],criadoEm:new Date().toISOString()}];
+            if (editandoProj) {
+              nova=projetos.map(p=>p.id===editandoProj.id?{...dados,id:editandoProj.id,criadoPor:editandoProj.criadoPor||nomeUsuario}:p);
+            } else {
+              nova=[...projetos,{...dados,id:Date.now().toString(36),tarefas:[],horas:[],criadoEm:new Date().toISOString(),criadoPor:nomeUsuario}];
+            }
             await salvarProjetos(nova);
             setShowForm(false);setEditandoProj(null);
           }}
@@ -6077,7 +6130,7 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
         />
       )}
 
-      {projetos.length===0 && !showForm && (
+      {projetosVisiveis.length===0 && !showForm && (
         <div style={{ textAlign:"center",padding:"60px",background:"#111118",borderRadius:"16px",border:"1px solid #1f1f2e" }}>
           <div style={{ fontSize:"48px",marginBottom:"14px" }}>📋</div>
           <div style={{ fontSize:"14px",color:"#3e3e55",marginBottom:"16px" }}>Nenhum projeto cadastrado</div>
@@ -6086,11 +6139,15 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
       )}
 
       <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:"14px" }}>
-        {projetos.map(p=>{
+        {projetosVisiveis.map(p=>{
           const st = STATUS_PROJ[p.status]||STATUS_PROJ.planejamento;
           const concluidas = (p.tarefas||[]).filter(t=>t.coluna==="concluido").length;
           const totalTar = (p.tarefas||[]).length;
           const totalH = (p.horas||[]).reduce((s,h)=>s+Number(h.horas||0),0);
+          const vis = p.visibilidade||"privado";
+          const isCriador = p.criadoPor===nomeUsuario;
+          const canEditProj = canManage || isCriador || (p.editores||[]).includes(nomeUsuario);
+          const visIcons = { privado:"🔒", equipe:"👥", gestores:"🏢", publico:"🌐" };
           return (
             <div key={p.id} className="card-hover" onClick={()=>setProjetoAtivo(p.id)}
               style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",padding:"18px 20px",cursor:"pointer",position:"relative",overflow:"hidden" }}>
@@ -6103,11 +6160,16 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
               <div style={{ height:"4px",background:"#1f1f2e",borderRadius:"99px",overflow:"hidden",marginBottom:"10px" }}>
                 <div style={{ height:"100%",width:(p.progresso||0)+"%",background:"linear-gradient(90deg,#6c63ff,#a78bfa)",borderRadius:"99px" }}/>
               </div>
-              <div style={{ display:"flex",gap:"14px",fontSize:"11px",color:"#6e6e88" }}>
-                <span>📈 {p.progresso||0}%</span>
-                {totalTar>0 && <span>📋 {concluidas}/{totalTar} tarefas</span>}
-                {totalH>0 && <span>⏱ {totalH}h</span>}
-                {p.consultores?.length>0 && <span>👥 {p.consultores.length}</span>}
+              <div style={{ display:"flex",gap:"10px",fontSize:"11px",color:"#6e6e88",flexWrap:"wrap",justifyContent:"space-between",alignItems:"center" }}>
+                <div style={{ display:"flex",gap:"10px" }}>
+                  <span>📈 {p.progresso||0}%</span>
+                  {totalTar>0 && <span>📋 {concluidas}/{totalTar} tarefas</span>}
+                  {totalH>0 && <span>⏱ {totalH}h</span>}
+                  {p.consultores?.length>0 && <span>👥 {p.consultores.length}</span>}
+                </div>
+                <span title={`Visibilidade: ${vis}`} style={{ fontSize:"11px",opacity:0.6 }}>
+                  {visIcons[vis]||"🔒"} {isCriador?"criador":canEditProj?"editor":"leitor"}
+                </span>
               </div>
             </div>
           );
@@ -6487,6 +6549,7 @@ function Dashboard({ currentUser, onLogout }) {
   const [activeModule, setActiveModule] = useState(isConsultor ? "agenda" : "home");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [viaCount, setViaCount] = useState(0); // contador de solicitações de viagem
+  const [projCount, setProjCount] = useState(0); // contador de projetos
   const [usuarios, setUsuarios] = useState([]);
   const [emailConfig, setEmailConfig] = useState(EMAIL_CONFIG_DEFAULT);
   const [consultorViewMode, setConsultorViewMode] = useState("mensal");
@@ -6550,6 +6613,11 @@ function Dashboard({ currentUser, onLogout }) {
       try {
         const snapV = await getDoc(doc(db,"app_data","viagens_all"));
         if (snapV.exists()) setViaCount((snapV.data().value||[]).length);
+      } catch(e) {}
+      // Carregar count de projetos para o dashboard home
+      try {
+        const snapPj = await getDoc(doc(db,"app_data","projetos_mgmt"));
+        if (snapPj.exists()) setProjCount((snapPj.data().value||[]).length);
       } catch(e) {}
       setDbLoaded(true);
     }
@@ -7089,7 +7157,7 @@ function Dashboard({ currentUser, onLogout }) {
           )}
 
           {/* Usuários — visível para admin e editor */}
-          {(canManage || isEditor) && (
+          {canManage && (
             <div className="side-item" onClick={()=>setShowUserMgmt(true)} title={sidebarCollapsed?"Usuários":""}
               style={{ padding:sidebarCollapsed?"10px":"10px 12px",display:"flex",alignItems:"center",gap:"10px",justifyContent:sidebarCollapsed?"center":"flex-start",background:"transparent",border:"1px solid transparent" }}>
               <span style={{ fontSize:"18px",lineHeight:1,flexShrink:0 }}>👥</span>
@@ -7189,7 +7257,7 @@ function Dashboard({ currentUser, onLogout }) {
                 { id:"agenda",   icon:"📅", label:"Agenda de Consultores", desc:"Gerencie as agendas e cronogramas dos consultores",  color:"#6c63ff", stat:Object.values(scheduleData).flat().filter(e=>e.type==="client").length, statLabel:"dias agendados" },
                 { id:"os",       icon:"📋", label:"Ordens de Serviço",     desc:"Consulte, aprove ou rejeite as OS dos consultores",   color:"#a78bfa", stat:Object.values(scheduleData).flat().filter(e=>e.osNumero).length, statLabel:"OS registradas" },
                 { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Solicitações de viagem, hospedagem e voos", color:"#22d3a0", stat:viaCount, statLabel:"solicitações" },
-                { id:"projetos", icon:"📋", label:"Gestão de Projetos",    desc:"Acompanhe projetos, tarefas e horas trabalhadas",    color:"#f5a623", stat:projects.length, statLabel:"projetos ativos" },
+                { id:"projetos", icon:"📋", label:"Gestão de Projetos",    desc:"Acompanhe projetos, tarefas e horas trabalhadas",    color:"#f5a623", stat:projCount, statLabel:"projetos ativos" },
                 ...(canManage?[{ id:"cadastros",icon:"🗂", label:"Cadastros", desc:"Consultores, clientes, projetos e configurações", color:"#a78bfa", stat:consultores.length, statLabel:"consultores" }]:[]),
               ].map(mod=>(
                 <div key={mod.id} className="card-hover" onClick={()=>setActiveModule(mod.id)}
@@ -7352,7 +7420,7 @@ function Dashboard({ currentUser, onLogout }) {
         {/* ── MODULE: PROJETOS ── */}
         {activeModule==="projetos" && (
           <div style={{ padding:"28px 32px",flex:1 }}>
-            <ModuloProjetos currentUser={currentUser} canEdit={canEdit} canManage={canManage} consultores={consultores} clients={clientList} theme={T}/>
+            <ModuloProjetos currentUser={currentUser} canEdit={canEdit} canManage={canManage} isGestor={isGestor} consultores={consultores} clients={clientList} theme={T}/>
           </div>
         )}
 
