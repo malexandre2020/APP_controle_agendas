@@ -1350,7 +1350,7 @@ function GradeAdminView({ consultores }) {
 // GRADE DE CONHECIMENTO TOTVS (componente do consultor)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TOTVS_PRODUTOS = ["Protheus","RM","Datasul","Fluig"];
+const TOTVS_PRODUTOS = ["Protheus","RM","Datasul","Fluig","Desenvolvedor"];
 
 const TOTVS_GRUPOS = {
   Protheus: {
@@ -1488,6 +1488,39 @@ const TOTVS_GRUPOS = {
     // Identity
     "FL_IDN_USR":  "Identity / Segurança",        "FL_IDN_SSO":  "Identity / Segurança",
     "FL_IDN_AUD":  "Identity / Segurança",
+  },
+  Desenvolvedor: {
+    // Linguagem de Programação
+    "DEV_ADVPL":     "Linguagem de Programação",  "DEV_TLPP":       "Linguagem de Programação",
+    "DEV_OOP":       "Linguagem de Programação",
+    // Arquitetura do ERP
+    "DEV_TABELAS":   "Arquitetura do ERP",         "DEV_CAMPOS_CT":  "Arquitetura do ERP",
+    "DEV_INDICES":   "Arquitetura do ERP",         "DEV_DICIONARIO": "Arquitetura do ERP",
+    "DEV_PE":        "Arquitetura do ERP",         "DEV_PADROES":    "Arquitetura do ERP",
+    // Banco de Dados
+    "DEV_SQLSERVER": "Banco de Dados",             "DEV_ORACLE":     "Banco de Dados",
+    "DEV_POSTGRES":  "Banco de Dados",             "DEV_SQL":        "Banco de Dados",
+    "DEV_SQL_ADV":   "Banco de Dados",
+    // Ferramentas TOTVS
+    "DEV_TDS":       "Ferramentas TOTVS",          "DEV_SMARTCLIENT":"Ferramentas TOTVS",
+    "DEV_APPSERVER": "Ferramentas TOTVS",
+    // Integrações
+    "DEV_JSON":      "Integrações",                "DEV_XML":        "Integrações",
+    "DEV_REST":      "Integrações",                "DEV_SOAP":       "Integrações",
+    // Frameworks e Recursos
+    "DEV_MVC":       "Frameworks e Recursos",      "DEV_FWBROWSE":   "Frameworks e Recursos",
+    "DEV_FWFORM":    "Frameworks e Recursos",      "DEV_REST_FW":    "Frameworks e Recursos",
+    "DEV_JOBS":      "Frameworks e Recursos",
+    // Conhecimento Funcional
+    "DEV_FUN_FIN":   "Conhecimento Funcional",     "DEV_FUN_FAT":    "Conhecimento Funcional",
+    "DEV_FUN_COM":   "Conhecimento Funcional",     "DEV_FUN_EST":    "Conhecimento Funcional",
+    "DEV_FUN_CTB":   "Conhecimento Funcional",     "DEV_FUN_FIS":    "Conhecimento Funcional",
+    "DEV_FUN_RH":    "Conhecimento Funcional",
+    // Versionamento de Código
+    "DEV_GIT":       "Versionamento de Código",    "DEV_GITLAB":     "Versionamento de Código",
+    // Performance e Arquitetura
+    "DEV_TUNING_SQL":"Performance e Arquitetura",  "DEV_TUNING_ADV": "Performance e Arquitetura",
+    "DEV_DEPLOY":    "Performance e Arquitetura",  "DEV_AMBIENTES":  "Performance e Arquitetura",
   }
 };
 
@@ -1686,6 +1719,133 @@ const TOTVS_MODULOS = {
     { id:"FL_IDN_USR",  label:"Gestão de Usuários",       desc:"Controle de usuários, grupos e papéis" },
     { id:"FL_IDN_SSO",  label:"Single Sign-On",           desc:"Autenticação centralizada e SSO" },
     { id:"FL_IDN_AUD",  label:"Auditoria de Acessos",     desc:"Logs de auditoria e rastreabilidade de acessos" },
+  ],
+  Desenvolvedor: [
+    // Linguagem de Programação
+    { id:"DEV_ADVPL",    label:"AdvPL",                      desc:"Linguagem nativa do Protheus — sintaxe, funções e estrutura" },
+    { id:"DEV_TLPP",     label:"TL++ (TLPP)",                desc:"Evolução do AdvPL com suporte a orientação a objetos moderna" },
+    { id:"DEV_SINTAX",   label:"Sintaxe da Linguagem",       desc:"Comandos, operadores, estruturas de controle e boas práticas" },
+    { id:"DEV_FUNCS",    label:"Funções Padrão",             desc:"Biblioteca de funções nativas do Protheus (Ex: ExecBlock, FunName)" },
+    { id:"DEV_ARRAYS",   label:"Manipulação de Arrays",      desc:"Arrays multidimensionais, aAdd, aDel, aScan e ordenação" },
+    { id:"DEV_FILES",    label:"Manipulação de Arquivos",    desc:"Leitura e escrita de arquivos TXT, CSV, XML via AdvPL" },
+    { id:"DEV_OOP",      label:"Programação Orientada a Objetos", desc:"Classes, métodos, herança e encapsulamento em TL++" },
+    // Arquitetura do ERP
+    { id:"DEV_TABELAS",  label:"Tabelas do Protheus (SX)",   desc:"Estrutura SX1, SX2, SX3, SX5, SX6, SX7 e SIX — dicionário de dados" },
+    { id:"DEV_RECNO",    label:"Campos de Controle (RECNO/RECDEL)", desc:"Uso de R_E_C_N_O_, R_E_C_D_E_L_ e controle de registros" },
+    { id:"DEV_INDICES",  label:"Índices e Ordens",           desc:"Criação e uso de índices no SIX, ordens de busca e performance" },
+    { id:"DEV_DICIO",    label:"Dicionário de Dados",        desc:"Manutenção via ATUSX, configuração de campos e parâmetros (SX2/SX3)" },
+    { id:"DEV_PADROES",  label:"Padrões de Desenvolvimento TOTVS", desc:"Guia de desenvolvimento, nomenclaturas e boas práticas TOTVS" },
+    { id:"DEV_PE",       label:"Pontos de Entrada (PE)",     desc:"Customização via pontos de entrada sem alterar fonte padrão" },
+    { id:"DEV_ROTINAS",  label:"Rotinas Padrão",             desc:"Entendimento e extensão das rotinas padrão do Protheus" },
+    // Banco de Dados
+    { id:"DEV_MSSQL",    label:"Microsoft SQL Server",       desc:"Administração, configuração e queries no SQL Server com Protheus" },
+    { id:"DEV_ORACLE",   label:"Oracle Database",            desc:"Uso do Oracle como banco de dados do ERP TOTVS" },
+    { id:"DEV_PGSQL",    label:"PostgreSQL",                 desc:"Uso do PostgreSQL como banco de dados do ERP TOTVS" },
+    { id:"DEV_SQL",      label:"SQL",                        desc:"Linguagem SQL: SELECT, INSERT, UPDATE, DELETE e transações" },
+    { id:"DEV_JOINS",    label:"Joins e Subconsultas",       desc:"INNER JOIN, LEFT JOIN, EXISTS, subconsultas e CTEs" },
+    { id:"DEV_VIEWS",    label:"Views e Procedures",         desc:"Criação de views, stored procedures e triggers no banco" },
+    { id:"DEV_PROCS",    label:"Procedures e Functions",     desc:"Procedures armazenadas, functions e automação no banco de dados" },
+    { id:"DEV_PERF_BD",  label:"Performance de Consultas",   desc:"Análise de execution plan, índices e otimização de queries" },
+    // Ferramentas TOTVS
+    { id:"DEV_TDS",      label:"TOTVS Developer Studio",     desc:"IDE oficial TOTVS para desenvolvimento, compilação e debug em AdvPL/TL++" },
+    { id:"DEV_SMARTCLI", label:"TOTVS SmartClient",          desc:"Client do Protheus — configuração e uso para acesso ao ERP" },
+    { id:"DEV_APPSRV",   label:"TOTVS AppServer",            desc:"Servidor de aplicação do Protheus — administração e configuração" },
+    { id:"DEV_INI",      label:"appserver.ini",              desc:"Configuração do arquivo ini: ambientes, ports, bancos e parâmetros" },
+    { id:"DEV_COMPIL",   label:"Compilação e Deploy",        desc:"Processo de compilação RPO, patch e atualização de fontes" },
+    { id:"DEV_LOGS",     label:"Análise de Logs",            desc:"Leitura e diagnóstico de logs do AppServer e Console" },
+    // Integrações
+    { id:"DEV_JSON",     label:"JSON",                       desc:"Criação e consumo de JSON em AdvPL/TL++ e integrações" },
+    { id:"DEV_XML",      label:"XML",                        desc:"Leitura e geração de XML — NF-e, NFS-e e integrações" },
+    { id:"DEV_REST",     label:"REST API",                   desc:"Consumo e criação de APIs REST no Protheus" },
+    { id:"DEV_SOAP",     label:"SOAP / Web Services",        desc:"Integração via SOAP, WSDL e Web Services padrão" },
+    { id:"DEV_WS",       label:"Webservices do Protheus",    desc:"Uso dos webservices nativos do Protheus para integração entre módulos" },
+    // Frameworks e Recursos
+    { id:"DEV_MVC",      label:"MVC do Protheus",            desc:"Padrão Model-View-Controller nativo do Protheus para telas e relatórios" },
+    { id:"DEV_FWBROW",   label:"FWBrowse",                   desc:"Componente de browse avançado do framework TOTVS" },
+    { id:"DEV_FWFORM",   label:"FWFormModel",                desc:"Model do formulário MVC — validações, relacionamentos e campos" },
+    { id:"DEV_FWVIEW",   label:"FWFormView",                 desc:"View do formulário MVC — interface visual e layout de telas" },
+    { id:"DEV_RESTPROT", label:"REST do Protheus",           desc:"Framework REST nativo do Protheus para exposição de APIs" },
+    { id:"DEV_JOBS",     label:"Jobs",                       desc:"Processos em background (Jobs) — execução assíncrona no AppServer" },
+    { id:"DEV_SCHED",    label:"Schedule",                   desc:"Agendamento de tarefas automáticas no Protheus" },
+    { id:"DEV_WSPROTHEUS",label:"Webservices Nativos",       desc:"Webservices padrão do Protheus expostos para integração" },
+    // Conhecimento Funcional
+    { id:"DEV_FIN",      label:"Financeiro",                 desc:"Regras de negócio do módulo Financeiro (SIGAFIN) para customização" },
+    { id:"DEV_FAT",      label:"Faturamento",                desc:"Regras de negócio do módulo Faturamento (SIGAFAT) para customização" },
+    { id:"DEV_COM",      label:"Compras",                    desc:"Regras de negócio do módulo Compras (SIGACOM) para customização" },
+    { id:"DEV_EST",      label:"Estoque",                    desc:"Regras de negócio do módulo Estoque (SIGAEST) para customização" },
+    { id:"DEV_CTB",      label:"Contabilidade",              desc:"Regras de negócio da Contabilidade (SIGACTB) para customização" },
+    { id:"DEV_FIS",      label:"Fiscal",                     desc:"Regras de negócio dos Livros Fiscais (SIGAFIS) para customização" },
+    { id:"DEV_RH",       label:"RH / Folha de Pagamento",   desc:"Regras de negócio do RH (SIGAGPE/SIGARH) para customização" },
+    // Versionamento de Código
+    { id:"DEV_GIT",      label:"Git",                        desc:"Controle de versão com Git — commits, branches, merge e rebase" },
+    { id:"DEV_GITLAB",   label:"GitLab",                     desc:"Uso do GitLab: CI/CD, pipelines e gestão de repositórios" },
+    { id:"DEV_GITHUB",   label:"GitHub",                     desc:"Uso do GitHub: pull requests, Actions e projetos" },
+    // Performance e Arquitetura
+    { id:"DEV_TUNSQL",   label:"Tuning SQL",                 desc:"Otimização de consultas SQL — índices, execution plan e reescrita" },
+    { id:"DEV_OPTLOOP",  label:"Otimização de Loops AdvPL",  desc:"Técnicas para melhorar performance de loops e processamentos em lote" },
+    { id:"DEV_IDXUSE",   label:"Uso Correto de Índices",     desc:"Estratégias de indexação e uso eficiente de ordens no Protheus" },
+    { id:"DEV_AMBIENTES",label:"Gestão de Ambientes",        desc:"Configuração e separação de ambientes: dev, homologação e produção" },
+    { id:"DEV_DEPLOY",   label:"Deploy e Atualização",       desc:"Processo de deploy de customizações e atualizações no ambiente" },
+    { id:"DEV_ATDICIO",  label:"Atualização de Dicionário",  desc:"Aplicação de atualizações de dicionário sem impactar produção" },
+  ],
+
+  Desenvolvedor: [
+    // 1. Linguagem de Programação
+    { id:"DEV_ADVPL",    label:"AdvPL",                    desc:"Linguagem nativa do Protheus — sintaxe, funções padrão, arrays e arquivos" },
+    { id:"DEV_TLPP",     label:"TL++ (TLPP)",              desc:"Evolução do AdvPL com suporte a orientação a objetos moderna" },
+    { id:"DEV_OOP",      label:"Programação Orientada a Objetos", desc:"Classes, herança, encapsulamento e polimorfismo em AdvPL/TLPP" },
+
+    // 2. Arquitetura do ERP
+    { id:"DEV_TABELAS",  label:"Estrutura de Tabelas",     desc:"Tabelas SX1, SX2, SX3 — campos, índices e dicionário de dados" },
+    { id:"DEV_CAMPOS_CT",label:"Campos de Controle",       desc:"R_E_C_N_O_, R_E_C_D_E_L_ e controle de integridade de registros" },
+    { id:"DEV_INDICES",  label:"Índices e Ordens",         desc:"Criação, uso e otimização de índices no dicionário de dados" },
+    { id:"DEV_DICIONARIO",label:"Dicionário de Dados",     desc:"Customização de campos, triggers, validações e parâmetros SX" },
+    { id:"DEV_PE",       label:"Pontos de Entrada (PE)",   desc:"Customização de rotinas padrão via pontos de entrada TOTVS" },
+    { id:"DEV_PADROES",  label:"Padrões de Desenvolvimento TOTVS", desc:"Nomenclatura, boas práticas e padrões de codificação TOTVS" },
+
+    // 3. Banco de Dados
+    { id:"DEV_SQLSERVER",label:"Microsoft SQL Server",     desc:"Administração, tuning e desenvolvimento no SQL Server" },
+    { id:"DEV_ORACLE",   label:"Oracle Database",          desc:"Administração, PL/SQL e tuning no Oracle" },
+    { id:"DEV_POSTGRES", label:"PostgreSQL",               desc:"Administração, PL/pgSQL e otimização no PostgreSQL" },
+    { id:"DEV_SQL",      label:"SQL — Consultas e Joins",  desc:"SELECT, JOIN, subqueries, GROUP BY e operações avançadas" },
+    { id:"DEV_SQL_ADV",  label:"SQL Avançado",             desc:"Views, procedures, functions, triggers e performance de consultas" },
+
+    // 4. Ferramentas de Desenvolvimento
+    { id:"DEV_TDS",      label:"TOTVS Developer Studio",   desc:"IDE oficial para desenvolvimento, compilação e depuração em AdvPL" },
+    { id:"DEV_SMARTCLIENT",label:"TOTVS SmartClient",      desc:"Configuração e uso do cliente de execução do Protheus" },
+    { id:"DEV_APPSERVER",label:"TOTVS AppServer",          desc:"Configuração do appserver.ini, ambientes, compilação e logs" },
+
+    // 5. Integrações
+    { id:"DEV_JSON",     label:"JSON",                     desc:"Manipulação de JSON em AdvPL/TLPP — parse, geração e validação" },
+    { id:"DEV_XML",      label:"XML",                      desc:"Leitura, geração e validação de documentos XML" },
+    { id:"DEV_REST",     label:"REST API",                 desc:"Desenvolvimento e consumo de APIs REST no Protheus" },
+    { id:"DEV_SOAP",     label:"SOAP / Webservices",       desc:"Criação e consumo de Webservices SOAP no Protheus" },
+
+    // 6. Frameworks do Protheus
+    { id:"DEV_MVC",      label:"MVC do Protheus",          desc:"Padrão Model-View-Controller nativo do Protheus" },
+    { id:"DEV_FWBROWSE", label:"FWBrowse",                 desc:"Componente de listagem e navegação de registros" },
+    { id:"DEV_FWFORM",   label:"FWFormModel / FWFormView", desc:"Modelo e visão de formulários no padrão MVC" },
+    { id:"DEV_REST_FW",  label:"REST Framework Protheus",  desc:"Framework nativo para criação de endpoints REST" },
+    { id:"DEV_JOBS",     label:"Jobs e Schedule",          desc:"Processos em background, agendamentos e rotinas automáticas" },
+
+    // 7. Conhecimento Funcional
+    { id:"DEV_FUN_FIN",  label:"Funcional — Financeiro",   desc:"Regras de negócio do módulo financeiro (contas a pagar/receber)" },
+    { id:"DEV_FUN_FAT",  label:"Funcional — Faturamento",  desc:"Regras de notas fiscais, pedidos e processo de faturamento" },
+    { id:"DEV_FUN_COM",  label:"Funcional — Compras",      desc:"Fluxo de compras, pedidos, cotações e aprovações" },
+    { id:"DEV_FUN_EST",  label:"Funcional — Estoque",      desc:"Movimentações, saldos, inventário e rastreabilidade" },
+    { id:"DEV_FUN_CTB",  label:"Funcional — Contabilidade",desc:"Lançamentos, plano de contas, centros de custo e conciliação" },
+    { id:"DEV_FUN_FIS",  label:"Funcional — Fiscal",       desc:"Apuração de impostos, SPED, NF-e e obrigações acessórias" },
+    { id:"DEV_FUN_RH",   label:"Funcional — RH / Folha",   desc:"Folha de pagamento, admissão, demissão e benefícios" },
+
+    // 8. Versionamento
+    { id:"DEV_GIT",      label:"Git",                      desc:"Controle de versão — commits, branches, merge e rebase" },
+    { id:"DEV_GITLAB",   label:"GitLab / GitHub",          desc:"Plataformas de repositório, CI/CD e code review" },
+
+    // 9. Performance e Arquitetura
+    { id:"DEV_TUNING_SQL",label:"Tuning SQL",              desc:"Otimização de queries, planos de execução e índices" },
+    { id:"DEV_TUNING_ADV",label:"Otimização AdvPL",        desc:"Boas práticas de performance em loops, arrays e chamadas ao banco" },
+    { id:"DEV_DEPLOY",   label:"Deploy e Atualização",     desc:"Processos de deploy, atualização de dicionário e migração de versão" },
+    { id:"DEV_AMBIENTES",label:"Gestão de Ambientes",      desc:"Configuração de ambientes (homologação, produção) e RPO" },
   ],
 };
 
@@ -6336,7 +6496,7 @@ function ManualConsultor({ theme: T }) {
         <div style={{ ...p, marginBottom:"20px" }}>Declare seu nível de conhecimento em cada módulo dos produtos TOTVS. Essa informação é usada pela gestão para alocação de atendimentos.</div>
         <div style={h3}>Produtos disponíveis</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"20px" }}>
-          {[["🔷","Protheus","43 módulos em 9 grupos (Financeiro, Fiscal, RH...)"],["🔶","RM","26 módulos em 7 grupos (Financeiro, Gestão de Pessoas...)"],["🟢","Datasul","57 módulos em 12 grupos abrangendo toda a suíte"],["🌊","Fluig","25 funcionalidades em 6 grupos (BPM, Portal, ECM...)"]].map(([icon,title,desc])=>(
+          {[["🔷","Protheus","43 módulos em 9 grupos (Financeiro, Fiscal, RH...)"],["🔶","RM","26 módulos em 7 grupos (Financeiro, Gestão de Pessoas...)"],["🟢","Datasul","57 módulos em 12 grupos abrangendo toda a suíte"],["🌊","Fluig","25 funcionalidades em 6 grupos (BPM, Portal, ECM...)"],["💻","Desenvolvedor","39 itens em 9 grupos (Linguagem, Banco, Frameworks...)"]].map(([icon,title,desc])=>(
             <div key={title} style={card}>
               <div style={{ fontSize:"20px", marginBottom:"6px" }}>{icon}</div>
               <div style={h4}>{title}</div>
