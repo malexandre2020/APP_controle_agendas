@@ -490,7 +490,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
   const [editCl, setEditCl] = useState(null);
 
   // ── Projeto form ──
-  const [newP, setNewP] = useState({ name:"", codigo:"", client:"", description:"" });
+  const [newP, setNewP] = useState({ name:"", codigo:"", client:"", codigoCliente:"", description:"" });
   const [editP, setEditP] = useState(null);
 
   const inp = { padding:"8px 12px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",width:"100%",boxSizing:"border-box" };
@@ -681,10 +681,19 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
               </div>
               <div>
                 <label style={lbl}>Cliente</label>
-                <select value={editP?editP.client:newP.client} onChange={e=>editP?setEditP(v=>({...v,client:e.target.value})):setNewP(v=>({...v,client:e.target.value}))} style={inp}>
+                <select value={editP?editP.client:newP.client} onChange={e=>{
+                  const nome = e.target.value;
+                  const cli = clients.find(c=>c.name===nome);
+                  if (editP) setEditP(v=>({...v,client:nome,codigoCliente:cli?.codigo||v.codigoCliente||""}));
+                  else setNewP(v=>({...v,client:nome,codigoCliente:cli?.codigo||""}));
+                }} style={inp}>
                   <option value="">Selecione o cliente...</option>
                   {clients.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}
                 </select>
+              </div>
+              <div>
+                <label style={lbl}>Código do Cliente</label>
+                <input value={editP?editP.codigoCliente||"":newP.codigoCliente||""} onChange={e=>editP?setEditP(v=>({...v,codigoCliente:e.target.value})):setNewP(v=>({...v,codigoCliente:e.target.value}))} placeholder="Preenchido automaticamente" style={inp}/>
               </div>
               <div>
                 <label style={lbl}>Descrição (opcional)</label>
@@ -697,7 +706,7 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
                     <button onClick={()=>setEditP(null)} style={{ ...btnBlue,background:"#2a2a3a",width:"auto",padding:"10px 16px" }}>Cancelar</button>
                   </>
                 ) : (
-                  <button onClick={()=>{ if(!newP.name.trim()||!newP.client) return; onAddProject({...newP}); setNewP({name:"",codigo:"",client:"",description:""}); }} style={btnGreen}>✅ Cadastrar Projeto</button>
+                  <button onClick={()=>{ if(!newP.name.trim()||!newP.client) return; onAddProject({...newP}); setNewP({name:"",codigo:"",client:"",codigoCliente:"",description:""}); }} style={btnGreen}>✅ Cadastrar Projeto</button>
                 )}
               </div>
             </div>
@@ -716,7 +725,10 @@ function CadastrosView({ consultores, clients, projects, onAddConsultor, onRemov
                         {p.name}
                         {p.codigo && <span style={{ fontSize:"10px",background:"#2a2a3a",color:"#6e6e88",padding:"1px 6px",borderRadius:"10px" }}>{p.codigo}</span>}
                       </div>
-                      <div style={{ fontSize:"11px",color:getClientColor(p.client),fontWeight:600,marginTop:"3px" }}>{p.client}</div>
+                      <div style={{ fontSize:"11px",color:getClientColor(p.client),fontWeight:600,marginTop:"3px" }}>
+                        {p.client}
+                        {p.codigoCliente && <span style={{ color:"#6e6e88",fontWeight:400,marginLeft:"6px" }}>cod. {p.codigoCliente}</span>}
+                      </div>
                       {p.description && <div style={{ fontSize:"11px",color:"#6e6e88",marginTop:"4px" }}>{p.description}</div>}
                     </div>
                     <div style={{ display:"flex",gap:"6px",flexShrink:0 }}>
@@ -3775,8 +3787,8 @@ const MOTIVOS_RDA = [
 ];
 
 function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clientList, projects, theme: T }) {
-  const [aba,          setAba]         = useState("rda");      // rda | cadastro
-  const [unidades,     setUnidades]    = useState([]);         // unidades por cliente
+  const [aba,          setAba]         = useState("rda");
+  const [unidades,     setUnidades]    = useState([]);
   const [rdas,         setRdas]        = useState([]);
   const [loading,      setLoading]     = useState(true);
   const [showFormUn,   setShowFormUn]  = useState(false);
@@ -4315,7 +4327,7 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
           {showFormRda && (
             <FormRDA inicial={editRda}
               unidadesCadastradas={unidades}
-              projetosCadastrados={projects}
+              projetosCadastrados={projects||[]}
               onSalvar={async (dados)=>{
                 // Gerar código RDA sequencial
                 let codRda = dados.codRda;
@@ -6620,6 +6632,17 @@ function Dashboard({ currentUser, onLogout }) {
           )}
         </nav>
 
+        {/* Sobre — fixo no fim da sidebar, antes do user footer */}
+        <div style={{ padding:"8px",borderTop:"1px solid "+T.border,flexShrink:0 }}>
+          <div className="side-item" onClick={()=>setActiveModule("sobre")} title={sidebarCollapsed?"Sobre":""}
+            style={{ padding:sidebarCollapsed?"10px":"8px 12px",display:"flex",alignItems:"center",gap:"10px",justifyContent:sidebarCollapsed?"center":"flex-start",borderRadius:"10px",background:activeModule==="sobre"?`${T.accent}18`:"transparent",border:activeModule==="sobre"?`1px solid ${T.accent}33`:"1px solid transparent",cursor:"pointer" }}>
+            <span style={{ fontSize:"16px",lineHeight:1,flexShrink:0 }}>ℹ️</span>
+            {!sidebarCollapsed && (
+              <div style={{ fontSize:"12px",fontWeight:activeModule==="sobre"?700:500,color:activeModule==="sobre"?T.accent:T.text3 }}>Sobre</div>
+            )}
+          </div>
+        </div>
+
         {/* User footer */}
         <div style={{ padding:"12px",borderTop:"1px solid "+T.border,flexShrink:0 }}>
           <div style={{ display:"flex",alignItems:"center",gap:"8px",justifyContent:sidebarCollapsed?"center":"flex-start" }}>
@@ -6869,6 +6892,53 @@ function Dashboard({ currentUser, onLogout }) {
               onAddProject={handleAddProject} onRemoveProject={handleRemoveProject} onUpdateProject={handleUpdateProject}
               emailConfig={emailConfig} onSaveEmailConfig={handleSaveEmailConfig}
             />
+          </div>
+        )}
+
+        {/* ── MODULE: SOBRE ── */}
+        {activeModule==="sobre" && (
+          <div style={{ padding:"28px 32px",flex:1,display:"flex",alignItems:"center",justifyContent:"center" }}>
+            <div style={{ maxWidth:"480px",width:"100%",textAlign:"center" }}>
+              {/* Logo / ícone */}
+              <div style={{ width:"80px",height:"80px",borderRadius:"22px",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"36px",margin:"0 auto 28px",boxShadow:"0 8px 32px #6c63ff44" }}>
+                ⬡
+              </div>
+
+              {/* Nome do sistema */}
+              <h1 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"28px",fontWeight:900,color:"#f0f0fa",margin:"0 0 6px",letterSpacing:"-0.5px" }}>
+                GSC
+              </h1>
+              <p style={{ fontSize:"13px",color:"#6e6e88",margin:"0 0 32px",letterSpacing:"1px",textTransform:"uppercase" }}>
+                Gestão de Serviços Consultores
+              </p>
+
+              {/* Divisor */}
+              <div style={{ width:"40px",height:"2px",background:"linear-gradient(90deg,#6c63ff,#a78bfa)",margin:"0 auto 32px",borderRadius:"2px" }}/>
+
+              {/* Créditos */}
+              <div style={{ background:"#111118",borderRadius:"16px",border:"1px solid #1f1f2e",padding:"28px 32px",marginBottom:"20px" }}>
+                <div style={{ fontSize:"11px",color:"#3e3e55",fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",marginBottom:"16px" }}>
+                  Desenvolvido por
+                </div>
+                <div style={{ fontSize:"20px",fontWeight:800,color:"#f0f0fa",fontFamily:"'Cabinet Grotesk',sans-serif",marginBottom:"4px" }}>
+                  Marcelo Alexandre
+                </div>
+                <div style={{ fontSize:"12px",color:"#6e6e88" }}>
+                  Desenvolvimento de Sistemas
+                </div>
+              </div>
+
+              {/* Direitos */}
+              <div style={{ fontSize:"12px",color:"#3e3e55",lineHeight:1.7 }}>
+                © {new Date().getFullYear()} · Todos os direitos reservados
+              </div>
+
+              {/* Versão */}
+              <div style={{ marginTop:"24px",display:"inline-flex",alignItems:"center",gap:"6px",padding:"4px 14px",borderRadius:"99px",background:"#6c63ff12",border:"1px solid #6c63ff22" }}>
+                <span style={{ width:"6px",height:"6px",borderRadius:"50%",background:"#22d3a0",display:"inline-block" }}/>
+                <span style={{ fontSize:"11px",color:"#6e6e88",fontWeight:600 }}>Versão 1.0.0</span>
+              </div>
+            </div>
           </div>
         )}
       </div>
