@@ -3873,7 +3873,7 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
   };
 
   // ── Formulário RDA ──
-  const FormRDA = ({ inicial, onSalvar, onCancelar }) => {
+  const FormRDA = ({ inicial, onSalvar, onCancelar, unidadesCadastradas }) => {
     const hoje = new Date().toISOString().slice(0,10);
     const [form, setForm] = useState(inicial || {
       codRda:"", dataEmissao:hoje, dataInicio:"", dataFinal:"",
@@ -3907,7 +3907,7 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
       set("nomeCliente",nome);
       const cli = (clientList||[]).find(c=>c.name===nome);
       if (cli?.codigo) set("codCliente",cli.codigo);
-      const un = unidades.filter(u=>u.cliente===nome);
+      const un = unidadesCadastradas.filter(u=>u.cliente===nome);
       if (un.length===1) { set("unidadeDestino",un[0].nomeUnidade); }
     };
 
@@ -4013,18 +4013,18 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
               <label style={lbl}>Unidade de Destino</label>
               <select value={form.unidadeDestino||""} onChange={e=>set("unidadeDestino",e.target.value)} style={inp}>
                 <option value="">Selecione...</option>
-                {unidades.filter(u=>!form.nomeCliente||u.cliente===form.nomeCliente).map(u=>(
+                {unidadesCadastradas.filter(u=>!form.nomeCliente||u.cliente===form.nomeCliente).map(u=>(
                   <option key={u.id} value={u.nomeUnidade}>{u.nomeUnidade} — {u.kmConsultoria}km</option>
                 ))}
               </select>
             </div>
             <div>
               <label style={lbl}>Endereço destino</label>
-              <input value={form.enderecoDestino||unidades.find(u=>u.nomeUnidade===form.unidadeDestino&&u.cliente===form.nomeCliente)?.endereco||""} onChange={e=>set("enderecoDestino",e.target.value)} placeholder="Preenchido automaticamente" style={inp}/>
+              <input value={form.enderecoDestino||unidadesCadastradas.find(u=>u.nomeUnidade===form.unidadeDestino&&u.cliente===form.nomeCliente)?.endereco||""} onChange={e=>set("enderecoDestino",e.target.value)} placeholder="Preenchido automaticamente" style={inp}/>
             </div>
             <div>
               <label style={lbl}>KM IDA e VOLTA</label>
-              <input value={form.kmDestino||unidades.find(u=>u.nomeUnidade===form.unidadeDestino&&u.cliente===form.nomeCliente)?.kmConsultoria||""} onChange={e=>set("kmDestino",e.target.value)} placeholder="0" style={inp}/>
+              <input value={form.kmDestino||unidadesCadastradas.find(u=>u.nomeUnidade===form.unidadeDestino&&u.cliente===form.nomeCliente)?.kmConsultoria||""} onChange={e=>set("kmDestino",e.target.value)} placeholder="0" style={inp}/>
               {form.kmDestino && <div style={{ fontSize:"10px",color:"#22d3a0",marginTop:"3px" }}>↔ Total: {(Number(form.kmDestino)*2).toFixed(0)} km</div>}
             </div>
           </div>
@@ -4277,6 +4277,7 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
         <div>
           {showFormRda && (
             <FormRDA inicial={editRda}
+              unidadesCadastradas={unidades}
               onSalvar={async (dados)=>{
                 // Gerar código RDA sequencial
                 let codRda = dados.codRda;
