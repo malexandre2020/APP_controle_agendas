@@ -3774,7 +3774,7 @@ const MOTIVOS_RDA = [
   "4 - DESLOCAMENTO DIÁRIO",
 ];
 
-function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clientList, theme: T }) {
+function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clientList, projects, theme: T }) {
   const [aba,          setAba]         = useState("rda");      // rda | cadastro
   const [unidades,     setUnidades]    = useState([]);         // unidades por cliente
   const [rdas,         setRdas]        = useState([]);
@@ -3873,7 +3873,7 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
   };
 
   // ── Formulário RDA ──
-  const FormRDA = ({ inicial, onSalvar, onCancelar, unidadesCadastradas }) => {
+  const FormRDA = ({ inicial, onSalvar, onCancelar, unidadesCadastradas, projetosCadastrados }) => {
     const hoje = new Date().toISOString().slice(0,10);
     const [form, setForm] = useState(inicial || {
       codRda:"", dataEmissao:hoje, dataInicio:"", dataFinal:"",
@@ -3958,7 +3958,7 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
               <input type="date" value={form.dataFinal} onChange={e=>set("dataFinal",e.target.value)} style={inp}/>
             </div>
           </div>
-          <div style={{ display:"grid",gridTemplateColumns:"160px 1fr 1fr 160px",gap:"10px",marginTop:"10px" }}>
+          <div style={{ display:"grid",gridTemplateColumns:"160px 1fr 1fr",gap:"10px",marginTop:"10px" }}>
             <div>
               <label style={lbl}>Cód. Técnico</label>
               <input value={form.codTecnico} readOnly style={{...inp,background:"#0a0a12",color:"#a78bfa",fontWeight:700}}/>
@@ -3972,10 +3972,6 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
               <select value={form.motivo} onChange={e=>set("motivo",e.target.value)} style={inp}>
                 {MOTIVOS_RDA.map(m=><option key={m}>{m}</option>)}
               </select>
-            </div>
-            <div>
-              <label style={lbl}>Despesas</label>
-              <input value={form.despesas} onChange={e=>set("despesas",e.target.value)} placeholder="R$" style={inp}/>
             </div>
           </div>
           <div style={{ marginTop:"10px" }}>
@@ -4011,7 +4007,20 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
           <div style={{ display:"grid",gridTemplateColumns:"220px 1fr 160px",gap:"10px",marginBottom:"10px" }}>
             <div>
               <label style={lbl}>Unidade de Destino</label>
-              <select value={form.unidadeDestino||""} onChange={e=>set("unidadeDestino",e.target.value)} style={inp}>
+              <select value={form.unidadeDestino||""} onChange={e=>{
+                const nomeSel = e.target.value;
+                set("unidadeDestino", nomeSel);
+                const un = unidadesCadastradas.find(u=>u.nomeUnidade===nomeSel&&u.cliente===form.nomeCliente);
+                if (un) {
+                  set("enderecoDestino", un.endereco||"");
+                  const kmIda = Number(un.kmConsultoria)||0;
+                  const kmTotal = kmIda * 2;
+                  set("kmDestino", String(kmIda));
+                  set("kmTotal", String(kmTotal));
+                  const valorKm = Number(un.valorKm)||0;
+                  if (valorKm > 0) set("valorTotalKm", (kmTotal * valorKm).toFixed(2));
+                }
+              }} style={inp}>
                 <option value="">Selecione...</option>
                 {unidadesCadastradas.filter(u=>!form.nomeCliente||u.cliente===form.nomeCliente).map(u=>(
                   <option key={u.id} value={u.nomeUnidade}>{u.nomeUnidade} — {u.kmConsultoria}km</option>
@@ -4020,22 +4029,45 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
             </div>
             <div>
               <label style={lbl}>Endereço destino</label>
-              <input value={form.enderecoDestino||unidadesCadastradas.find(u=>u.nomeUnidade===form.unidadeDestino&&u.cliente===form.nomeCliente)?.endereco||""} onChange={e=>set("enderecoDestino",e.target.value)} placeholder="Preenchido automaticamente" style={inp}/>
+              <input value={form.enderecoDestino||""} onChange={e=>set("enderecoDestino",e.target.value)} placeholder="Preenchido automaticamente" style={inp}/>
             </div>
             <div>
               <label style={lbl}>KM IDA e VOLTA</label>
-              <input value={form.kmDestino||unidadesCadastradas.find(u=>u.nomeUnidade===form.unidadeDestino&&u.cliente===form.nomeCliente)?.kmConsultoria||""} onChange={e=>set("kmDestino",e.target.value)} placeholder="0" style={inp}/>
-              {form.kmDestino && <div style={{ fontSize:"10px",color:"#22d3a0",marginTop:"3px" }}>↔ Total: {(Number(form.kmDestino)*2).toFixed(0)} km</div>}
+              <input type="number" value={form.kmDestino||""} onChange={e=>{
+                const kmIda = Number(e.target.value)||0;
+                set("kmDestino", e.target.value);
+                set("kmTotal", String(kmIda*2));
+                const un = unidadesCadastradas.find(u=>u.nomeUnidade===form.unidadeDestino&&u.cliente===form.nomeCliente);
+                const valorKm = Number(un?.valorKm)||0;
+                if (valorKm > 0) set("valorTotalKm", (kmIda*2*valorKm).toFixed(2));
+              }} placeholder="KM (ida)" style={inp}/>
+              {form.kmDestino && (
+                <div style={{ fontSize:"10px",color:"#22d3a0",marginTop:"3px",lineHeight:1.6 }}>
+                  ↔ Total: <strong>{(Number(form.kmDestino)*2).toFixed(0)} km</strong>
+                  {form.valorTotalKm && <span style={{ marginLeft:"8px",color:"#a78bfa" }}>· R$ {form.valorTotalKm}</span>}
+                </div>
+              )}
             </div>
           </div>
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 160px",gap:"10px",marginBottom:"10px" }}>
             <div>
               <label style={lbl}>Projeto</label>
-              <input value={form.projeto} onChange={e=>set("projeto",e.target.value)} placeholder="Preencha o código do projeto" style={inp}/>
+              <select value={form.projeto} onChange={e=>{
+                set("projeto",e.target.value);
+                const proj = (projetosCadastrados||[]).find(p=>p.name===e.target.value || p.codigo===e.target.value);
+                if (proj) { set("nomeProjeto", proj.name||""); }
+              }} style={inp}>
+                <option value="">Selecione o projeto...</option>
+                {(projetosCadastrados||[]).map(p=>(
+                  <option key={p.name} value={p.codigo||p.name}>
+                    {p.codigo ? `${p.codigo} — ${p.name}` : p.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label style={lbl}>Nome Projeto</label>
-              <input value={form.nomeProjeto} onChange={e=>set("nomeProjeto",e.target.value)} style={inp}/>
+              <input value={form.nomeProjeto} onChange={e=>set("nomeProjeto",e.target.value)} style={{...inp,background:"#18181f",color:"#a78bfa"}} placeholder="Preenchido automaticamente"/>
             </div>
             <div>
               <label style={lbl}>Centro Custo *</label>
@@ -4124,7 +4156,12 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
           ))}
           <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"8px" }}>
             <button onClick={addItem} style={{ padding:"9px 20px",borderRadius:"9px",border:"1px solid #2a2a3a",background:"#18181f",color:"#c8c8d8",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>+ NOVA DESPESA</button>
-            {form.itens.length>0 && <div style={{ fontSize:"14px",fontWeight:800,color:"#22d3a0" }}>Total Geral: R$ {totalGeral.toFixed(2)}</div>}
+            {(form.itens.length>0 || form.valorTotalKm) && (
+              <div style={{ fontSize:"14px",fontWeight:800,color:"#22d3a0" }}>
+                Total Geral: R$ {(totalGeral + Number(form.valorTotalKm||0)).toFixed(2)}
+                {form.valorTotalKm && form.itens.length>0 && <span style={{ fontSize:"11px",color:"#6e6e88",fontWeight:400,marginLeft:"8px" }}>(itens: R$ {totalGeral.toFixed(2)} + km: R$ {Number(form.valorTotalKm).toFixed(2)})</span>}
+              </div>
+            )}
           </div>
         </div>
 
@@ -4278,6 +4315,7 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
           {showFormRda && (
             <FormRDA inicial={editRda}
               unidadesCadastradas={unidades}
+              projetosCadastrados={projects}
               onSalvar={async (dados)=>{
                 // Gerar código RDA sequencial
                 let codRda = dados.codRda;
@@ -6774,6 +6812,7 @@ function Dashboard({ currentUser, onLogout }) {
               canApprove={canApprove}
               consultores={consultores}
               clientList={clientList}
+              projects={projects}
               theme={T}
             />
           </div>
