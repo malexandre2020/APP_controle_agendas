@@ -3129,6 +3129,7 @@ function LoginScreen({ onLogin }) {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
       const profile = await getUserProfile(cred.user.email);
       if (!profile) { setError("Usuário sem perfil configurado. Contate o administrador."); setLoading(false); return; }
+      if (profile.bloqueado) { await signOut(auth); setError("🔒 Acesso bloqueado. Entre em contato com o administrador."); setLoading(false); return; }
       onLogin({ uid: cred.user.uid, email: cred.user.email, ...profile });
     } catch(e) {
       const msgs = { "auth/invalid-credential":"E-mail ou senha incorretos.", "auth/user-not-found":"E-mail não encontrado.", "auth/wrong-password":"Senha incorreta.", "auth/too-many-requests":"Muitas tentativas. Aguarde alguns minutos." };
@@ -3252,6 +3253,9 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   const [editId, setEditId] = useState(null);
   const [editFields, setEditFields] = useState({});
   const [editSaving, setEditSaving] = useState(false);
+  const [senhaModal, setSenhaModal] = useState(null); // userId para alterar senha
+  const [novaSenhaAlter, setNovaSenhaAlter] = useState("");
+  const [senhaAlterSaving, setSenhaAlterSaving] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -3346,6 +3350,39 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
     }
   };
 
+  const handleToggleBloqueio = async (u) => {
+    const novoStatus = u.bloqueado ? false : true;
+    const acao = novoStatus ? "bloquear" : "desbloquear";
+    if (!window.confirm(`${novoStatus?"Bloquear":"Desbloquear"} o usuário ${u.nome||u.email}?\n${novoStatus?"O usuário não conseguirá acessar o sistema.":""}`)) return;
+    try {
+      await setDoc(doc(db,"usuarios",u.id), { bloqueado: novoStatus, bloqueadoEm: novoStatus ? new Date().toISOString() : null }, { merge:true });
+      setUsuarios(prev => prev.map(x => x.id===u.id ? {...x, bloqueado:novoStatus} : x));
+      setSuccess(novoStatus ? `🔒 Usuário ${u.nome||u.email} bloqueado.` : `🔓 Usuário ${u.nome||u.email} desbloqueado.`);
+    } catch(e) {
+      setError("Erro ao " + acao + ": " + e.message);
+    }
+  };
+
+  const handleAlterarSenha = async (u) => {
+    if (!novaSenhaAlter.trim() || novaSenhaAlter.length < 6) {
+      setError("A nova senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    setSenhaAlterSaving(true); setError("");
+    try {
+      // Enviar e-mail de reset com a senha definida via Firebase Admin não está disponível no client SDK
+      // Usamos sendPasswordResetEmail + aviso, ou atualização via secondary auth se tiver UID
+      await sendPasswordResetEmail(auth, u.email);
+      // Salvar flag no Firestore indicando que senha foi solicitada pelo admin
+      await setDoc(doc(db,"usuarios",u.id), { senhaAlteradaEm: new Date().toISOString(), senhaAlteradaPor: "admin" }, { merge:true });
+      setSenhaModal(null); setNovaSenhaAlter("");
+      setSuccess(`📧 Link de redefinição enviado para ${u.email}. O usuário receberá um e-mail para definir a nova senha.`);
+    } catch(e) {
+      setError("Erro ao alterar senha: " + e.message);
+    }
+    setSenhaAlterSaving(false);
+  };
+
   const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #2a2a3a", background:"#0d0d14", color:"#c8c8d8", fontSize:"13px", width:"100%", boxSizing:"border-box" };
 
   // Módulos disponíveis por perfil
@@ -3397,6 +3434,37 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   };
 
   return (
+    <>
+    {/* Modal de alteração de senha */}
+    {senhaModal && (
+      <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:3000, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}>
+        <div style={{ background:"#18181f", borderRadius:"16px", padding:"28px", width:"100%", maxWidth:"420px", border:"1px solid #2a2a3a", boxShadow:"0 20px 60px rgba(0,0,0,0.6)" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"20px" }}>
+            <div>
+              <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"16px", fontWeight:800, color:"#f0f0fa", margin:0 }}>🔑 Alterar Senha</h3>
+              <div style={{ fontSize:"12px", color:"#6e6e88", marginTop:"3px" }}>{senhaModal.nome} · {senhaModal.email}</div>
+            </div>
+            <button onClick={()=>{setSenhaModal(null);setNovaSenhaAlter("");setError("");}} style={{ background:"#2a2a3a", border:"none", color:"#6e6e88", borderRadius:"8px", width:"30px", height:"30px", cursor:"pointer", fontSize:"14px" }}>✕</button>
+          </div>
+          <div style={{ background:"#f5a62315", border:"1px solid #f5a62333", borderRadius:"10px", padding:"12px 14px", fontSize:"12px", color:"#f5a623", marginBottom:"18px", lineHeight:1.6 }}>
+            ⚠️ Por segurança, o Firebase não permite que administradores definam senhas diretamente pelo app. Será enviado um <strong>link de redefinição</strong> para o e-mail do usuário para que ele defina a nova senha.
+          </div>
+          <div style={{ fontSize:"13px", color:"#c8c8d8", marginBottom:"16px" }}>
+            Clique em confirmar para enviar o e-mail de redefinição para <strong style={{ color:"#a78bfa" }}>{senhaModal.email}</strong>.
+          </div>
+          {error && <div style={{ padding:"8px 12px", borderRadius:"8px", background:"#ef444422", border:"1px solid #ef444444", color:"#ef4444", fontSize:"12px", marginBottom:"12px" }}>⚠️ {error}</div>}
+          <div style={{ display:"flex", gap:"8px", justifyContent:"flex-end" }}>
+            <button onClick={()=>{setSenhaModal(null);setNovaSenhaAlter("");setError("");}}
+              style={{ padding:"9px 18px", borderRadius:"9px", border:"1px solid #2a2a3a", background:"transparent", color:"#6e6e88", cursor:"pointer", fontWeight:600, fontSize:"13px", fontFamily:"inherit" }}>Cancelar</button>
+            <button onClick={()=>handleAlterarSenha(senhaModal)} disabled={senhaAlterSaving}
+              style={{ padding:"9px 22px", borderRadius:"9px", border:"none", background:"linear-gradient(135deg,#22d3a0,#10b981)", color:"#fff", cursor:"pointer", fontWeight:700, fontSize:"13px", fontFamily:"inherit", opacity:senhaAlterSaving?0.6:1 }}>
+              {senhaAlterSaving ? "Enviando..." : "📧 Enviar link de redefinição"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}>
       <div style={{ background:"#18181f", borderRadius:"16px", padding:"28px", width:"100%", maxWidth:"660px", border:"1px solid #2a2a3a", maxHeight:"90vh", overflowY:"auto", boxShadow:"0 20px 60px rgba(0,0,0,0.5)" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"24px" }}>
@@ -3412,21 +3480,40 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
               {usuarios.map(u => {
                 const badge = ROLE_BADGES[u.role] || ROLE_BADGES.viewer;
                 const isEditing = editId === u.id;
+                const isBloqueado = !!u.bloqueado;
                 return (
-                  <div key={u.id} style={{ background:"#0d0d14", borderRadius:"10px", border:"1px solid " + (isEditing ? "#3b82f6" : "#18181f"), overflow:"hidden" }}>
+                  <div key={u.id} style={{ background:"#0d0d14", borderRadius:"10px", border:"1px solid " + (isBloqueado?"#f04f5e33":isEditing?"#3b82f6":"#18181f"), overflow:"hidden" }}>
                     {/* Linha principal */}
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px" }}>
-                      <div>
-                        <div style={{ fontSize:"13px", fontWeight:600, color:"#f0f0fa" }}>{u.nome} <span style={{ fontSize:"11px", color:"#6e6e88" }}>· {u.email}</span></div>
-                        <div style={{ display:"flex", gap:"8px", marginTop:"3px" }}>
+                      <div style={{ minWidth:0, flex:1 }}>
+                        <div style={{ fontSize:"13px", fontWeight:600, color: isBloqueado?"#6e6e88":"#f0f0fa", display:"flex", alignItems:"center", gap:"8px" }}>
+                          {isBloqueado && <span style={{ fontSize:"12px" }}>🔒</span>}
+                          {u.nome} <span style={{ fontSize:"11px", color:"#6e6e88" }}>· {u.email}</span>
+                        </div>
+                        <div style={{ display:"flex", gap:"6px", marginTop:"3px", flexWrap:"wrap" }}>
                           <span style={{ fontSize:"11px", fontWeight:700, color:badge.color, background:badge.bg, padding:"1px 8px", borderRadius:"10px" }}>{badge.label}</span>
                           {u.consultorName && <span style={{ fontSize:"11px", color:"#6e6e88" }}>{u.consultorName}</span>}
                           {u.modulosHabilitados && <span style={{ fontSize:"10px", color:"#3e3e55", padding:"1px 7px", borderRadius:"99px", background:"#1f1f2e" }}>🔧 {u.modulosHabilitados.length} módulo{u.modulosHabilitados.length!==1?"s":""}</span>}
+                          {isBloqueado && <span style={{ fontSize:"10px", fontWeight:700, color:"#f04f5e", background:"#f04f5e18", padding:"1px 8px", borderRadius:"99px", border:"1px solid #f04f5e33" }}>🔒 Bloqueado</span>}
                         </div>
                       </div>
-                      <div style={{ display:"flex", gap:"6px" }}>
-                        <button onClick={()=>isEditing ? setEditId(null) : handleEditStart(u)} style={{ background:isEditing?"#2a2a3a":"#6c63ff22", border:"1px solid "+(isEditing?"#6e6e88":"#6c63ff44"), color:isEditing?"#6e6e88":"#3b82f6", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"12px", fontWeight:600 }}>{isEditing ? "✕" : "✏️ Editar"}</button>
-                        <button onClick={()=>handleDelete(u.id, u.email)} style={{ background:"#ef444422", border:"1px solid #ef444444", color:"#ef4444", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"12px", fontWeight:600 }}>🗑</button>
+                      <div style={{ display:"flex", gap:"5px", flexShrink:0 }}>
+                        <button onClick={()=>isEditing ? setEditId(null) : handleEditStart(u)}
+                          style={{ background:isEditing?"#2a2a3a":"#6c63ff22", border:"1px solid "+(isEditing?"#6e6e88":"#6c63ff44"), color:isEditing?"#6e6e88":"#a78bfa", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"11px", fontWeight:600 }}>
+                          {isEditing ? "✕" : "✏️ Editar"}
+                        </button>
+                        <button onClick={()=>setSenhaModal(u)}
+                          style={{ background:"#22d3a018", border:"1px solid #22d3a044", color:"#22d3a0", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"11px", fontWeight:600 }}>
+                          🔑 Senha
+                        </button>
+                        <button onClick={()=>handleToggleBloqueio(u)}
+                          style={{ background:isBloqueado?"#22d3a018":"#f04f5e18", border:"1px solid "+(isBloqueado?"#22d3a044":"#f04f5e44"), color:isBloqueado?"#22d3a0":"#f04f5e", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"11px", fontWeight:600 }}>
+                          {isBloqueado?"🔓 Desbloquear":"🔒 Bloquear"}
+                        </button>
+                        <button onClick={()=>handleDelete(u.id, u.email)}
+                          style={{ background:"#ef444422", border:"1px solid #ef444444", color:"#ef4444", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"11px", fontWeight:600 }}>
+                          🗑
+                        </button>
                       </div>
                     </div>
                     {/* Painel de edição inline */}
@@ -3524,6 +3611,7 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
