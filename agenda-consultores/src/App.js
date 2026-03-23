@@ -2521,7 +2521,7 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
 // CALENDÁRIO MENSAL
 // ─────────────────────────────────────────────────────────────────────────────
 function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientColors, onEdit, onDelete, onNewEntry, onOsClick, readonly }) {
-  const [calMes, setCalMes] = React.useState(selectedMonth !== "Todos" ? selectedMonth : allMonths[1] || "Setembro");
+  const [calMes, setCalMes] = React.useState(selectedMonth !== "Todos" ? selectedMonth : MONTHS_ORDER[new Date().getMonth()]);
   const [calAno, setCalAno] = React.useState(new Date().getFullYear());
   const [popup, setPopup] = React.useState(null);
   const [popupPos, setPopupPos] = React.useState({x:0,y:0});
@@ -2542,6 +2542,11 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
   const [showFilter, setShowFilter] = React.useState(false);
   const [showClientFilter, setShowClientFilter] = React.useState(false);
   const [selectedClients, setSelectedClients] = React.useState(new Set());
+
+  // Sincronizar calMes quando o filtro externo muda para um mês específico
+  React.useEffect(() => {
+    if (selectedMonth !== "Todos") setCalMes(selectedMonth);
+  }, [selectedMonth]);
 
   const monthsAvail = allMonths.filter(m => m !== "Todos");
   const days = Array.from({length:31},(_,i)=>i+1);
@@ -6696,7 +6701,7 @@ function Dashboard({ currentUser, onLogout }) {
   const [projects, setProjects] = useState([]);
   const [dbLoaded, setDbLoaded] = useState(false);
   const [selectedConsultor, setSelectedConsultor] = useState(isConsultor ? currentUser.consultorName : null);
-  const [selectedMonth, setSelectedMonth] = useState(()=> MONTHS_ORDER[new Date().getMonth()]);
+  const [selectedMonth, setSelectedMonth] = useState("Todos");
   const [selectedWeekOffset, setSelectedWeekOffset] = useState(0); // semanas a partir da semana atual
   const [searchClient, setSearchClient] = useState("");
   const [view, setView] = useState("calendario");
