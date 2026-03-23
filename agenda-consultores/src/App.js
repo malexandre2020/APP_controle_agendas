@@ -3322,13 +3322,15 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
 
   const handleEditStart = (u) => {
     setEditId(u.id);
-    setEditFields({ nome: u.nome || "", role: u.role || "viewer", consultorName: u.consultorName || "" });
+    setEditFields({ nome: u.nome || "", role: u.role || "viewer", consultorName: u.consultorName || "", modulosHabilitados: u.modulosHabilitados || null });
   };
 
   const handleEditSave = async (u) => {
     setEditSaving(true);
     try {
-      await setDoc(doc(db, "usuarios", u.id), { ...u, ...editFields }, { merge: true });
+      // modulosHabilitados: null = todos habilitados (salvar como null explicitamente)
+      const dados = { ...u, ...editFields, modulosHabilitados: editFields.modulosHabilitados ?? null };
+      await setDoc(doc(db, "usuarios", u.id), dados, { merge: true });
       setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, ...editFields } : x));
       if (editFields.role === "consultor" && editFields.consultorName && !consultores.includes(editFields.consultorName)) {
         onAddConsultor && onAddConsultor({ name: editFields.consultorName, codigo:"", email:"" });
