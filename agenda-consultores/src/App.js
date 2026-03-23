@@ -3256,6 +3256,7 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   const [senhaModal, setSenhaModal] = useState(null); // userId para alterar senha
   const [novaSenhaAlter, setNovaSenhaAlter] = useState("");
   const [senhaAlterSaving, setSenhaAlterSaving] = useState(false);
+  const [perfilModal, setPerfilModal] = useState(null); // usuário para visualizar perfil
 
   useEffect(() => {
     async function load() {
@@ -3438,6 +3439,73 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   return (
     <>
     {/* Modal de alteração de senha */}
+    {/* Modal de visualização de perfil */}
+    {perfilModal && (() => {
+      const u = perfilModal;
+      const badge = ROLE_BADGES[u.role] || ROLE_BADGES.viewer;
+      const disponiveis = MODULOS_POR_PERFIL[u.role] || [];
+      const habilitados = u.modulosHabilitados || disponiveis.map(m=>m.id);
+      const modAtivos = disponiveis.filter(m => habilitados.includes(m.id));
+      const modBloq   = disponiveis.filter(m => !habilitados.includes(m.id));
+      return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:3000, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}>
+          <div style={{ background:"#18181f", borderRadius:"16px", padding:"28px", width:"100%", maxWidth:"480px", border:"1px solid #2a2a3a", boxShadow:"0 20px 60px rgba(0,0,0,0.6)" }}>
+            {/* Header */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"20px" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+                <div style={{ width:"42px", height:"42px", borderRadius:"12px", background:`linear-gradient(135deg,${badge.color}33,${badge.color}11)`, border:`1px solid ${badge.color}44`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"18px" }}>
+                  {u.bloqueado ? "🔒" : "👤"}
+                </div>
+                <div>
+                  <div style={{ fontSize:"15px", fontWeight:700, color:"#f0f0fa" }}>{u.nome}</div>
+                  <div style={{ fontSize:"12px", color:"#6e6e88", marginTop:"2px" }}>{u.email}</div>
+                </div>
+              </div>
+              <button onClick={()=>setPerfilModal(null)} style={{ background:"#2a2a3a", border:"none", color:"#6e6e88", borderRadius:"8px", width:"30px", height:"30px", cursor:"pointer", fontSize:"14px" }}>✕</button>
+            </div>
+
+            {/* Perfil e status */}
+            <div style={{ display:"flex", gap:"8px", flexWrap:"wrap", marginBottom:"20px" }}>
+              <span style={{ padding:"4px 12px", borderRadius:"99px", fontSize:"12px", fontWeight:700, color:badge.color, background:badge.bg, border:`1px solid ${badge.color}44` }}>{badge.label}</span>
+              {u.consultorName && <span style={{ padding:"4px 12px", borderRadius:"99px", fontSize:"12px", color:"#9090b0", background:"#1f1f2e", border:"1px solid #2a2a3a" }}>👤 {u.consultorName}</span>}
+              {u.bloqueado && <span style={{ padding:"4px 12px", borderRadius:"99px", fontSize:"12px", fontWeight:700, color:"#f04f5e", background:"#f04f5e18", border:"1px solid #f04f5e33" }}>🔒 Bloqueado</span>}
+              {!u.bloqueado && <span style={{ padding:"4px 12px", borderRadius:"99px", fontSize:"12px", fontWeight:700, color:"#22d3a0", background:"#22d3a018", border:"1px solid #22d3a033" }}>✅ Ativo</span>}
+            </div>
+
+            {/* Módulos habilitados */}
+            <div style={{ marginBottom:"16px" }}>
+              <div style={{ fontSize:"11px", color:"#6e6e88", fontWeight:700, letterSpacing:"0.8px", textTransform:"uppercase", marginBottom:"10px" }}>
+                Módulos habilitados ({modAtivos.length}/{disponiveis.length})
+              </div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
+                {modAtivos.map(m => (
+                  <span key={m.id} style={{ padding:"4px 10px", borderRadius:"8px", fontSize:"11px", fontWeight:600, background:"#22d3a015", border:"1px solid #22d3a033", color:"#22d3a0" }}>
+                    {m.icon} {m.label}
+                  </span>
+                ))}
+                {modBloq.map(m => (
+                  <span key={m.id} style={{ padding:"4px 10px", borderRadius:"8px", fontSize:"11px", fontWeight:600, background:"#1f1f2e", border:"1px solid #2a2a3a", color:"#3e3e55", textDecoration:"line-through" }}>
+                    {m.icon} {m.label}
+                  </span>
+                ))}
+              </div>
+              {disponiveis.length === 0 && <div style={{ fontSize:"12px", color:"#3e3e55" }}>Nenhum módulo configurado para este perfil</div>}
+            </div>
+
+            {/* Datas */}
+            <div style={{ background:"#0d0d14", borderRadius:"10px", padding:"12px 14px", fontSize:"12px" }}>
+              {u.senhaAlteradaEm && <div style={{ color:"#6e6e88", marginBottom:"4px" }}>🔑 Senha redefinida em: <span style={{ color:"#c8c8d8" }}>{new Date(u.senhaAlteradaEm).toLocaleString("pt-BR")}</span></div>}
+              {u.bloqueadoEm && u.bloqueado && <div style={{ color:"#f04f5e" }}>🔒 Bloqueado em: {new Date(u.bloqueadoEm).toLocaleString("pt-BR")}</div>}
+            </div>
+
+            <div style={{ display:"flex", justifyContent:"flex-end", marginTop:"18px" }}>
+              <button onClick={()=>setPerfilModal(null)} style={{ padding:"8px 20px", borderRadius:"9px", border:"1px solid #2a2a3a", background:"transparent", color:"#6e6e88", cursor:"pointer", fontWeight:600, fontSize:"13px", fontFamily:"inherit" }}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+
     {senhaModal && (
       <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:3000, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}>
         <div style={{ background:"#18181f", borderRadius:"16px", padding:"28px", width:"100%", maxWidth:"420px", border:"1px solid #2a2a3a", boxShadow:"0 20px 60px rgba(0,0,0,0.6)" }}>
@@ -3500,6 +3568,10 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
                         </div>
                       </div>
                       <div style={{ display:"flex", gap:"5px", flexShrink:0 }}>
+                        <button onClick={()=>setPerfilModal(u)}
+                          style={{ background:"#6c63ff18", border:"1px solid #6c63ff44", color:"#a78bfa", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"11px", fontWeight:600 }}>
+                          👁 Perfil
+                        </button>
                         <button onClick={()=>isEditing ? setEditId(null) : handleEditStart(u)}
                           style={{ background:isEditing?"#2a2a3a":"#6c63ff22", border:"1px solid "+(isEditing?"#6e6e88":"#6c63ff44"), color:isEditing?"#6e6e88":"#a78bfa", borderRadius:"6px", padding:"4px 10px", cursor:"pointer", fontSize:"11px", fontWeight:600 }}>
                           {isEditing ? "✕" : "✏️ Editar"}
