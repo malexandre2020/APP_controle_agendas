@@ -3386,7 +3386,7 @@ function GerenciarUsuarios({ consultores, onAddConsultor, onClose }) {
   const inp = { padding:"8px 12px", borderRadius:"8px", border:"1px solid #2a2a3a", background:"#0d0d14", color:"#c8c8d8", fontSize:"13px", width:"100%", boxSizing:"border-box" };
 
   // Módulos disponíveis por perfil
-  const MODULOS_GESTORES = [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"traslado",icon:"🚗",label:"Traslado"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"alcadas",icon:"🔀",label:"Alçadas de Aprovação"}];
+  const MODULOS_GESTORES = [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"traslado",icon:"🚗",label:"Traslado"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"grade",icon:"🎓",label:"Grade de Conhecimento"},{ id:"alcadas",icon:"🔀",label:"Alçadas de Aprovação"}];
   const MODULOS_POR_PERFIL = {
     admin:             [{ id:"home",icon:"⬡",label:"Dashboard"},{ id:"agenda",icon:"📅",label:"Agenda"},{ id:"os",icon:"📋",label:"Ordens de Serviço"},{ id:"viagens",icon:"🏨",label:"Viagem e Hospedagem"},{ id:"traslado",icon:"🚗",label:"Traslado"},{ id:"projetos",icon:"📁",label:"Projetos"},{ id:"alcadas",icon:"🔀",label:"Alçadas"},{ id:"cadastros",icon:"🗂",label:"Cadastros"}],
     editor:            MODULOS_GESTORES,
@@ -6046,6 +6046,35 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
 // ─────────────────────────────────────────────────────────────────────────────
 // MANUAL DO CONSULTOR — embutido no app
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Estilos compartilhados fora do componente para evitar re-criação a cada render
+const _MAN_P    = { color:"#9090b0", margin:"0 0 12px", lineHeight:1.7 };
+const _MAN_H4   = { fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"14px", fontWeight:700, color:"#f0f0fa", margin:"0 0 4px" };
+const _MAN_SNUM = { width:"28px", height:"28px", borderRadius:"8px", background:"#7c6ff720", border:"1px solid #7c6ff744", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"12px", fontWeight:800, color:"#a78bfa", flexShrink:0 };
+
+function ManualStepItem({ num, title, desc }) {
+  return (
+    <div style={{ display:"flex", gap:"14px", padding:"14px 0", borderBottom:"1px solid #1a1a28" }}>
+      <div style={_MAN_SNUM}>{num}</div>
+      <div>
+        <div style={_MAN_H4}>{title}</div>
+        <div style={{ ..._MAN_P, margin:0 }} dangerouslySetInnerHTML={{ __html: desc }}/>
+      </div>
+    </div>
+  );
+}
+
+function ManualFieldItem({ field, req, desc }) {
+  return (
+    <tr>
+      <td style={{ padding:"9px 12px", color:"#f0f0fa", fontWeight:600, fontSize:"13px", borderBottom:"1px solid #1a1a28", whiteSpace:"nowrap" }}>
+        {field}{req && <span style={{ color:"#f04f5e", fontSize:"11px", marginLeft:"3px" }}>*</span>}
+      </td>
+      <td style={{ padding:"9px 12px", color:"#9090b0", fontSize:"13px", borderBottom:"1px solid #1a1a28", lineHeight:1.5 }} dangerouslySetInnerHTML={{ __html: desc }}/>
+    </tr>
+  );
+}
+
 function ManualConsultor({ theme: T }) {
   const [secaoAtiva, setSecaoAtiva] = useState("intro");
 
@@ -6060,13 +6089,13 @@ function ManualConsultor({ theme: T }) {
     { id:"dicas",    icon:"💡", label:"Dicas e boas práticas" },
   ];
 
-  const s = { color:"#e8e8f5", fontFamily:"'DM Sans',sans-serif", fontSize:"14px", lineHeight:1.75 };
-  const h2 = { fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"22px", fontWeight:900, color:"#fff", letterSpacing:"-0.3px", margin:"0 0 8px" };
-  const h3 = { fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"16px", fontWeight:800, color:"#f0f0fa", margin:"20px 0 8px" };
-  const h4 = { fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"14px", fontWeight:700, color:"#f0f0fa", margin:"0 0 4px" };
-  const p  = { color:"#9090b0", margin:"0 0 12px", lineHeight:1.7 };
+  const s    = { color:"#e8e8f5", fontFamily:"'DM Sans',sans-serif", fontSize:"14px", lineHeight:1.75 };
+  const h2   = { fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"22px", fontWeight:900, color:"#fff", letterSpacing:"-0.3px", margin:"0 0 8px" };
+  const h3   = { fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"16px", fontWeight:800, color:"#f0f0fa", margin:"20px 0 8px" };
+  const h4   = _MAN_H4;
+  const p    = _MAN_P;
   const card = { background:"#13131e", border:"1px solid #1e1e2e", borderRadius:"12px", padding:"18px 20px", marginBottom:"12px" };
-  const stepNum = { width:"28px", height:"28px", borderRadius:"8px", background:"#7c6ff720", border:"1px solid #7c6ff744", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"12px", fontWeight:800, color:"#a78bfa", flexShrink:0 };
+
   const tip = (color, bg, border, icon, text) => (
     <div style={{ background:bg, border:`1px solid ${border}`, borderRadius:"10px", padding:"12px 16px", display:"flex", gap:"10px", marginTop:"14px", marginBottom:"4px" }}>
       <span style={{ fontSize:"16px", flexShrink:0 }}>{icon}</span>
@@ -6076,23 +6105,8 @@ function ManualConsultor({ theme: T }) {
   const tag = (label, color, bg) => (
     <span style={{ display:"inline-block", padding:"2px 10px", borderRadius:"99px", fontSize:"10px", fontWeight:700, letterSpacing:"0.5px", background:bg, color, border:`1px solid ${color}44`, marginRight:"6px" }}>{label}</span>
   );
-  const Step = ({ num, title, desc }) => (
-    <div style={{ display:"flex", gap:"14px", padding:"14px 0", borderBottom:"1px solid #1a1a28" }}>
-      <div style={stepNum}>{num}</div>
-      <div>
-        <div style={h4}>{title}</div>
-        <div style={{ ...p, margin:0 }} dangerouslySetInnerHTML={{ __html: desc }}/>
-      </div>
-    </div>
-  );
-  const FieldRow = ({ field, req, desc }) => (
-    <tr>
-      <td style={{ padding:"9px 12px", color:"#f0f0fa", fontWeight:600, fontSize:"13px", borderBottom:"1px solid #1a1a28", whiteSpace:"nowrap" }}>
-        {field}{req && <span style={{ color:"#f04f5e", fontSize:"11px", marginLeft:"3px" }}>*</span>}
-      </td>
-      <td style={{ padding:"9px 12px", color:"#9090b0", fontSize:"13px", borderBottom:"1px solid #1a1a28", lineHeight:1.5 }} dangerouslySetInnerHTML={{ __html: desc }}/>
-    </tr>
-  );
+  const Step     = (props) => <ManualStepItem  {...props}/>;
+  const FieldRow = (props) => <ManualFieldItem {...props}/>;
 
   const CONTEUDO = {
     intro: (
@@ -6884,6 +6898,7 @@ function Dashboard({ currentUser, onLogout }) {
     { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Solicitações de viagem e hospedagem" },
     { id:"traslado", icon:"🚗", label:"Traslado",              desc:"RDA e gestão de traslados" },
     { id:"projetos", icon:"📁", label:"Projetos",              desc:"Gestão de projetos" },
+    { id:"grade",    icon:"🎓", label:"Grade de Conhecimento", desc:"Consultar grade dos consultores" },
     { id:"alcadas",  icon:"🔀", label:"Alçadas",               desc:"Hierarquia de aprovação" },
   ];
   const ALL_MODULES_CONSULTOR = [
@@ -7203,7 +7218,10 @@ function Dashboard({ currentUser, onLogout }) {
         {/* ── MODULE: GRADE (consultor) ── */}
         {activeModule==="grade" && (
           <div style={{ padding:"28px 32px",flex:1 }}>
-            <GradeConhecimento consultorName={currentUser.consultorName||currentUser.nome||currentUser.username||""} userId={currentUser.uid} readOnly={false}/>
+            {isConsultor
+              ? <GradeConhecimento consultorName={currentUser.consultorName||currentUser.nome||currentUser.username||""} userId={currentUser.uid} readOnly={false}/>
+              : <GradeAdminView consultores={consultores}/>
+            }
           </div>
         )}
 
