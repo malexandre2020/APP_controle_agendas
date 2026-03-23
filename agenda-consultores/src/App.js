@@ -5955,6 +5955,295 @@ function ModuloProjetos({ currentUser, canEdit, canManage, consultores, clients,
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MANUAL DO CONSULTOR — embutido no app
+// ─────────────────────────────────────────────────────────────────────────────
+function ManualConsultor({ theme: T }) {
+  const [secaoAtiva, setSecaoAtiva] = useState("intro");
+
+  const SECOES = [
+    { id:"intro",    icon:"🏠", label:"Introdução" },
+    { id:"acesso",   icon:"🔐", label:"Acesso ao sistema" },
+    { id:"agenda",   icon:"📅", label:"Agenda" },
+    { id:"os",       icon:"📋", label:"Ordens de Serviço" },
+    { id:"grade",    icon:"🎓", label:"Grade de Conhecimento" },
+    { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem" },
+    { id:"traslado", icon:"🚗", label:"Traslado / RDA" },
+    { id:"dicas",    icon:"💡", label:"Dicas e boas práticas" },
+  ];
+
+  const s = { color:"#e8e8f5", fontFamily:"'DM Sans',sans-serif", fontSize:"14px", lineHeight:1.75 };
+  const h2 = { fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"22px", fontWeight:900, color:"#fff", letterSpacing:"-0.3px", margin:"0 0 8px" };
+  const h3 = { fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"16px", fontWeight:800, color:"#f0f0fa", margin:"20px 0 8px" };
+  const h4 = { fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"14px", fontWeight:700, color:"#f0f0fa", margin:"0 0 4px" };
+  const p  = { color:"#9090b0", margin:"0 0 12px", lineHeight:1.7 };
+  const card = { background:"#13131e", border:"1px solid #1e1e2e", borderRadius:"12px", padding:"18px 20px", marginBottom:"12px" };
+  const stepNum = { width:"28px", height:"28px", borderRadius:"8px", background:"#7c6ff720", border:"1px solid #7c6ff744", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"12px", fontWeight:800, color:"#a78bfa", flexShrink:0 };
+  const tip = (color, bg, border, icon, text) => (
+    <div style={{ background:bg, border:`1px solid ${border}`, borderRadius:"10px", padding:"12px 16px", display:"flex", gap:"10px", marginTop:"14px", marginBottom:"4px" }}>
+      <span style={{ fontSize:"16px", flexShrink:0 }}>{icon}</span>
+      <div style={{ fontSize:"13px", color, lineHeight:1.6 }} dangerouslySetInnerHTML={{ __html: text }}/>
+    </div>
+  );
+  const tag = (label, color, bg) => (
+    <span style={{ display:"inline-block", padding:"2px 10px", borderRadius:"99px", fontSize:"10px", fontWeight:700, letterSpacing:"0.5px", background:bg, color, border:`1px solid ${color}44`, marginRight:"6px" }}>{label}</span>
+  );
+  const Step = ({ num, title, desc }) => (
+    <div style={{ display:"flex", gap:"14px", padding:"14px 0", borderBottom:"1px solid #1a1a28" }}>
+      <div style={stepNum}>{num}</div>
+      <div>
+        <div style={h4}>{title}</div>
+        <div style={{ ...p, margin:0 }} dangerouslySetInnerHTML={{ __html: desc }}/>
+      </div>
+    </div>
+  );
+  const FieldRow = ({ field, req, desc }) => (
+    <tr>
+      <td style={{ padding:"9px 12px", color:"#f0f0fa", fontWeight:600, fontSize:"13px", borderBottom:"1px solid #1a1a28", whiteSpace:"nowrap" }}>
+        {field}{req && <span style={{ color:"#f04f5e", fontSize:"11px", marginLeft:"3px" }}>*</span>}
+      </td>
+      <td style={{ padding:"9px 12px", color:"#9090b0", fontSize:"13px", borderBottom:"1px solid #1a1a28", lineHeight:1.5 }} dangerouslySetInnerHTML={{ __html: desc }}/>
+    </tr>
+  );
+
+  const CONTEUDO = {
+    intro: (
+      <div style={s}>
+        <div style={{ marginBottom:"28px" }}>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:"8px", background:"#7c6ff715", border:"1px solid #7c6ff733", borderRadius:"99px", padding:"4px 14px", fontSize:"11px", color:"#a78bfa", fontWeight:700, letterSpacing:"0.5px", textTransform:"uppercase", marginBottom:"16px" }}>📖 Manual de Operação</div>
+          <div style={h2}>Guia do <span style={{ color:"#7c6ff7" }}>Consultor</span></div>
+          <div style={{ ...p, fontSize:"15px", fontWeight:300 }}>Tudo que você precisa saber para utilizar o GSC — Gestão de Serviços Consultores — de forma eficiente no seu dia a dia.</div>
+          <div style={{ width:"40px", height:"3px", background:"linear-gradient(90deg,#7c6ff7,#22d3a0)", borderRadius:"2px", margin:"20px 0 24px" }}/>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px" }}>
+          {[["📅","Agenda","Visualize sua agenda de atendimentos"],["📋","Ordens de Serviço","Preencha e acompanhe suas OS"],["🏨","Viagem e Hospedagem","Solicite viagens e acompanhe aprovações"],["🚗","Traslado / RDA","Registre despesas de deslocamento"],["🎓","Grade de Conhecimento","Declare seus conhecimentos em produtos TOTVS"],["💡","Dicas","Boas práticas para o dia a dia"]].map(([icon,title,desc])=>(
+            <div key={title} style={card}>
+              <div style={{ fontSize:"22px", marginBottom:"8px" }}>{icon}</div>
+              <div style={h4}>{title}</div>
+              <div style={{ ...p, margin:0, fontSize:"12px" }}>{desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+
+    acesso: (
+      <div style={s}>
+        <div style={h2}>Acesso ao Sistema</div>
+        <div style={{ ...p, marginBottom:"20px" }}>O GSC é acessado pelo navegador com e-mail e senha cadastrados pelo administrador.</div>
+        <Step num={1} title="Abra o navegador" desc="Acesse o endereço do GSC fornecido pelo administrador."/>
+        <Step num={2} title="Informe seu e-mail e senha" desc="Use as credenciais criadas pelo administrador. Se não lembrar a senha, clique em <strong style='color:#f0f0fa'>Esqueci minha senha</strong> para receber o link de redefinição."/>
+        <Step num={3} title="Navegue pelo menu lateral" desc="Após o login, use o menu à esquerda para acessar os módulos: Agenda, Ordens de Serviço, Grade de Conhecimento, Viagem e Hospedagem e Traslado."/>
+        {tip("#a78bfa","#7c6ff710","#7c6ff7","ℹ️","<strong>Seu perfil:</strong> Como consultor, você acessa apenas os módulos relacionados ao seu trabalho. Ações administrativas são exclusivas de gestores.")}
+      </div>
+    ),
+
+    agenda: (
+      <div style={s}>
+        <div style={h2}>Agenda</div>
+        <div style={{ ...p, marginBottom:"20px" }}>Visualize seus atendimentos e expedientes. A agenda é gerenciada pelo time administrativo, mas você pode consultar seus lançamentos e preencher Ordens de Serviço.</div>
+        <div style={h3}>Visualizações disponíveis</div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"20px" }}>
+          {[["📊","Grade mensal","Visão geral do mês inteiro com indicadores por tipo de atividade"],["📆","Calendário","Formato calendário clássico com eventos coloridos por cliente"],["📅","Semanal","Semana atual com horários e detalhes de cada atendimento"],["📈","Estatísticas","Resumo de horas, clientes atendidos e distribuição de atividades"]].map(([icon,title,desc])=>(
+            <div key={title} style={card}>
+              <div style={{ fontSize:"20px", marginBottom:"6px" }}>{icon}</div>
+              <div style={h4}>{title}</div>
+              <div style={{ ...p, margin:0, fontSize:"12px" }}>{desc}</div>
+            </div>
+          ))}
+        </div>
+        <div style={h3}>Como ver detalhes de um atendimento</div>
+        <Step num={1} title="Clique em qualquer entrada" desc="Na visão Grade, Calendário ou Semanal, clique em uma entrada para abrir o painel de detalhes."/>
+        <Step num={2} title="Veja os detalhes do atendimento" desc="O painel exibe cliente, modalidade (presencial/remoto), horários, atividades e status da OS."/>
+        <Step num={3} title="Preencha a OS se necessário" desc="Se o atendimento não tiver OS, clique em <strong style='color:#f0f0fa'>📋 Preencher OS</strong> para criar a ordem de serviço."/>
+        {tip("#22d3a0","#22d3a010","#22d3a0","✅","<strong>Dica:</strong> Use a visualização <strong style='color:#f0f0fa'>Semanal</strong> para uma visão rápida da semana com horários e clientes. O mês atual é carregado automaticamente ao abrir o módulo.")}
+      </div>
+    ),
+
+    os: (
+      <div style={s}>
+        <div style={h2}>Ordens de Serviço</div>
+        <div style={{ ...p, marginBottom:"20px" }}>A OS é o documento formal que registra as atividades realizadas em um atendimento. É gerada a partir de um lançamento da agenda e pode ser enviada por e-mail ao cliente.</div>
+        <div style={h3}>Como preencher uma OS</div>
+        <Step num={1} title="Acesse a entrada na Agenda" desc="Clique em um atendimento para abrir o painel de detalhes."/>
+        <Step num={2} title='Clique em "📋 Preencher OS"' desc="O botão aparece no rodapé do painel. O modal da OS será aberto com o número gerado automaticamente."/>
+        <Step num={3} title="Preencha os campos" desc="Informe o sistema atendido, descrição, horários de início/fim, intervalo e as atividades realizadas detalhadamente."/>
+        <Step num={4} title="Salve ou envie por e-mail" desc="Clique em <strong style='color:#f0f0fa'>💾 Salvar OS</strong>. Para enviar ao cliente, expanda <strong style='color:#f0f0fa'>📧 Enviar por e-mail</strong> e confirme o destinatário."/>
+        <div style={h3}>Campos da OS</div>
+        <div style={{ ...card, padding:0, overflow:"hidden" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse" }}>
+            <thead><tr style={{ borderBottom:"1px solid #1e1e2e" }}>
+              <th style={{ padding:"10px 12px", fontSize:"10px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", color:"#454560", textAlign:"left" }}>Campo</th>
+              <th style={{ padding:"10px 12px", fontSize:"10px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", color:"#454560", textAlign:"left" }}>Descrição</th>
+            </tr></thead>
+            <tbody>
+              <FieldRow field="Nº OS" desc={`${tag("Auto","#22d3a0","#22d3a018")} Gerado automaticamente (ex: OS-0001). Não editável.`}/>
+              <FieldRow field="Sistema" req desc="Sistema TOTVS atendido: Protheus, RM, Datasul ou Fluig."/>
+              <FieldRow field="Descrição" desc="Breve descrição do tipo de atendimento."/>
+              <FieldRow field="Status" req desc="Em andamento · Concluída · Pendente · Cancelada."/>
+              <FieldRow field="Hora início/fim" req desc="Horário de início e término do atendimento."/>
+              <FieldRow field="Intervalo" desc="Pausa em minutos (descontada do tempo total)."/>
+              <FieldRow field="Atividades" req desc="Descrição detalhada de tudo realizado durante o atendimento."/>
+              <FieldRow field="Destinatário" desc="E-mail do responsável no cliente. Preenchido automaticamente. Para múltiplos, separe por vírgula."/>
+            </tbody>
+          </table>
+        </div>
+        {tip("#f5a623","#f5a62310","#f5a623","⚠️","<strong>Atenção:</strong> Após enviar a OS, o gestor poderá <strong style='color:#f0f0fa'>Aprovar</strong>, <strong style='color:#f0f0fa'>Rejeitar</strong> ou <strong style='color:#f0f0fa'>Contestar</strong>. Você será notificado sobre o resultado.")}
+      </div>
+    ),
+
+    grade: (
+      <div style={s}>
+        <div style={h2}>Grade de Conhecimento</div>
+        <div style={{ ...p, marginBottom:"20px" }}>Declare seu nível de conhecimento em cada módulo dos produtos TOTVS. Essa informação é usada pela gestão para alocação de atendimentos.</div>
+        <div style={h3}>Produtos disponíveis</div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"20px" }}>
+          {[["🔷","Protheus","43 módulos em 9 grupos (Financeiro, Fiscal, RH...)"],["🔶","RM","26 módulos em 7 grupos (Financeiro, Gestão de Pessoas...)"],["🟢","Datasul","57 módulos em 12 grupos abrangendo toda a suíte"],["🌊","Fluig","25 funcionalidades em 6 grupos (BPM, Portal, ECM...)"]].map(([icon,title,desc])=>(
+            <div key={title} style={card}>
+              <div style={{ fontSize:"20px", marginBottom:"6px" }}>{icon}</div>
+              <div style={h4}>{title}</div>
+              <div style={{ ...p, margin:0, fontSize:"12px" }}>{desc}</div>
+            </div>
+          ))}
+        </div>
+        <div style={h3}>Níveis de conhecimento</div>
+        <div style={{ ...card, padding:0, overflow:"hidden" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse" }}>
+            <tbody>
+              {[["Especialista",["#f04f5e","#f04f5e18"],"Domínio avançado. Configura, implanta e resolve situações complexas de forma autônoma."],
+                ["Sênior",["#f5a623","#f5a62318"],"Amplo conhecimento prático. Atua com independência em implantações e suporte avançado."],
+                ["Pleno",["#a78bfa","#7c6ff718"],"Conhecimento funcional sólido. Realiza atendimentos com pouca supervisão."],
+                ["Júnior",["#22d3a0","#22d3a018"],"Conhecimento básico ou em desenvolvimento. Realiza tarefas simples com apoio."]].map(([nivel,[color,bg],desc])=>(
+                <tr key={nivel}>
+                  <td style={{ padding:"10px 12px", borderBottom:"1px solid #1a1a28", whiteSpace:"nowrap" }}>{tag(nivel,color,bg)}</td>
+                  <td style={{ padding:"10px 12px", color:"#9090b0", fontSize:"13px", borderBottom:"1px solid #1a1a28", lineHeight:1.5 }}>{desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={h3}>Como preencher</div>
+        <Step num={1} title="Selecione o produto" desc="Escolha entre Protheus, RM, Datasul ou Fluig na parte superior da tela."/>
+        <Step num={2} title="Percorra os módulos" desc="A tabela exibe todos os módulos agrupados por área. Clique no nível desejado para cada módulo que você domina."/>
+        <Step num={3} title="Salve sua grade" desc="Clique em <strong style='color:#f0f0fa'>💾 Salvar Grade</strong>. As informações ficam visíveis para a gestão."/>
+        {tip("#22d3a0","#22d3a010","#22d3a0","✅","<strong>Seja honesto:</strong> A grade é usada para alocação correta em projetos. Declarar nível acima do real pode comprometer a qualidade do atendimento.")}
+      </div>
+    ),
+
+    viagens: (
+      <div style={s}>
+        <div style={h2}>Viagem e Hospedagem</div>
+        <div style={{ ...p, marginBottom:"20px" }}>Solicite viagens com hospedagem e/ou passagem aérea. As solicitações passam por fluxo de aprovação hierárquica antes de serem confirmadas.</div>
+        <div style={h3}>Fluxo de aprovação</div>
+        <div style={{ display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap", margin:"14px 0 20px" }}>
+          {[["⏳ Pendente","#a78bfa","#7c6ff718"],["→","#454560"],["🔀 Em aprovação","#a78bfa","#6c63ff18"],["→","#454560"],["✅ Aprovada","#22d3a0","#22d3a018"],["→","#454560"],["❌ Rejeitada","#f04f5e","#f04f5e18"]].map((item,i)=>
+            Array.isArray(item)
+              ? <div key={i} style={{ padding:"5px 14px", borderRadius:"99px", background:item[2], border:`1px solid ${item[1]}44`, fontSize:"11px", fontWeight:700, color:item[1] }}>{item[0]}</div>
+              : <span key={i} style={{ color:item[1], fontSize:"14px" }}>{item}</span>
+          )}
+        </div>
+        <div style={h3}>Como criar uma solicitação</div>
+        <Step num={1} title="Clique em '+ Nova Solicitação'" desc="O formulário abre com seu nome já preenchido como solicitante."/>
+        <Step num={2} title="Preencha os dados" desc="Informe seu setor, o cliente a visitar (endereço automático), motivo da viagem e destino da cobrança."/>
+        <Step num={3} title="Informe hospedagem (se necessário)" desc="Preencha cidade, check-in e check-out. O número de noites é calculado automaticamente."/>
+        <Step num={4} title="Inclua voo (se necessário)" desc="Ative <strong style='color:#f0f0fa'>Sim</strong> para voo e preencha aeroportos, datas e preferências de horário de ida e volta."/>
+        <Step num={5} title="Envie a solicitação" desc="Clique em <strong style='color:#f0f0fa'>✅ Enviar solicitação</strong>. Ela entrará automaticamente no fluxo de aprovação."/>
+        <div style={h3}>Documentos após aprovação</div>
+        <div style={{ ...p }}>Quando aprovada e os documentos forem anexados, você verá ao expandir o card:</div>
+        <div style={{ display:"flex", gap:"10px", flexWrap:"wrap", margin:"10px 0 16px" }}>
+          <div style={{ padding:"7px 14px", borderRadius:"9px", background:"#22d3a018", border:"1px solid #22d3a044", fontSize:"12px", fontWeight:700, color:"#22d3a0" }}>🏨 Reserva Hotel.pdf</div>
+          <div style={{ padding:"7px 14px", borderRadius:"9px", background:"#a78bfa18", border:"1px solid #a78bfa44", fontSize:"12px", fontWeight:700, color:"#a78bfa" }}>✈️ Passagem.pdf</div>
+        </div>
+        {tip("#f5a623","#f5a62310","#f5a623","⚠️","<strong>Importante:</strong> Solicitações aprovadas não podem ser editadas. Para alterações, entre em contato com o responsável pela aprovação.")}
+      </div>
+    ),
+
+    traslado: (
+      <div style={s}>
+        <div style={h2}>Traslado — RDA</div>
+        <div style={{ ...p, marginBottom:"20px" }}>O RDA (Relatório de Despesas de Atendimento) é o documento formal para declarar despesas de deslocamento — kilometragem, pedágio, estacionamento, alimentação e outros.</div>
+        <div style={h3}>Estrutura do RDA</div>
+        <div style={{ ...card, padding:0, overflow:"hidden", marginBottom:"20px" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse" }}>
+            <thead><tr style={{ borderBottom:"1px solid #1e1e2e" }}>
+              <th style={{ padding:"10px 12px", fontSize:"10px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", color:"#454560", textAlign:"left" }}>Seção</th>
+              <th style={{ padding:"10px 12px", fontSize:"10px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", color:"#454560", textAlign:"left" }}>O que preencher</th>
+            </tr></thead>
+            <tbody>
+              <FieldRow field="🚗 RDA" desc="Código (automático), data emissão (automática), período início/fim, código técnico (automático), nome, motivo e unidade de origem."/>
+              <FieldRow field="🏢 Cliente" desc="Selecione o cliente — código automático. Escolha a unidade de destino — endereço e KM carregados automaticamente."/>
+              <FieldRow field="💲 Itens" desc="Adicione cada despesa com data, tipo (use 🔍 para selecionar), quantidade, valor unitário e valor teto."/>
+              <FieldRow field="📎 Comprovantes" desc="Faça upload dos comprovantes em imagem ou PDF (máx. 5MB cada)."/>
+            </tbody>
+          </table>
+        </div>
+        <div style={h3}>Como criar um RDA</div>
+        <Step num={1} title="Clique em '+ Nova RDA'" desc="O formulário abre com seu código técnico e nome já preenchidos automaticamente."/>
+        <Step num={2} title="Preencha período e motivo" desc="Informe datas de início e fim, motivo e unidade de origem."/>
+        <Step num={3} title="Selecione cliente e unidade" desc="Ao selecionar o cliente e a unidade de destino, endereço e KM são carregados automaticamente. O total ida e volta é calculado."/>
+        <Step num={4} title="Adicione as despesas" desc="Clique em <strong style='color:#f0f0fa'>+ Nova Despesa</strong>, selecione o tipo pelo 🔍, preencha data, quantidade e valor."/>
+        <Step num={5} title="Anexe comprovantes" desc="Na seção <strong style='color:#f0f0fa'>📎 Comprovantes</strong>, faça upload das fotos ou PDFs dos recibos."/>
+        <Step num={6} title="Salve ou envie" desc="Use <strong style='color:#f0f0fa'>💾 Salvar rascunho</strong> para continuar depois, ou <strong style='color:#f0f0fa'>✅ Enviar RDA</strong> para submeter."/>
+        {tip("#22d3a0","#22d3a010","#22d3a0","✅","<strong>Dica de KM:</strong> O campo KM IDA e VOLTA recebe o valor de ida. O sistema dobra automaticamente e calcula o valor de reembolso com base no valor/km cadastrado na unidade.")}
+      </div>
+    ),
+
+    dicas: (
+      <div style={s}>
+        <div style={h2}>Dicas e Boas Práticas</div>
+        <div style={{ ...p, marginBottom:"24px" }}>Pequenos hábitos que fazem grande diferença no uso eficiente do GSC.</div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"24px" }}>
+          {[["⏰","Preencha a OS no mesmo dia","Registrar as atividades logo após o atendimento garante mais precisão e evita esquecimentos."],
+            ["📷","Fotografe os comprovantes","Guarde as fotos dos recibos antes de descartar. Comprovantes sem foto podem atrasar o reembolso."],
+            ["🎓","Mantenha a grade atualizada","Atualize sua Grade sempre que concluir um treinamento ou adquirir experiência em novo módulo."],
+            ["📝","Detalhe as atividades da OS","Uma OS bem preenchida facilita a aprovação e evita contestações."],
+            ["🗓️","Solicite viagens com antecedência","Envie com pelo menos 5 dias úteis para garantir aprovação e reservas a tempo."],
+            ["💾","Salve rascunhos do RDA","Use rascunho para salvar o progresso e completar o RDA depois."]
+          ].map(([icon,title,desc])=>(
+            <div key={title} style={card}>
+              <div style={{ fontSize:"22px", marginBottom:"8px" }}>{icon}</div>
+              <div style={h4}>{title}</div>
+              <div style={{ ...p, margin:0, fontSize:"12px" }}>{desc}</div>
+            </div>
+          ))}
+        </div>
+        {tip("#a78bfa","#7c6ff710","#7c6ff7","💬","<strong>Precisa de ajuda?</strong> Em caso de dúvidas sobre o sistema, entre em contato com o administrador do GSC ou com o responsável pela sua equipe.")}
+        <div style={{ marginTop:"40px", background:"#13131e", border:"1px solid #1e1e2e", borderRadius:"16px", padding:"28px", textAlign:"center" }}>
+          <div style={{ fontSize:"28px", marginBottom:"10px" }}>⬡</div>
+          <div style={{ fontFamily:"'Cabinet Grotesk',sans-serif", fontSize:"16px", fontWeight:800, color:"#fff", marginBottom:"4px" }}>GSC — Gestão de Serviços Consultores</div>
+          <div style={{ fontSize:"12px", color:"#454560" }}>Desenvolvido por Marcelo Alexandre · Todos os direitos reservados · © 2026</div>
+        </div>
+      </div>
+    ),
+  };
+
+  return (
+    <div style={{ display:"flex", height:"100%", overflow:"hidden" }}>
+      {/* Sidebar do manual */}
+      <div style={{ width:"200px", flexShrink:0, background:"#0d0d16", borderRight:"1px solid #1e1e2e", display:"flex", flexDirection:"column", overflowY:"auto", padding:"16px 8px" }}>
+        <div style={{ fontSize:"9px", color:"#454560", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase", padding:"0 8px 10px" }}>Conteúdo</div>
+        {SECOES.map(sec=>(
+          <button key={sec.id} onClick={()=>setSecaoAtiva(sec.id)}
+            style={{ display:"flex", alignItems:"center", gap:"8px", padding:"8px 10px", borderRadius:"9px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:"12px", fontWeight:secaoAtiva===sec.id?700:500, textAlign:"left", marginBottom:"2px", background:secaoAtiva===sec.id?"#7c6ff720":"transparent", color:secaoAtiva===sec.id?"#a78bfa":"#6e6e88", transition:"all .15s" }}>
+            <span style={{ fontSize:"14px", flexShrink:0, width:"18px", textAlign:"center" }}>{sec.icon}</span>
+            {sec.label}
+          </button>
+        ))}
+        <div style={{ marginTop:"auto", padding:"12px 8px 4px", borderTop:"1px solid #1e1e2e" }}>
+          <div style={{ fontSize:"10px", color:"#454560", lineHeight:1.6 }}>
+            © 2026 · Marcelo Alexandre<br/>Todos os direitos reservados
+          </div>
+        </div>
+      </div>
+
+      {/* Conteúdo do manual */}
+      <div style={{ flex:1, overflowY:"auto", padding:"32px 40px" }}>
+        {CONTEUDO[secaoAtiva] || null}
+      </div>
+    </div>
+  );
+}
+
 export default function ConsultorDashboard() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -6514,6 +6803,7 @@ function Dashboard({ currentUser, onLogout }) {
     { id:"grade",    icon:"🎓", label:"Grade de Conhecimento", desc:"Meus conhecimentos" },
     { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Minhas solicitações" },
     { id:"traslado", icon:"🚗", label:"Traslado",              desc:"RDA de traslado" },
+    { id:"manual",   icon:"📖", label:"Manual",                desc:"Guia de uso do sistema" },
   ];
   const ALL_MODULES_BASICO = [
     { id:"home",     icon:"⬡",  label:"Dashboard",            desc:"Visão geral" },
@@ -6943,6 +7233,13 @@ function Dashboard({ currentUser, onLogout }) {
                 <span style={{ fontSize:"11px",color:"#6e6e88",fontWeight:600 }}>Versão 1.0.0</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── MODULE: MANUAL DO CONSULTOR ── */}
+        {activeModule==="manual" && (
+          <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            <ManualConsultor theme={T}/>
           </div>
         )}
       </div>
