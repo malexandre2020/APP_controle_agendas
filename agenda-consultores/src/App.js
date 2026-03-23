@@ -3787,7 +3787,9 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
 
   const isConsultor = currentUser.role === "consultor";
   const nomeLogado  = currentUser.consultorName || currentUser.nome || currentUser.username || "";
-  const codTecnico  = currentUser.codigo || currentUser.consultorName?.split(" ").map(n=>n[0]).join("").toUpperCase() || "";
+  // Buscar código do consultor nos metadados cadastrados
+  const metaConsultor = (window.__consultoresMeta||[]).find(c=>c.name===nomeLogado);
+  const codTecnico  = metaConsultor?.codigo || currentUser.codigo || "";
 
   useEffect(() => {
     const load = async () => {
@@ -3874,9 +3876,9 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
   const FormRDA = ({ inicial, onSalvar, onCancelar }) => {
     const hoje = new Date().toISOString().slice(0,10);
     const [form, setForm] = useState(inicial || {
-      codRda:"", nFluig:"", dataEmissao:hoje, dataInicio:"", dataFinal:"",
+      codRda:"", dataEmissao:hoje, dataInicio:"", dataFinal:"",
       codTecnico: codTecnico, nomeSolicitante: nomeLogado,
-      motivo: MOTIVOS_RDA[0], despesas:"", unidadeOrigem:"TOTVS CONSULTORIA",
+      motivo: MOTIVOS_RDA[0], despesas:"", unidadeOrigem:"TOTVS SERRA DO MAR",
       codCliente:"", loja:"", nomeCliente:"", projeto:"", nomeProjeto:"",
       centroCusto:"", observacoes:"", itens:[], status:"rascunho",
     });
@@ -3938,18 +3940,14 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
         {/* Seção RDA */}
         {secHeader("RDA — Relatório de Despesas de Atendimento","#6c63ff","🚗")}
         <div style={secBody}>
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:"10px" }}>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"10px" }}>
             <div>
               <label style={lbl}>Código RDA</label>
-              <input value={form.codRda} onChange={e=>set("codRda",e.target.value)} placeholder="Auto" style={{...inp,background:"#0a0a12",color:"#6e6e88"}} readOnly/>
-            </div>
-            <div>
-              <label style={lbl}>Nº Fluig</label>
-              <input value={form.nFluig} onChange={e=>set("nFluig",e.target.value)} placeholder="" style={inp}/>
+              <input value={form.codRda||"Gerado automaticamente"} readOnly style={{...inp,background:"#0a0a12",color:"#6e6e88"}}/>
             </div>
             <div>
               <label style={lbl}>Data Emissão</label>
-              <input type="date" value={form.dataEmissao} onChange={e=>set("dataEmissao",e.target.value)} style={{...inp,background:"#0a0a12",color:"#6e6e88"}} readOnly/>
+              <input type="date" value={form.dataEmissao} readOnly style={{...inp,background:"#0a0a12",color:"#6e6e88"}}/>
             </div>
             <div>
               <label style={lbl}>Data Início *</label>
@@ -3962,8 +3960,8 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
           </div>
           <div style={{ display:"grid",gridTemplateColumns:"160px 1fr 1fr 160px",gap:"10px",marginTop:"10px" }}>
             <div>
-              <label style={lbl}>Cód. Técnico *</label>
-              <input value={form.codTecnico} onChange={e=>set("codTecnico",e.target.value)} style={inp}/>
+              <label style={lbl}>Cód. Técnico</label>
+              <input value={form.codTecnico} readOnly style={{...inp,background:"#0a0a12",color:"#a78bfa",fontWeight:700}}/>
             </div>
             <div>
               <label style={lbl}>Nome Solicitante *</label>
@@ -3983,10 +3981,9 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
           <div style={{ marginTop:"10px" }}>
             <label style={lbl}>Unidade de Origem *</label>
             <select value={form.unidadeOrigem} onChange={e=>set("unidadeOrigem",e.target.value)} style={{...inp,maxWidth:"320px"}}>
-              <option value="TOTVS CONSULTORIA">TOTVS CONSULTORIA</option>
               <option value="TOTVS SERRA DO MAR">TOTVS SERRA DO MAR</option>
-              <option value="RESIDÊNCIA">RESIDÊNCIA</option>
-              <option value="OUTRO">OUTRO</option>
+              <option value="TOTVS SÃO JOSÉ">TOTVS SÃO JOSÉ</option>
+              <option value="TOTVS SUL DE MINAS">TOTVS SUL DE MINAS</option>
             </select>
           </div>
         </div>
@@ -4026,8 +4023,9 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
               <input value={form.enderecoDestino||unidades.find(u=>u.nomeUnidade===form.unidadeDestino&&u.cliente===form.nomeCliente)?.endereco||""} onChange={e=>set("enderecoDestino",e.target.value)} placeholder="Preenchido automaticamente" style={inp}/>
             </div>
             <div>
-              <label style={lbl}>KM até cliente</label>
+              <label style={lbl}>KM IDA e VOLTA</label>
               <input value={form.kmDestino||unidades.find(u=>u.nomeUnidade===form.unidadeDestino&&u.cliente===form.nomeCliente)?.kmConsultoria||""} onChange={e=>set("kmDestino",e.target.value)} placeholder="0" style={inp}/>
+              {form.kmDestino && <div style={{ fontSize:"10px",color:"#22d3a0",marginTop:"3px" }}>↔ Total: {(Number(form.kmDestino)*2).toFixed(0)} km</div>}
             </div>
           </div>
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 160px",gap:"10px",marginBottom:"10px" }}>
@@ -4128,6 +4126,51 @@ function ModuloTraslado({ currentUser, canManage, canApprove, consultores, clien
             <button onClick={addItem} style={{ padding:"9px 20px",borderRadius:"9px",border:"1px solid #2a2a3a",background:"#18181f",color:"#c8c8d8",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>+ NOVA DESPESA</button>
             {form.itens.length>0 && <div style={{ fontSize:"14px",fontWeight:800,color:"#22d3a0" }}>Total Geral: R$ {totalGeral.toFixed(2)}</div>}
           </div>
+        </div>
+
+        {/* Seção Comprovantes */}
+        {secHeader("COMPROVANTES","#a78bfa","📎")}
+        <div style={secBody}>
+          <div style={{ fontSize:"11px",color:"#6e6e88",marginBottom:"12px" }}>
+            Anexe os comprovantes das despesas declaradas (imagens ou PDFs, máx. 5MB cada)
+          </div>
+          <div style={{ display:"flex",flexDirection:"column",gap:"8px" }}>
+            {(form.comprovantes||[]).map((comp,idx)=>(
+              <div key={idx} style={{ display:"flex",alignItems:"center",gap:"10px",background:"#0d0d14",borderRadius:"8px",border:"1px solid #2a2a3a",padding:"9px 12px" }}>
+                <span style={{ fontSize:"16px" }}>{comp.tipo==="pdf"?"📄":"🖼"}</span>
+                <span style={{ fontSize:"12px",color:"#c8c8d8",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{comp.nome}</span>
+                {comp.url && (
+                  <a href={comp.url} target="_blank" rel="noreferrer"
+                    style={{ padding:"4px 10px",borderRadius:"7px",border:"1px solid #22d3a044",background:"#22d3a018",color:"#22d3a0",fontSize:"11px",fontWeight:700,textDecoration:"none" }}>
+                    👁 Ver
+                  </a>
+                )}
+                <button onClick={()=>setForm(p=>({...p,comprovantes:p.comprovantes.filter((_,i)=>i!==idx)}))}
+                  style={{ padding:"4px 9px",borderRadius:"7px",border:"1px solid #f04f5e44",background:"#f04f5e18",color:"#f04f5e",cursor:"pointer",fontSize:"11px",fontWeight:700,fontFamily:"inherit" }}>✕</button>
+              </div>
+            ))}
+          </div>
+          <label style={{ display:"inline-flex",alignItems:"center",gap:"8px",marginTop:"10px",padding:"9px 18px",borderRadius:"10px",border:"1px solid #6c63ff44",background:"#6c63ff18",color:"#a78bfa",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
+            📎 Adicionar comprovante
+            <input type="file" accept="image/*,application/pdf" multiple style={{ display:"none" }}
+              onChange={async (e) => {
+                const files = Array.from(e.target.files||[]);
+                const novos = [];
+                for (const file of files) {
+                  if (file.size > 5*1024*1024) { alert(`${file.name}: arquivo muito grande (máx 5MB)`); continue; }
+                  try {
+                    const path = `rdas/${Date.now()}_${file.name.replace(/\s+/g,"_")}`;
+                    const sRef = ref(storage, path);
+                    await uploadBytes(sRef, file, { contentType: file.type });
+                    const url = await getDownloadURL(sRef);
+                    novos.push({ nome: file.name, url, path, tipo: file.type.startsWith("image")?"imagem":"pdf" });
+                  } catch(err) { console.error(err); alert(`Erro ao enviar ${file.name}`); }
+                }
+                if (novos.length) setForm(p=>({...p, comprovantes:[...(p.comprovantes||[]),...novos]}));
+                e.target.value = "";
+              }}/>
+          </label>
+          <div style={{ fontSize:"10px",color:"#3e3e55",marginTop:"6px" }}>Formatos: imagens (JPG, PNG) e PDF · Máximo 5MB por arquivo</div>
         </div>
       </div>
     );
