@@ -1173,7 +1173,7 @@ function OrdemServicoModal({ entry, consultorName, emailConfig, clientList, onSa
 // ─────────────────────────────────────────────────────────────────────────────
 // GRADE ADMIN VIEW — busca por produto/módulo + visualização por consultor
 // ─────────────────────────────────────────────────────────────────────────────
-function GradeAdminView({ consultores, scheduleData }) {
+function GradeAdminView({ consultores, scheduleData, onAbrirAgenda }) {
   const [modo, setModo] = React.useState("consultor"); // "consultor" | "busca"
   const [gradeConsultor, setGradeConsultor] = React.useState(consultores[0]||"");
 
@@ -1509,12 +1509,20 @@ function GradeAdminView({ consultores, scheduleData }) {
                     const d = porChave[chave];
                     const isAtual = mIdx === mesAtualIdx && ano === anoAtual;
                     const isOutroAno = ano !== anoAtual;
+                    const podeAbrir = !!onAbrirAgenda;
                     return (
-                      <div key={chave} style={{ background: isAtual?"#6c63ff18":"#111118", borderRadius:"10px", border:"1px solid "+(isAtual?"#6c63ff44":"#1f1f2e"), padding:"10px 12px" }}>
+                      <div key={chave}
+                        onClick={() => podeAbrir && onAbrirAgenda(consultorDisp, mesNome)}
+                        title={podeAbrir ? `Abrir agenda de ${consultorDisp} em ${label}` : undefined}
+                        style={{ background: isAtual?"#6c63ff18":"#111118", borderRadius:"10px", border:"1px solid "+(isAtual?"#6c63ff44":"#1f1f2e"), padding:"10px 12px", cursor: podeAbrir?"pointer":"default", transition:"all .15s" }}
+                        onMouseEnter={e=>{ if(podeAbrir) e.currentTarget.style.borderColor="#6c63ff88"; }}
+                        onMouseLeave={e=>{ if(podeAbrir) e.currentTarget.style.borderColor=isAtual?"#6c63ff44":"#1f1f2e"; }}
+                      >
                         <div style={{ fontSize:"12px", fontWeight:700, color: isAtual?"#a78bfa": isOutroAno?"#60a5fa":"#c8c8d8", marginBottom:"6px", display:"flex", alignItems:"center", gap:"5px" }}>
                           {label}
                           {isAtual && <span style={{ fontSize:"9px", background:"#6c63ff44", borderRadius:"4px", padding:"1px 4px" }}>atual</span>}
                           {isOutroAno && !isAtual && <span style={{ fontSize:"9px", background:"#60a5fa22", borderRadius:"4px", padding:"1px 4px", color:"#60a5fa" }}>{ano}</span>}
+                          {podeAbrir && <span style={{ marginLeft:"auto", fontSize:"9px", color:"#3e3e55" }}>📋 abrir</span>}
                         </div>
                         {d ? (
                           <div style={{ display:"flex", flexDirection:"column", gap:"3px" }}>
@@ -7899,7 +7907,13 @@ function Dashboard({ currentUser, onLogout }) {
           <div style={{ padding:"28px 32px",flex:1 }}>
             {isConsultor
               ? <GradeConhecimento consultorName={currentUser.consultorName||currentUser.nome||currentUser.username||""} userId={currentUser.uid} readOnly={false}/>
-              : <GradeAdminView consultores={consultores} scheduleData={scheduleData}/>
+              : <GradeAdminView consultores={consultores} scheduleData={scheduleData}
+                  onAbrirAgenda={(consultorNome, mes) => {
+                    setSelectedConsultor(consultorNome);
+                    setSelectedMonth(mes);
+                    setActiveModule("agenda");
+                  }}
+                />
             }
           </div>
         )}
