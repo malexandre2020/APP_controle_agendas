@@ -384,6 +384,7 @@ function EmailConfigTab({ emailConfig, onSave }) {
   const [serviceId,  setServiceId]  = useState(emailConfig.serviceId  || "");
   const [templateId, setTemplateId] = useState(emailConfig.templateId || "");
   const [enabled,    setEnabled]    = useState(emailConfig.enabled    || false);
+  const [fromName,   setFromName]   = useState(emailConfig.fromName   || "GSC - Gestão Serviço Consultor");
   const [testStatus, setTestStatus] = useState(null); // null | "sending" | "ok" | "err"
 
   const inp = { padding:"8px 12px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"13px",width:"100%",boxSizing:"border-box",fontFamily:"monospace" };
@@ -458,11 +459,16 @@ function EmailConfigTab({ emailConfig, onSave }) {
               <label style={lbl}>📄 Template ID <span style={{ color:"#6e6e88",fontWeight:400 }}>(Email Templates)</span></label>
               <input value={templateId} onChange={e=>setTemplateId(e.target.value)} placeholder="ex: template_xxxxxxx" style={inp}/>
             </div>
+            <div>
+              <label style={lbl}>✉️ Nome do Remetente <span style={{ color:"#6e6e88",fontWeight:400 }}>(aparece no campo "De:" do e-mail)</span></label>
+              <input value={fromName} onChange={e=>setFromName(e.target.value)} placeholder="ex: GSC - Gestão Serviço Consultor" style={{...inp, fontFamily:"inherit"}}/>
+              <span style={{ fontSize:"11px",color:"#3e3e55",marginTop:"4px",display:"block" }}>Este nome aparecerá como remetente em todos os e-mails enviados pelo sistema.</span>
+            </div>
           </div>
 
           <div style={{ display:"flex",gap:"10px",marginTop:"20px",alignItems:"center",flexWrap:"wrap" }}>
             <button
-              onClick={()=>onSave({ enabled, publicKey:publicKey.trim(), serviceId:serviceId.trim(), templateId:templateId.trim() })}
+              onClick={()=>onSave({ enabled, publicKey:publicKey.trim(), serviceId:serviceId.trim(), templateId:templateId.trim(), fromName:fromName.trim()||"GSC - Gestão Serviço Consultor" })}
               style={{ padding:"10px 24px",borderRadius:"8px",border:"none",background:"#6c63ff",color:"#fff",fontWeight:700,fontSize:"13px",cursor:"pointer" }}>
               💾 Salvar configuração
             </button>
@@ -959,7 +965,7 @@ function OrdemServicoModal({ entry, consultorName, emailConfig, clientList, onSa
         assunto:   `OS ${osNumero} — ${entry.client||""} · Dia ${entry.day} ${entry.month}`,
         corpo,
         message:   `OS ${osNumero}\nConsultor: ${consultorName}\nCliente: ${entry.client||"—"}\nData: Dia ${entry.day} ${entry.month} ${entry.year||""}\nHorário: ${horarioTexto}\nAtividades: ${atividades||"—"}`,
-        from_name: `GSC - ${consultorName}`,
+        from_name: cfg.fromName || `GSC - ${consultorName}`,
       });
       setEmailStatus("ok");
     } catch(e) {
@@ -5586,7 +5592,7 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, emailConfig
           subject: `OS ${os.osNumero} ${st.label} — ${os.client||""}`,
           assunto: `OS ${os.osNumero} ${st.label} — ${os.client||""}`,
           corpo, message: `OS ${os.osNumero} foi ${st.label.toLowerCase()} por ${currentUser.nome||currentUser.username}.${obs?" Comentário: "+obs:""}`,
-          from_name: `GSC - ${currentUser.nome||currentUser.username}`,
+          from_name: cfg.fromName || `GSC - ${currentUser.nome||currentUser.username}`,
         });
       }
       setEmailStatus("ok");
@@ -7242,7 +7248,7 @@ function Dashboard({ currentUser, onLogout }) {
     try {
       const ej = await loadEJ();
       for (const r of recipients) {
-        await ej.send(cfg.serviceId, cfg.templateId, { assunto, corpo, to_name: r.name, to_email: r.email, acao, consultor, cliente: client||'—', mes_ano: mesAno, dias: diasStr, horario: horarioTexto, modalidade: modalidade === 'remoto' ? '💻 Remoto' : '🏢 Presencial', atividades: atividades||'—', realizado_por: nomeUsuario });
+        await ej.send(cfg.serviceId, cfg.templateId, { assunto, corpo, to_name: r.name, to_email: r.email, from_name: cfg.fromName||"GSC - Gestão Serviço Consultor", acao, consultor, cliente: client||'—', mes_ano: mesAno, dias: diasStr, horario: horarioTexto, modalidade: modalidade === 'remoto' ? '💻 Remoto' : '🏢 Presencial', atividades: atividades||'—', realizado_por: nomeUsuario });
       }
       showToast(`📧 E-mail enviado para ${recipients.length} destinatário(s)`, "#3b82f6");
     } catch(e) {
