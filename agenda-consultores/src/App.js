@@ -2745,6 +2745,11 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
   const [showClientFilter, setShowClientFilter] = React.useState(false);
   const [selectedClients, setSelectedClients] = React.useState(new Set());
 
+  // Sincronizar selectedConsultores quando a lista de consultores muda externamente
+  React.useEffect(() => {
+    setSelectedConsultores(new Set(consultores));
+  }, [consultores.join(",")]);
+
   // Sincronizar calMes quando o filtro externo muda para um mês específico
   React.useEffect(() => {
     if (selectedMonth !== "Todos") setCalMes(selectedMonth);
@@ -7893,7 +7898,18 @@ function Dashboard({ currentUser, onLogout }) {
                   ? selectedMonth!=="Todos"&&calendarData
                     ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
                     : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}><div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>Selecione um mês específico para ver a visualização semanal</div>
-                  : <CalendarioMensal data={filteredData} selectedMonth={selectedMonth} allMonths={allMonths} consultores={isConsultor?[currentUser.consultorName]:consultores} clientColors={clientColorMap} readonly={!canEdit} onEdit={canEdit?(entry)=>{setEditEntry(entry);setShowModal(true);}:null} onDelete={canEdit?handleDeleteEntry:null} onNewEntry={canEdit?({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); }:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null}/>
+                  : <CalendarioMensal
+                      data={selectedConsultor ? {[selectedConsultor]: scheduleData[selectedConsultor]||[]} : filteredData}
+                      selectedMonth={selectedMonth}
+                      allMonths={allMonths}
+                      consultores={selectedConsultor ? [selectedConsultor] : (isConsultor?[currentUser.consultorName]:consultores)}
+                      clientColors={clientColorMap}
+                      readonly={!canEdit}
+                      onEdit={canEdit?(entry)=>{setEditEntry(entry);setShowModal(true);}:null}
+                      onDelete={canEdit?handleDeleteEntry:null}
+                      onNewEntry={canEdit?({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); }:null}
+                      onOsClick={isConsultor?(e)=>setOsEntry(e):null}
+                    />
               )}
               {view==="semanal" && <WeeklyGlobalView weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={canEdit} onEdit={(entry,name)=>{setEditEntry({...entry,consultor:name});setShowModal(true);}} onNewEntry={canEdit?({consultor,month,day,year})=>{setEditEntry({consultor,month,day,year,prefill:true});setShowModal(true);}:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null} theme={T}/>}
               {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
@@ -7911,6 +7927,8 @@ function Dashboard({ currentUser, onLogout }) {
                   onAbrirAgenda={(consultorNome, mes) => {
                     setSelectedConsultor(consultorNome);
                     setSelectedMonth(mes);
+                    setView("calendario");
+                    setConsultorViewMode("mensal");
                     setActiveModule("agenda");
                   }}
                 />
