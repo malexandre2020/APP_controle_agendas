@@ -72,6 +72,57 @@ const SCHEDULE_DATA = {"Antonio Matos":[{"month":"Setembro","day":1,"weekday":"S
 
 
 const MONTHS_ORDER = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+// ── Feriados nacionais do Brasil ──────────────────────────────────────────────
+function calcularPascoa(ano) {
+  // Algoritmo de Meeus/Jones/Butcher
+  const a = ano % 19, b = Math.floor(ano/100), c = ano % 100;
+  const d = Math.floor(b/4), e = b % 4, f = Math.floor((b+8)/25);
+  const g = Math.floor((b-f+1)/3), h = (19*a+b-d-g+15) % 30;
+  const i = Math.floor(c/4), k = c % 4;
+  const l = (32+2*e+2*i-h-k) % 7;
+  const m = Math.floor((a+11*h+22*l)/451);
+  const mes = Math.floor((h+l-7*m+114)/31);
+  const dia = ((h+l-7*m+114) % 31) + 1;
+  return new Date(ano, mes-1, dia);
+}
+
+function getFeriadosBrasil(ano) {
+  const pascoa = calcularPascoa(ano);
+  const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate()+n); return r; };
+
+  const feriados = [
+    // Fixos
+    { mes:1,  dia:1,  nome:"Confraternização Universal" },
+    { mes:4,  dia:21, nome:"Tiradentes" },
+    { mes:5,  dia:1,  nome:"Dia do Trabalho" },
+    { mes:9,  dia:7,  nome:"Independência do Brasil" },
+    { mes:10, dia:12, nome:"Nossa Sra. Aparecida" },
+    { mes:11, dia:2,  nome:"Finados" },
+    { mes:11, dia:15, nome:"Proclamação da República" },
+    { mes:11, dia:20, nome:"Consciência Negra" },
+    { mes:12, dia:25, nome:"Natal" },
+    // Móveis calculados a partir da Páscoa
+    { data: addDays(pascoa,-48), nome:"Carnaval (2ª)" },
+    { data: addDays(pascoa,-47), nome:"Carnaval (3ª)" },
+    { data: addDays(pascoa,-2),  nome:"Sexta-Feira Santa" },
+    { data: pascoa,              nome:"Páscoa" },
+    { data: addDays(pascoa,60),  nome:"Corpus Christi" },
+  ];
+
+  // Normalizar tudo para { mes, dia, nome }
+  return feriados.map(f => {
+    if (f.data) return { mes: f.data.getMonth()+1, dia: f.data.getDate(), nome: f.nome };
+    return f;
+  });
+}
+
+// Retorna nome do feriado ou null
+function getFeriadoNacional(dia, mes, ano) {
+  const lista = getFeriadosBrasil(ano);
+  const f = lista.find(f => f.mes === mes && f.dia === dia);
+  return f ? f.nome : null;
+}
 const INITIAL_CLIENTS = ["VEDACIT","TIROLEZ","MAZZAFERRO","TSJC","TSUL","GHT4","UNIMOL","TEJOFRAN","TSM","TOYOBO","PARTICULAR","CABOVEL","GOBEAUTE"];
 const CLIENT_COLORS = { VEDACIT:"#3b82f6",TIROLEZ:"#f59e0b",MAZZAFERRO:"#8b5cf6",TSJC:"#10b981",TSUL:"#06b6d4",GHT4:"#f97316",UNIMOL:"#ec4899",TEJOFRAN:"#6366f1",TSM:"#84cc16",TOYOBO:"#a855f7",PARTICULAR:"#6e6e88",CABOVEL:"#14b8a6",GOBEAUTE:"#f43f5e",RESERVADO:"#6e6e88",default:"#6b7280" };
 
@@ -2882,8 +2933,24 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
               {allDays.map(d=>{
                 const dow = getDayOfWeek(d);
                 const isWeekend = dow === 0 || dow === 6;
+                const ferNac = getFeriadoNacional(d, monthNum, guessYear);
                 return (
-                  <th key={d} style={{ padding:"4px 2px",textAlign:"center",fontSize:"11px",fontWeight:700,color:isWeekend?"#374151":"#6e6e88",minWidth:"34px",background:isWeekend?"#0d1a30":"#18181f",borderBottom:"1px solid #2a2a3a",borderLeft:"1px solid #0d0d14" }}>{d}</th>
+                  <th key={d} title={ferNac||undefined} style={{ padding:"4px 2px",textAlign:"center",fontSize:"11px",fontWeight:700,color:ferNac?"#f59e0b":isWeekend?"#374151":"#6e6e88",minWidth:"34px",background:ferNac?"#f59e0b18":isWeekend?"#0d1a30":"#18181f",borderBottom:"1px solid #2a2a3a",borderLeft:"1px solid #0d0d14",position:"relative" }}>
+                    {ferNac && <span style={{ position:"absolute",top:"1px",left:"50%",transform:"translateX(-50%)",fontSize:"6px",color:"#f59e0b" }}>★</span>}
+                    {d}
+                  </th>
+                );
+              })}
+            </tr>
+            {/* Feriados nacionais row */}
+            <tr style={{ background:"#18181f" }}>
+              <th style={{ padding:"3px 16px",position:"sticky",left:0,background:"#18181f",zIndex:2,borderBottom:"1px solid #2a2a3a",fontSize:"9px",color:"#f59e0b",fontWeight:700 }}>🇧🇷 Feriados</th>
+              {allDays.map(d=>{
+                const ferNac = getFeriadoNacional(d, monthNum, guessYear);
+                return (
+                  <td key={d} title={ferNac||undefined} style={{ padding:"2px",textAlign:"center",background:ferNac?"#f59e0b15":"#18181f",borderLeft:"1px solid #0d0d14",borderBottom:"1px solid #2a2a3a" }}>
+                    {ferNac && <div style={{ fontSize:"7px",fontWeight:700,color:"#f59e0b",lineHeight:1.2,maxWidth:"32px",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",margin:"0 auto" }} title={ferNac}>🎉</div>}
+                  </td>
                 );
               })}
             </tr>
@@ -3148,9 +3215,11 @@ function CalendarView({ consultant, month, byDay }) {
           if (!day) return <div key={"e"+i} style={{ minHeight:"140px",borderRadius:"10px",background:"#0d0d1444" }}/>;
           const entries = Array.isArray(byDay[day]) ? byDay[day] : (byDay[day] ? [byDay[day]] : []);
           const isToday = (() => { const t=new Date(); return t.getDate()===day && t.getMonth()===monthIdx && t.getFullYear()===year; })();
+          const ferNac = getFeriadoNacional(day, monthIdx+1, year);
           return (
-            <div key={day} onClick={e=>e.stopPropagation()} style={{ minHeight:"140px",borderRadius:"10px",background:isToday?"#16102a":"#18181f",border:"1px solid "+(isToday?"#3b82f6":"#2a2a3a"),padding:"10px",display:"flex",flexDirection:"column",gap:"6px" }}>
-              <div style={{ fontSize:"18px",fontWeight:700,color:isToday?"#60a5fa":"#f0f0fa",marginBottom:"4px" }}>{day}</div>
+            <div key={day} onClick={e=>e.stopPropagation()} style={{ minHeight:"140px",borderRadius:"10px",background:ferNac?"#1a1408":isToday?"#16102a":"#18181f",border:"1px solid "+(ferNac?"#f59e0b44":isToday?"#3b82f6":"#2a2a3a"),padding:"10px",display:"flex",flexDirection:"column",gap:"6px" }}>
+              <div style={{ fontSize:"18px",fontWeight:700,color:ferNac?"#f59e0b":isToday?"#60a5fa":"#f0f0fa",marginBottom:"2px" }}>{day}</div>
+              {ferNac && <div style={{ fontSize:"9px",fontWeight:700,color:"#f59e0b",background:"#f59e0b18",borderRadius:"4px",padding:"2px 6px",marginBottom:"2px" }}>🎉 {ferNac}</div>}
               {entries.length===0 && <div style={{ fontSize:"11px",color:"#2a2a3a",fontStyle:"italic" }}>—</div>}
               {entries.map((entry,ei)=>{
                 const color = getColor(entry);
@@ -7170,6 +7239,76 @@ function Dashboard({ currentUser, onLogout }) {
     }
   };
 
+  // ── Inserir feriados nacionais em todos os consultores ──
+  const handleInserirFeriados = async () => {
+    const ano = new Date().getFullYear();
+    const anos = [ano, ano + 1];
+    const anoEscolhido = window.confirm(
+      `Inserir feriados nacionais de ${ano} e ${ano+1} na agenda de todos os consultores?\n\nFeriados já existentes não serão duplicados.`
+    );
+    if (!anoEscolhido) return;
+
+    let totalInseridos = 0;
+    const novoSchedule = { ...scheduleData };
+
+    for (const consultorNome of consultores) {
+      const entradas = [...(novoSchedule[consultorNome] || [])];
+
+      for (const a of anos) {
+        const feriados = getFeriadosBrasil(a);
+        for (const f of feriados) {
+          const mesNome = MONTHS_ORDER[f.mes - 1];
+          // Verificar se já existe feriado nesse dia/mês/ano
+          const jaExiste = entradas.some(e =>
+            e.day === f.dia &&
+            e.month.toUpperCase() === mesNome.toUpperCase() &&
+            (e.year === a || !e.year) &&
+            e.type === "holiday"
+          );
+          if (!jaExiste) {
+            entradas.push({
+              id: `fer_${a}_${f.mes}_${f.dia}_${consultorNome.replace(/\s/g,'_')}`,
+              month: mesNome,
+              year: a,
+              day: f.dia,
+              weekday: ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][new Date(a, f.mes-1, f.dia).getDay()],
+              client: f.nome,
+              type: "holiday",
+              modalidade: "presencial",
+              horaInicio: "", horaFim: "", intervalo: "", atividades: "",
+            });
+            totalInseridos++;
+          }
+        }
+      }
+
+      // Ordenar por mês e dia
+      entradas.sort((a, b) => {
+        const ma = MONTHS_ORDER.findIndex(m => m.toUpperCase() === (a.month||"").toUpperCase());
+        const mb = MONTHS_ORDER.findIndex(m => m.toUpperCase() === (b.month||"").toUpperCase());
+        const ya = a.year || 2025, yb = b.year || 2025;
+        if (ya !== yb) return ya - yb;
+        if (ma !== mb) return ma - mb;
+        return (a.day||0) - (b.day||0);
+      });
+
+      novoSchedule[consultorNome] = entradas;
+
+      // Salvar no Firestore
+      try {
+        await setDoc(doc(db, "app_data", "schedule_" + consultorNome), { value: entradas });
+      } catch(e) { console.warn("Erro ao salvar feriados de", consultorNome, e); }
+    }
+
+    setScheduleData(novoSchedule);
+    showToast(
+      totalInseridos > 0
+        ? `🎉 ${totalInseridos} feriado(s) inserido(s) em ${consultores.length} consultor(es)`
+        : `✅ Feriados já estavam atualizados`,
+      "#22d3a0"
+    );
+  };
+
   // ── Exportar para Excel ──
   const handleExportExcel = () => {
     const loadXLSX = () => new Promise(resolve => {
@@ -7536,6 +7675,10 @@ function Dashboard({ currentUser, onLogout }) {
             {activeModule==="agenda" && canEdit && (
               <button onClick={handleExportExcel} className="action-btn" title="Exportar Excel"
                 style={{ padding:"7px 12px",borderRadius:"10px",border:"1px solid "+T.border2,cursor:"pointer",fontSize:"13px",background:T.btnInactive,color:T.text2 }}>📊</button>
+            )}
+            {activeModule==="agenda" && canManage && (
+              <button onClick={handleInserirFeriados} className="action-btn" title="Inserir feriados nacionais na agenda de todos os consultores"
+                style={{ padding:"7px 12px",borderRadius:"10px",border:"1px solid "+T.border2,cursor:"pointer",fontSize:"13px",background:T.btnInactive,color:T.text2 }}>🎉 Feriados</button>
             )}
           </div>
         </header>
