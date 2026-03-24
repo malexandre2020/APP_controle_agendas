@@ -2781,10 +2781,10 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
     return [...set].sort();
   }, [data, consultores, calMes]);
 
-  // Init selectedClients when month changes or on first load
+  // Sincronizar selectedClients quando mês muda OU quando novos clientes aparecem nos dados
   React.useEffect(() => {
     setSelectedClients(new Set(allClientsInMonth));
-  }, [calMes]);
+  }, [calMes, allClientsInMonth.join(",")]);
 
   const toggleConsultor = (name) => {
     setSelectedConsultores(prev => {
@@ -6970,6 +6970,7 @@ function Dashboard({ currentUser, onLogout }) {
   const [view, setView] = useState("calendario");
   const [showModal, setShowModal] = useState(false);
   const [editEntry, setEditEntry] = useState(null);
+  const [scheduleVersion, setScheduleVersion] = useState(0);
   const [osEntry, setOsEntry] = useState(null); // entrada selecionada para OS
   const [toast, setToast] = useState(null);
   const [showUserMgmt, setShowUserMgmt] = useState(false);
@@ -7125,6 +7126,7 @@ function Dashboard({ currentUser, onLogout }) {
     });
     showToast("✅ "+(id?"Entrada atualizada":""+days.length+" dia(s) salvo(s)")+" para "+consultor.split(" ")[0]);
     setShowModal(false); setEditEntry(null);
+    setScheduleVersion(v => v + 1);
 
     // Enviar notificação por e-mail se solicitado
     if (notifyEmail) {
@@ -7141,6 +7143,7 @@ function Dashboard({ currentUser, onLogout }) {
   const handleDeleteEntry = (consultor, entryId) => {
     setScheduleData(prev=>{ const u={...prev}; u[consultor]=(u[consultor]||[]).filter(e=>e.id!==entryId); return u; });
     showToast("🗑 Entrada removida","#ef4444");
+    setScheduleVersion(v => v + 1);
   };
 
   // Cadastros handlers
@@ -7886,7 +7889,7 @@ function Dashboard({ currentUser, onLogout }) {
                     ? selectedMonth!=="Todos"&&calendarData
                       ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
                       : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}><div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>Selecione um mês específico para ver a visualização semanal</div>
-                    : <CalendarioMensal data={{[selectedConsultor]: scheduleData[selectedConsultor]||[]}} selectedMonth={selectedMonth} allMonths={allMonths} consultores={[selectedConsultor]} clientColors={clientColorMap} readonly={!canEdit} onEdit={canEdit?(entry)=>{setEditEntry(entry);setShowModal(true);}:null} onDelete={canEdit?handleDeleteEntry:null} onNewEntry={canEdit?({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); }:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null}/>
+                    : <CalendarioMensal key={"grid-"+selectedConsultor+"-"+scheduleVersion} data={{[selectedConsultor]: scheduleData[selectedConsultor]||[]}} selectedMonth={selectedMonth} allMonths={allMonths} consultores={[selectedConsultor]} clientColors={clientColorMap} readonly={!canEdit} onEdit={canEdit?(entry)=>{setEditEntry(entry);setShowModal(true);}:null} onDelete={canEdit?handleDeleteEntry:null} onNewEntry={canEdit?({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); }:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null}/>
                   : <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:"16px" }}>
                       {Object.entries(filteredData).filter(([,e])=>e.length>0).map(([name,entries])=>(
                         <ConsultorCard key={name} name={name} entries={entries} idx={consultores.indexOf(name)} onClick={()=>!isConsultor&&setSelectedConsultor(selectedConsultor===name?null:name)} selected={selectedConsultor===name}/>
@@ -7899,6 +7902,7 @@ function Dashboard({ currentUser, onLogout }) {
                     ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
                     : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}><div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>Selecione um mês específico para ver a visualização semanal</div>
                   : <CalendarioMensal
+                      key={"cal-"+(selectedConsultor||"all")+"-"+scheduleVersion}
                       data={selectedConsultor ? {[selectedConsultor]: scheduleData[selectedConsultor]||[]} : filteredData}
                       selectedMonth={selectedMonth}
                       allMonths={allMonths}
