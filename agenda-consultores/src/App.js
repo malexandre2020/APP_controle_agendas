@@ -7198,6 +7198,52 @@ function Dashboard({ currentUser, onLogout }) {
     const diaLabel = days && days.length === 1 ? `Dia ${days[0]}` : `Dias ${diasStr}`;
     const assunto = `Agenda ${acao}: ${diaLabel} — ${client || '—'} (${mesAno})`;
 
+    // ── Gerar links de calendário (Google Calendar + ICS)
+    const monthIdx = MONTHS_ORDER.indexOf(month);
+    const gerarLinksCalendario = () => {
+      if (!days || days.length === 0 || monthIdx === -1) return '';
+      const links = days.map(dia => {
+        const dataBase = new Date(year, monthIdx, dia);
+        // Hora início / fim para o evento
+        const [hi, mi] = (horaInicio||'08:00').split(':').map(Number);
+        const [hf, mf] = (horaFim||'17:00').split(':').map(Number);
+        const dtStart = new Date(year, monthIdx, dia, hi, mi);
+        const dtEnd   = new Date(year, monthIdx, dia, hf, mf);
+        const pad = n => String(n).padStart(2,'0');
+        const fmtDt = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+        const titulo = encodeURIComponent(`${client||'—'} — GSC`);
+        const loc    = encodeURIComponent(modalidade === 'remoto' ? 'Remoto (online)' : 'Presencial');
+        const det    = encodeURIComponent(`Consultor: ${consultor}\nCliente: ${client||'—'}\nModalidade: ${modalidade==='remoto'?'Remoto':'Presencial'}\n${atividades?'Atividades: '+atividades:''}`);
+        // Google Calendar link
+        const gcUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${fmtDt(dtStart)}/${fmtDt(dtEnd)}&details=${det}&location=${loc}`;
+        // ICS content como data URI
+        const icsContent = [
+          'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//GSC//Agenda//PT',
+          'BEGIN:VEVENT',
+          `DTSTART:${fmtDt(dtStart)}`,
+          `DTEND:${fmtDt(dtEnd)}`,
+          `SUMMARY:${(client||'—')} — GSC`,
+          `DESCRIPTION:Consultor: ${consultor}\\nCliente: ${client||'—'}\\nModalidade: ${modalidade==='remoto'?'Remoto':'Presencial'}`,
+          `LOCATION:${modalidade==='remoto'?'Remoto (online)':'Presencial'}`,
+          'END:VEVENT','END:VCALENDAR'
+        ].join('\r\n');
+        const icsUri = `data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`;
+        const diaLabel2 = `${pad(dia)}/${pad(monthIdx+1)}/${year}`;
+        return `
+          <div style="margin-bottom:8px">
+            <span style="font-size:13px;color:#374151;font-weight:600;margin-right:10px">📆 ${diaLabel2}</span>
+            <a href="${gcUrl}" target="_blank" style="display:inline-block;margin-right:6px;padding:5px 12px;background:#4285F4;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none">Google Agenda</a>
+            <a href="${icsUri}" download="evento_gsc_${dia}_${monthIdx+1}_${year}.ics" style="display:inline-block;padding:5px 12px;background:#6c63ff;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none">📥 Baixar .ics</a>
+          </div>`;
+      }).join('');
+      return `
+        <div style="margin-top:16px;padding:14px 16px;background:#f0f7ff;border-radius:8px;border:1px solid #bfdbfe">
+          <div style="font-size:12px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">📅 Adicionar ao Calendário</div>
+          ${links}
+          <p style="margin:10px 0 0;font-size:11px;color:#6b7280">Clique em <strong>Google Agenda</strong> para abrir direto no Google Calendar, ou em <strong>Baixar .ics</strong> para importar no Outlook, Apple Calendar ou outro app.</p>
+        </div>`;
+    };
+
     // ── Compor corpo HTML
     const rows = [
       ["Consultor", consultor],
@@ -7218,6 +7264,7 @@ function Dashboard({ currentUser, onLogout }) {
     <p style="color:#6e6e88;margin:4px 0 0;font-size:13px">Notificação automática — agenda <strong style="color:#60a5fa">${acao}</strong></p>
   </div>
   <table style="width:100%;border-collapse:collapse;font-size:14px">${tbody}</table>
+  <div style="padding:14px 24px;background:#fff">${gerarLinksCalendario()}</div>
   <div style="padding:14px 24px;background:#f0f0fa;border-top:1px solid #c8c8d8">
     <p style="margin:0;font-size:11px;color:#6e6e88">Esta mensagem foi enviada automaticamente pelo sistema Agenda de Consultores.</p>
   </div>
