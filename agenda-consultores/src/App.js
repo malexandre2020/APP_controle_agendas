@@ -7669,7 +7669,7 @@ function Dashboard({ currentUser, onLogout }) {
           {MODULES.map(m=>{
             const active = activeModule===m.id;
             return (
-              <div key={m.id} className="side-item" onClick={()=>setActiveModule(m.id)} title={sidebarCollapsed?m.label:""}
+              <div key={m.id} className="side-item" onClick={()=>{ if (m.id!=="agenda") { setSelectedConsultor(isConsultor?currentUser.consultorName:null); setSelectedMonth("Todos"); } setActiveModule(m.id); }} title={sidebarCollapsed?m.label:""}
                 style={{ padding:sidebarCollapsed?"10px":"10px 12px",display:"flex",alignItems:"center",gap:"10px",justifyContent:sidebarCollapsed?"center":"flex-start",background:active?`${T.accent}18`:"transparent",border:active?`1px solid ${T.accent}33`:"1px solid transparent",minWidth:0 }}>
                 <span style={{ fontSize:"18px",lineHeight:1,flexShrink:0 }}>{m.icon}</span>
                 {!sidebarCollapsed && (
@@ -7689,7 +7689,7 @@ function Dashboard({ currentUser, onLogout }) {
             <>
               {!sidebarCollapsed && <div style={{ fontSize:"9px",color:T.text3,fontWeight:700,letterSpacing:"1.2px",textTransform:"uppercase",padding:"16px 8px 6px" }}>Administração</div>}
               {sidebarCollapsed && <div style={{ height:"10px" }}/>}
-              <div className="side-item" onClick={()=>setActiveModule("cadastros")} title={sidebarCollapsed?"Cadastros":""}
+              <div className="side-item" onClick={()=>{ setSelectedConsultor(isConsultor?currentUser.consultorName:null); setSelectedMonth("Todos"); setActiveModule("cadastros"); }} title={sidebarCollapsed?"Cadastros":""}
                 style={{ padding:sidebarCollapsed?"10px":"10px 12px",display:"flex",alignItems:"center",gap:"10px",justifyContent:sidebarCollapsed?"center":"flex-start",background:activeModule==="cadastros"?`${T.accent}18`:"transparent",border:activeModule==="cadastros"?`1px solid ${T.accent}33`:"1px solid transparent" }}>
                 <span style={{ fontSize:"18px",lineHeight:1,flexShrink:0 }}>🗂</span>
                 {!sidebarCollapsed && (
@@ -7721,7 +7721,7 @@ function Dashboard({ currentUser, onLogout }) {
 
           {/* Sobre — visível para todos os perfis */}
           <div style={{ height:"1px",background:T.border,margin:"8px 4px" }}/>
-          <div className="side-item" onClick={()=>setActiveModule("sobre")} title={sidebarCollapsed?"Sobre":""}
+          <div className="side-item" onClick={()=>{ setSelectedConsultor(isConsultor?currentUser.consultorName:null); setSelectedMonth("Todos"); setActiveModule("sobre"); }} title={sidebarCollapsed?"Sobre":""}
             style={{ padding:sidebarCollapsed?"10px":"10px 12px",display:"flex",alignItems:"center",gap:"10px",justifyContent:sidebarCollapsed?"center":"flex-start",background:activeModule==="sobre"?`${T.accent}18`:"transparent",border:activeModule==="sobre"?`1px solid ${T.accent}33`:"1px solid transparent" }}>
             <span style={{ fontSize:"18px",lineHeight:1,flexShrink:0 }}>ℹ️</span>
             {!sidebarCollapsed && (
@@ -7813,7 +7813,7 @@ function Dashboard({ currentUser, onLogout }) {
                 { id:"projetos", icon:"📋", label:"Gestão de Projetos",    desc:"Acompanhe projetos, tarefas e horas trabalhadas",    color:"#f5a623", stat:projCount, statLabel:"projetos ativos" },
                 ...(canManage?[{ id:"cadastros",icon:"🗂", label:"Cadastros", desc:"Consultores, clientes, projetos e configurações", color:"#a78bfa", stat:consultores.length, statLabel:"consultores" }]:[]),
               ].map(mod=>(
-                <div key={mod.id} className="card-hover" onClick={()=>setActiveModule(mod.id)}
+                <div key={mod.id} className="card-hover" onClick={()=>{ setSelectedConsultor(isConsultor?currentUser.consultorName:null); setSelectedMonth("Todos"); setActiveModule(mod.id); }}
                   style={{ background:T.surface,borderRadius:"16px",border:"1px solid "+T.border,padding:"22px",cursor:"pointer",position:"relative",overflow:"hidden" }}>
                   <div style={{ position:"absolute",top:0,left:0,right:0,height:"3px",background:`linear-gradient(90deg,${mod.color},${mod.color}88)` }}/>
                   <div style={{ fontSize:"28px",marginBottom:"14px" }}>{mod.icon}</div>
