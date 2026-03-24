@@ -892,7 +892,9 @@ function OrdemServicoModal({ entry, consultorName, emailConfig, clientList, onSa
   const handleEnviarEmail = async () => {
     if (!emailDest.trim()) { setEmailStatus("erro_dest"); return; }
     const cfg = emailConfig || {};
-    if (!cfg.enabled || !cfg.publicKey || !cfg.serviceId || !cfg.templateId) {
+    // Aceita se tiver credenciais preenchidas mesmo que enabled seja false (fallback)
+    const temCredenciais = cfg.publicKey?.trim() && cfg.serviceId?.trim() && cfg.templateId?.trim();
+    if (!temCredenciais) {
       setEmailStatus("sem_config"); return;
     }
     setSendingEmail(true);
@@ -1117,11 +1119,21 @@ function OrdemServicoModal({ entry, consultorName, emailConfig, clientList, onSa
                     ❌ Falha ao enviar. Verifique as configurações de e-mail em Cadastros.
                   </div>
                 )}
-                {emailStatus==="sem_config" && (
-                  <div style={{ marginTop:"8px",padding:"8px 12px",borderRadius:"8px",background:"#f5a62315",border:"1px solid #f5a62344",fontSize:"12px",color:"#f5a623" }}>
-                    ⚠️ E-mail não configurado. Configure em Cadastros → E-mail.
-                  </div>
-                )}
+                {emailStatus==="sem_config" && (() => {
+                  const cfg = emailConfig || {};
+                  const faltam = [
+                    !cfg.publicKey?.trim() && "Public Key",
+                    !cfg.serviceId?.trim() && "Service ID",
+                    !cfg.templateId?.trim() && "Template ID",
+                  ].filter(Boolean);
+                  return (
+                    <div style={{ marginTop:"8px",padding:"8px 12px",borderRadius:"8px",background:"#f5a62315",border:"1px solid #f5a62344",fontSize:"12px",color:"#f5a623" }}>
+                      ⚠️ {faltam.length > 0
+                        ? `Faltam as credenciais: ${faltam.join(", ")}. Configure em Cadastros → E-mail.`
+                        : "Configure e salve as credenciais em Cadastros → E-mail."}
+                    </div>
+                  );
+                })()}
                 {emailStatus==="erro_dest" && (
                   <div style={{ marginTop:"8px",padding:"8px 12px",borderRadius:"8px",background:"#f5a62315",border:"1px solid #f5a62344",fontSize:"12px",color:"#f5a623" }}>
                     ⚠️ Informe o e-mail do destinatário.
