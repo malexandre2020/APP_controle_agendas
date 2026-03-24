@@ -1420,35 +1420,51 @@ function GradeAdminView({ consultores, scheduleData }) {
           {consultorDisp && scheduleData && (() => {
             const entradas = scheduleData[consultorDisp] || [];
             const hoje = new Date();
-            const mesAtual = MONTHS_ORDER[hoje.getMonth()];
-            const anoAtual = hoje.getFullYear();
-            // Agrupar por mês
-            const porMes = {};
+            const mesAtualIdx = hoje.getMonth();   // 0-11
+            const anoAtual    = hoje.getFullYear();
+
+            // ── Gerar janela de 6 meses a partir do mês atual ──
+            const janela = []; // [{mesIdx, ano, mesNome, label}]
+            for (let i = 0; i < 6; i++) {
+              const totalMes = mesAtualIdx + i;
+              const ano      = anoAtual + Math.floor(totalMes / 12);
+              const mIdx     = totalMes % 12;
+              const mesNome  = MONTHS_ORDER[mIdx];
+              const label    = ano !== anoAtual ? `${mesNome}/${ano}` : mesNome;
+              janela.push({ mIdx, ano, mesNome, label });
+            }
+
+            // ── Agrupar entradas por (mesNome+ano) ──
+            const porChave = {}; // "Março2026": { cliente, ferias, afastamento, reservado, total }
             entradas.forEach(e => {
-              const key = e.month;
-              if (!porMes[key]) porMes[key] = { livre:0, cliente:0, ferias:0, afastamento:0, bloqueado:0, reservado:0, total:0 };
-              porMes[key].total++;
-              if (e.type==="client") porMes[key].cliente++;
-              else if (e.type==="vacation") porMes[key].ferias++;
-              else if (e.type==="absence") porMes[key].afastamento++;
-              else if (e.type==="blocked") porMes[key].bloqueado++;
-              else if (e.type==="reserved") porMes[key].reservado++;
+              const eAno = e.year || anoAtual;
+              const chave = (e.month||"") + eAno;
+              if (!porChave[chave]) porChave[chave] = { cliente:0, ferias:0, afastamento:0, reservado:0, total:0 };
+              porChave[chave].total++;
+              if (e.type==="client")   porChave[chave].cliente++;
+              else if (e.type==="vacation") porChave[chave].ferias++;
+              else if (e.type==="absence")  porChave[chave].afastamento++;
+              else if (e.type==="reserved") porChave[chave].reservado++;
             });
-            // Próximos dias disponíveis (sem entrada nos próximos 14 dias úteis)
+
+            // ── Próximos dias livres no mês atual ──
+            const chaveAtual = MONTHS_ORDER[mesAtualIdx] + anoAtual;
             const diasOcupados = new Set(
-              entradas.filter(e=>e.month.toUpperCase()===mesAtual.toUpperCase()).map(e=>e.day)
+              entradas
+                .filter(e => (e.month||"").toUpperCase() === MONTHS_ORDER[mesAtualIdx].toUpperCase()
+                          && (e.year || anoAtual) === anoAtual)
+                .map(e => e.day)
             );
             const proxDisponiveis = [];
-            let d = new Date(hoje); d.setDate(d.getDate()+1);
-            while (proxDisponiveis.length < 5 && d.getMonth() === hoje.getMonth()) {
-              const dow = d.getDay();
-              if (dow > 0 && dow < 6 && !diasOcupados.has(d.getDate())) {
-                proxDisponiveis.push(d.getDate());
+            let dd = new Date(hoje); dd.setDate(dd.getDate()+1);
+            while (proxDisponiveis.length < 5 && dd.getMonth() === mesAtualIdx) {
+              const dow = dd.getDay();
+              if (dow > 0 && dow < 6 && !diasOcupados.has(dd.getDate())) {
+                proxDisponiveis.push(dd.getDate());
               }
-              d.setDate(d.getDate()+1);
+              dd.setDate(dd.getDate()+1);
             }
-            const mesOrdem = MONTHS_ORDER;
-            const mesesComDados = mesOrdem.filter(m => porMes[m]);
+
             return (
               <div style={{ marginTop:"20px", background:"#0d0d14", borderRadius:"14px", border:"1px solid #6c63ff33", padding:"20px" }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"16px", flexWrap:"wrap", gap:"10px" }}>
@@ -1458,7 +1474,7 @@ function GradeAdminView({ consultores, scheduleData }) {
                     </div>
                     <div>
                       <div style={{ fontSize:"14px", fontWeight:700, color:"#f0f0fa" }}>📅 Disponibilidade — {consultorDisp}</div>
-                      <div style={{ fontSize:"11px", color:"#6e6e88" }}>Baseado nos lançamentos da agenda</div>
+                      <div style={{ fontSize:"11px", color:"#6e6e88" }}>Próximos 6 meses a partir de {MONTHS_ORDER[mesAtualIdx]}/{anoAtual}</div>
                     </div>
                   </div>
                   <button onClick={()=>setConsultorDisp(null)} style={{ background:"none", border:"none", color:"#6e6e88", cursor:"pointer", fontSize:"18px", lineHeight:1 }}>✕</button>
@@ -1468,7 +1484,7 @@ function GradeAdminView({ consultores, scheduleData }) {
                 {proxDisponiveis.length > 0 && (
                   <div style={{ marginBottom:"16px" }}>
                     <div style={{ fontSize:"11px", color:"#22d3a0", fontWeight:700, letterSpacing:"0.8px", textTransform:"uppercase", marginBottom:"8px" }}>
-                      ✅ Próximos dias livres em {mesAtual}
+                      ✅ Próximos dias livres em {MONTHS_ORDER[mesAtualIdx]}
                     </div>
                     <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
                       {proxDisponiveis.map(dia => (
@@ -1485,30 +1501,34 @@ function GradeAdminView({ consultores, scheduleData }) {
                   </div>
                 )}
 
-                {/* Resumo por mês */}
+                {/* Resumo por mês — janela de 6 meses */}
                 <div style={{ fontSize:"11px", color:"#6e6e88", fontWeight:700, letterSpacing:"0.8px", textTransform:"uppercase", marginBottom:"10px" }}>Resumo por mês</div>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:"8px" }}>
-                  {mesesComDados.map(mes => {
-                    const d = porMes[mes];
-                    const livre = 22 - d.cliente; // aprox dias úteis no mês
-                    const isMesAtual = mes.toUpperCase()===mesAtual.toUpperCase();
+                  {janela.map(({ mIdx, ano, mesNome, label }) => {
+                    const chave = mesNome + ano;
+                    const d = porChave[chave];
+                    const isAtual = mIdx === mesAtualIdx && ano === anoAtual;
+                    const isOutroAno = ano !== anoAtual;
                     return (
-                      <div key={mes} style={{ background: isMesAtual?"#6c63ff18":"#111118", borderRadius:"10px", border:"1px solid "+(isMesAtual?"#6c63ff44":"#1f1f2e"), padding:"10px 12px" }}>
-                        <div style={{ fontSize:"12px", fontWeight:700, color: isMesAtual?"#a78bfa":"#c8c8d8", marginBottom:"6px" }}>
-                          {mes} {isMesAtual && <span style={{ fontSize:"9px", background:"#6c63ff44", borderRadius:"4px", padding:"1px 4px" }}>atual</span>}
+                      <div key={chave} style={{ background: isAtual?"#6c63ff18":"#111118", borderRadius:"10px", border:"1px solid "+(isAtual?"#6c63ff44":"#1f1f2e"), padding:"10px 12px" }}>
+                        <div style={{ fontSize:"12px", fontWeight:700, color: isAtual?"#a78bfa": isOutroAno?"#60a5fa":"#c8c8d8", marginBottom:"6px", display:"flex", alignItems:"center", gap:"5px" }}>
+                          {label}
+                          {isAtual && <span style={{ fontSize:"9px", background:"#6c63ff44", borderRadius:"4px", padding:"1px 4px" }}>atual</span>}
+                          {isOutroAno && !isAtual && <span style={{ fontSize:"9px", background:"#60a5fa22", borderRadius:"4px", padding:"1px 4px", color:"#60a5fa" }}>{ano}</span>}
                         </div>
-                        <div style={{ display:"flex", flexDirection:"column", gap:"3px" }}>
-                          {d.cliente>0 && <div style={{ fontSize:"10px", color:"#6e6e88" }}>🏢 {d.cliente} dia{d.cliente!==1?"s":""} c/ cliente</div>}
-                          {d.ferias>0 && <div style={{ fontSize:"10px", color:"#f5a623" }}>🏖️ {d.ferias} dia{d.ferias!==1?"s":""} de férias</div>}
-                          {d.afastamento>0 && <div style={{ fontSize:"10px", color:"#f04f5e" }}>🏥 {d.afastamento} dia{d.afastamento!==1?"s":""} afastado</div>}
-                          {d.reservado>0 && <div style={{ fontSize:"10px", color:"#a78bfa" }}>📌 {d.reservado} reservado{d.reservado!==1?"s":""}</div>}
-                        </div>
+                        {d ? (
+                          <div style={{ display:"flex", flexDirection:"column", gap:"3px" }}>
+                            {d.cliente>0    && <div style={{ fontSize:"10px", color:"#6e6e88" }}>🏢 {d.cliente} dia{d.cliente!==1?"s":""} c/ cliente</div>}
+                            {d.ferias>0     && <div style={{ fontSize:"10px", color:"#f5a623" }}>🏖️ {d.ferias} dia{d.ferias!==1?"s":""} de férias</div>}
+                            {d.afastamento>0 && <div style={{ fontSize:"10px", color:"#f04f5e" }}>🏥 {d.afastamento} dia{d.afastamento!==1?"s":""} afastado</div>}
+                            {d.reservado>0  && <div style={{ fontSize:"10px", color:"#a78bfa" }}>📌 {d.reservado} reservado{d.reservado!==1?"s":""}</div>}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize:"10px", color:"#22d3a0" }}>✅ Sem lançamentos</div>
+                        )}
                       </div>
                     );
                   })}
-                  {mesesComDados.length === 0 && (
-                    <div style={{ gridColumn:"1/-1", fontSize:"12px", color:"#3e3e55", padding:"12px" }}>Nenhum lançamento na agenda deste consultor</div>
-                  )}
                 </div>
               </div>
             );
