@@ -903,8 +903,8 @@ function OrdemServicoModal({ entry, consultorName, emailConfig, clientList, onSa
       await ej.send(cfg.serviceId, cfg.templateId, {
         to_email:  emailDest.trim(),
         to_name:   emailDest.trim(),
-        subject:   `OS ${osNumero} — ${entry.client||""} · Dia ${entry.day} ${entry.month}`,
-        html_body: corpo,
+        assunto:   `OS ${osNumero} — ${entry.client||""} · Dia ${entry.day} ${entry.month}`,
+        corpo,
         message:   `OS ${osNumero}\nConsultor: ${consultorName}\nCliente: ${entry.client||"—"}\nData: Dia ${entry.day} ${entry.month} ${entry.year||""}\nHorário: ${horarioTexto}\nAtividades: ${atividades||"—"}`,
         from_name: `GSC - ${consultorName}`,
       });
@@ -5503,7 +5503,8 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, emailConfig
         await ej.send(cfg.serviceId, cfg.templateId, {
           to_email: dest, to_name: dest,
           subject: `OS ${os.osNumero} ${st.label} — ${os.client||""}`,
-          html_body: corpo, message: `OS ${os.osNumero} foi ${st.label.toLowerCase()} por ${currentUser.nome||currentUser.username}.${obs?" Comentário: "+obs:""}`,
+          assunto: `OS ${os.osNumero} ${st.label} — ${os.client||""}`,
+          corpo, message: `OS ${os.osNumero} foi ${st.label.toLowerCase()} por ${currentUser.nome||currentUser.username}.${obs?" Comentário: "+obs:""}`,
           from_name: `GSC - ${currentUser.nome||currentUser.username}`,
         });
       }
@@ -7070,7 +7071,7 @@ function Dashboard({ currentUser, onLogout }) {
   };
 
   // ── Enviar notificação por e-mail (EmailJS) ──
-  const sendAgendaEmail = async ({ action, consultor, client, month, year, days, horaInicio, horaFim, intervalo, atividades, criadoPor, nomeUsuario }) => {
+  const sendAgendaEmail = async ({ action, consultor, client, month, year, days, horaInicio, horaFim, intervalo, atividades, modalidade, criadoPor, nomeUsuario }) => {
     const cfg = emailConfig;
     if (!cfg.enabled) {
       showToast("⚠️ Envio de e-mail está desativado. Configure em Cadastros → E-mail","#f59e0b");
@@ -7115,6 +7116,7 @@ function Dashboard({ currentUser, onLogout }) {
       ["Consultor", consultor],
       ["Cliente",   client || '—'],
       ["Data",      `${diaLabel} de ${mesAno}`],
+      ["Modalidade", modalidade === "remoto" ? "💻 Remoto" : "🏢 Presencial"],
       ["Horário",   horarioTexto],
       ...(atividades ? [["Atividades", atividades.replace(/\n/g,'<br>')]] : []),
       ["Agendado por", nomeUsuario],
@@ -7159,7 +7161,7 @@ function Dashboard({ currentUser, onLogout }) {
     try {
       const ej = await loadEJ();
       for (const r of recipients) {
-        await ej.send(cfg.serviceId, cfg.templateId, { assunto, corpo, to_name: r.name, to_email: r.email, acao, consultor, cliente: client||'—', mes_ano: mesAno, dias: diasStr, horario: horarioTexto, atividades: atividades||'—', realizado_por: nomeUsuario });
+        await ej.send(cfg.serviceId, cfg.templateId, { assunto, corpo, to_name: r.name, to_email: r.email, acao, consultor, cliente: client||'—', mes_ano: mesAno, dias: diasStr, horario: horarioTexto, modalidade: modalidade === 'remoto' ? '💻 Remoto' : '🏢 Presencial', atividades: atividades||'—', realizado_por: nomeUsuario });
       }
       showToast(`📧 E-mail enviado para ${recipients.length} destinatário(s)`, "#3b82f6");
     } catch(e) {
