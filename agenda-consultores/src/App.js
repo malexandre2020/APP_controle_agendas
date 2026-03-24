@@ -196,7 +196,7 @@ function AgendaModal({ consultores, clients, months, editEntry, onSave, onClose 
         <div style={{ marginBottom:"16px" }}>
           <label style={lbl}>Tipo de lançamento</label>
           <div style={{ display:"flex",gap:"5px",flexWrap:"wrap" }}>
-            {[["client","👤 Cliente"],["vacation","🏖 Férias"],["holiday","🎉 Feriado"],["reserved","🔒 Reservado"],["blocked","⛔ Bloqueado"]].map(([val,lab])=>(
+            {[["client","👤 Cliente"],["vacation","🏖 Férias"],["absence","🤒 Afastamento"],["holiday","🎉 Feriado"],["reserved","🔒 Reservado"],["blocked","⛔ Bloqueado"]].map(([val,lab])=>(
               <button key={val} onClick={()=>setType(val)} style={{ padding:"6px 13px",borderRadius:"99px",border:"1px solid",cursor:"pointer",fontSize:"12px",fontWeight:600,transition:"all .15s",borderColor:type===val?"#6c63ff":"#2a2a3a",background:type===val?"#6c63ff22":"transparent",color:type===val?"#a78bfa":"#3e3e55" }}>{lab}</button>
             ))}
           </div>
@@ -1104,7 +1104,7 @@ function OrdemServicoModal({ entry, consultorName, emailConfig, clientList, onSa
 // ─────────────────────────────────────────────────────────────────────────────
 // GRADE ADMIN VIEW — busca por produto/módulo + visualização por consultor
 // ─────────────────────────────────────────────────────────────────────────────
-function GradeAdminView({ consultores }) {
+function GradeAdminView({ consultores, scheduleData }) {
   const [modo, setModo] = React.useState("consultor"); // "consultor" | "busca"
   const [gradeConsultor, setGradeConsultor] = React.useState(consultores[0]||"");
 
@@ -1113,6 +1113,8 @@ function GradeAdminView({ consultores }) {
   const [filtroModulo, setFiltroModulo]   = React.useState("");
   const [resultados, setResultados]       = React.useState(null); // null = ainda não buscou
   const [buscando, setBuscando]           = React.useState(false);
+
+  const [consultorDisp, setConsultorDisp] = React.useState(null); // consultor selecionado para ver disponibilidade
 
   const makeKey = (name) =>
     "grade_" + (name||"").trim().toLowerCase()
@@ -1314,12 +1316,16 @@ function GradeAdminView({ consultores }) {
                               {sorted.map(({nome,nivel})=>{
                                 const nv = nivelInfo(nivel);
                                 return (
-                                  <div key={nome} style={{ display:"flex",alignItems:"center",gap:"6px",padding:"5px 10px",borderRadius:"8px",background:nv.bg,border:"1px solid "+nv.color+"44" }}>
+                                  <div key={nome}
+                                    onClick={()=>setConsultorDisp(consultorDisp===nome?null:nome)}
+                                    title="Clique para ver disponibilidade"
+                                    style={{ display:"flex",alignItems:"center",gap:"6px",padding:"5px 10px",borderRadius:"8px",background:consultorDisp===nome?"#6c63ff33":nv.bg,border:"1px solid "+(consultorDisp===nome?"#6c63ff":nv.color+"44"),cursor:"pointer",transition:"all .15s" }}>
                                     <div style={{ width:"20px",height:"20px",borderRadius:"6px",background:`hsl(${(consultores.indexOf(nome)*37)%360},55%,48%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"8px",fontWeight:800,color:"#fff",flexShrink:0 }}>
                                       {nome.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
                                     </div>
                                     <span style={{ fontSize:"11px",fontWeight:600,color:"#c8c8d8" }}>{nome.split(" ")[0]}</span>
                                     <span style={{ fontSize:"10px",fontWeight:700,color:nv.color,padding:"1px 6px",borderRadius:"99px",background:nv.bg }}>{nv.label}</span>
+                                    <span style={{ fontSize:"9px",color:"#454560" }}>📅</span>
                                   </div>
                                 );
                               })}
@@ -1340,6 +1346,104 @@ function GradeAdminView({ consultores }) {
               <div style={{ fontSize:"14px",color:"#3e3e55" }}>Selecione os filtros e clique em <strong style={{ color:"#a78bfa" }}>Buscar</strong> para ver quais consultores possuem o conhecimento</div>
             </div>
           )}
+
+          {/* Painel de disponibilidade do consultor selecionado */}
+          {consultorDisp && scheduleData && (() => {
+            const entradas = scheduleData[consultorDisp] || [];
+            const hoje = new Date();
+            const mesAtual = MONTHS_ORDER[hoje.getMonth()];
+            const anoAtual = hoje.getFullYear();
+            // Agrupar por mês
+            const porMes = {};
+            entradas.forEach(e => {
+              const key = e.month;
+              if (!porMes[key]) porMes[key] = { livre:0, cliente:0, ferias:0, afastamento:0, bloqueado:0, reservado:0, total:0 };
+              porMes[key].total++;
+              if (e.type==="client") porMes[key].cliente++;
+              else if (e.type==="vacation") porMes[key].ferias++;
+              else if (e.type==="absence") porMes[key].afastamento++;
+              else if (e.type==="blocked") porMes[key].bloqueado++;
+              else if (e.type==="reserved") porMes[key].reservado++;
+            });
+            // Próximos dias disponíveis (sem entrada nos próximos 14 dias úteis)
+            const diasOcupados = new Set(
+              entradas.filter(e=>e.month.toUpperCase()===mesAtual.toUpperCase()).map(e=>e.day)
+            );
+            const proxDisponiveis = [];
+            let d = new Date(hoje); d.setDate(d.getDate()+1);
+            while (proxDisponiveis.length < 5 && d.getMonth() === hoje.getMonth()) {
+              const dow = d.getDay();
+              if (dow > 0 && dow < 6 && !diasOcupados.has(d.getDate())) {
+                proxDisponiveis.push(d.getDate());
+              }
+              d.setDate(d.getDate()+1);
+            }
+            const mesOrdem = MONTHS_ORDER;
+            const mesesComDados = mesOrdem.filter(m => porMes[m]);
+            return (
+              <div style={{ marginTop:"20px", background:"#0d0d14", borderRadius:"14px", border:"1px solid #6c63ff33", padding:"20px" }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"16px", flexWrap:"wrap", gap:"10px" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
+                    <div style={{ width:"36px", height:"36px", borderRadius:"10px", background:`hsl(${(consultores.indexOf(consultorDisp)*37)%360},55%,48%)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"13px", fontWeight:800, color:"#fff" }}>
+                      {consultorDisp.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontSize:"14px", fontWeight:700, color:"#f0f0fa" }}>📅 Disponibilidade — {consultorDisp}</div>
+                      <div style={{ fontSize:"11px", color:"#6e6e88" }}>Baseado nos lançamentos da agenda</div>
+                    </div>
+                  </div>
+                  <button onClick={()=>setConsultorDisp(null)} style={{ background:"none", border:"none", color:"#6e6e88", cursor:"pointer", fontSize:"18px", lineHeight:1 }}>✕</button>
+                </div>
+
+                {/* Próximos dias livres */}
+                {proxDisponiveis.length > 0 && (
+                  <div style={{ marginBottom:"16px" }}>
+                    <div style={{ fontSize:"11px", color:"#22d3a0", fontWeight:700, letterSpacing:"0.8px", textTransform:"uppercase", marginBottom:"8px" }}>
+                      ✅ Próximos dias livres em {mesAtual}
+                    </div>
+                    <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
+                      {proxDisponiveis.map(dia => (
+                        <span key={dia} style={{ padding:"5px 14px", borderRadius:"8px", background:"#22d3a018", border:"1px solid #22d3a044", fontSize:"12px", fontWeight:700, color:"#22d3a0" }}>
+                          Dia {dia}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {proxDisponiveis.length === 0 && (
+                  <div style={{ padding:"10px 14px", borderRadius:"10px", background:"#f04f5e18", border:"1px solid #f04f5e33", fontSize:"12px", color:"#f04f5e", marginBottom:"16px" }}>
+                    ⚠️ Sem dias livres identificados para o restante do mês atual
+                  </div>
+                )}
+
+                {/* Resumo por mês */}
+                <div style={{ fontSize:"11px", color:"#6e6e88", fontWeight:700, letterSpacing:"0.8px", textTransform:"uppercase", marginBottom:"10px" }}>Resumo por mês</div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:"8px" }}>
+                  {mesesComDados.map(mes => {
+                    const d = porMes[mes];
+                    const livre = 22 - d.cliente; // aprox dias úteis no mês
+                    const isMesAtual = mes.toUpperCase()===mesAtual.toUpperCase();
+                    return (
+                      <div key={mes} style={{ background: isMesAtual?"#6c63ff18":"#111118", borderRadius:"10px", border:"1px solid "+(isMesAtual?"#6c63ff44":"#1f1f2e"), padding:"10px 12px" }}>
+                        <div style={{ fontSize:"12px", fontWeight:700, color: isMesAtual?"#a78bfa":"#c8c8d8", marginBottom:"6px" }}>
+                          {mes} {isMesAtual && <span style={{ fontSize:"9px", background:"#6c63ff44", borderRadius:"4px", padding:"1px 4px" }}>atual</span>}
+                        </div>
+                        <div style={{ display:"flex", flexDirection:"column", gap:"3px" }}>
+                          {d.cliente>0 && <div style={{ fontSize:"10px", color:"#6e6e88" }}>🏢 {d.cliente} dia{d.cliente!==1?"s":""} c/ cliente</div>}
+                          {d.ferias>0 && <div style={{ fontSize:"10px", color:"#f5a623" }}>🏖️ {d.ferias} dia{d.ferias!==1?"s":""} de férias</div>}
+                          {d.afastamento>0 && <div style={{ fontSize:"10px", color:"#f04f5e" }}>🏥 {d.afastamento} dia{d.afastamento!==1?"s":""} afastado</div>}
+                          {d.reservado>0 && <div style={{ fontSize:"10px", color:"#a78bfa" }}>📌 {d.reservado} reservado{d.reservado!==1?"s":""}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {mesesComDados.length === 0 && (
+                    <div style={{ gridColumn:"1/-1", fontSize:"12px", color:"#3e3e55", padding:"12px" }}>Nenhum lançamento na agenda deste consultor</div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
@@ -2189,6 +2293,7 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
   const getColor = (entry) => {
     if (!entry) return "#6b7280";
     if (entry.type==="vacation") return "#0891b2";
+    if (entry.type==="absence") return "#f04f5e";
     if (entry.type==="holiday") return "#d97706";
     if (entry.type==="blocked") return "#374151";
     if (entry.type==="reserved") return "#6366f1";
@@ -2628,6 +2733,7 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
   const getColor = (entry) => {
     if (!entry) return null;
     if (entry.type==="vacation") return "#22c55e";
+    if (entry.type==="absence") return "#f04f5e";
     if (entry.type==="holiday") return "#ef4444";
     if (entry.type==="reserved") return "#6e6e88";
     if (entry.type==="blocked") return "#6e6e88";
@@ -3013,7 +3119,7 @@ function CalendarView({ consultant, month, byDay }) {
   const lastDay = [...currentWeek].reverse().find(d => d !== null);
   const weekLabel = firstDay && lastDay ? firstDay === lastDay ? `Dia ${firstDay}` : `${firstDay} – ${lastDay} de ${month}` : month;
 
-  const getColor = e => e.type==="vacation"?"#22c55e":e.type==="holiday"?"#ef4444":e.type==="reserved"?"#6e6e88":e.type==="blocked"?"#6e6e88":getClientColor(e.client);
+  const getColor = e => e.type==="vacation"?"#22c55e":e.type==="absence"?"#f04f5e":e.type==="holiday"?"#ef4444":e.type==="reserved"?"#6e6e88":e.type==="blocked"?"#6e6e88":getClientColor(e.client);
 
   return (
     <div onClick={()=>setPopup(null)}>
@@ -3167,7 +3273,7 @@ function TimelineView({ data, months }) {
     const byClient = {};
     entries.filter(e=>e.type==="client").forEach(e=>{ const k=normalizeClient(e.client); byClient[k]=(byClient[k]||0)+1; });
     const top = Object.entries(byClient).sort((a,b)=>b[1]-a[1])[0];
-    return { total:Object.values(byClient).reduce((s,v)=>s+v,0), top, vacation:entries.filter(e=>e.type==="vacation").length };
+    return { total:Object.values(byClient).reduce((s,v)=>s+v,0), top, vacation:entries.filter(e=>e.type==="vacation").length, absence:entries.filter(e=>e.type==="absence").length };
   };
   return (
     <div style={{ overflowX:"auto" }}>
@@ -3188,7 +3294,8 @@ function TimelineView({ data, months }) {
                 </div>
               </td>
               {displayMonths.map(m=>{
-                const {total,top,vacation} = getMonthSummary(name,m);
+                const {total,top,vacation,absence} = getMonthSummary(name,m);
+                if (absence>0&&total===0) return <td key={m} style={{ padding:"4px" }}><div style={{ background:"#f04f5e22",border:"1px solid #f04f5e44",borderRadius:"6px",padding:"6px 4px",textAlign:"center" }}><div style={{ fontSize:"10px",color:"#f04f5e",fontWeight:600 }}>AFASTADO</div></div></td>;
                 if (vacation>0&&total===0) return <td key={m} style={{ padding:"4px" }}><div style={{ background:"#22c55e22",border:"1px solid #22c55e44",borderRadius:"6px",padding:"6px 4px",textAlign:"center" }}><div style={{ fontSize:"10px",color:"#22d3a0",fontWeight:600 }}>FÉRIAS</div></div></td>;
                 if (!total) return <td key={m} style={{ padding:"4px" }}><div style={{ height:"36px",borderRadius:"6px",background:"#18181f44" }}/></td>;
                 const color = top ? getClientColor(top[0]) : "#3b82f6";
@@ -5288,6 +5395,9 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, emailConfig
   const [filtroCliente,setFiltroCliente]= useState("");
   const [filtroConsult,setFiltroConsult]= useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
+  const [filtroProjeto,setFiltroProjeto]= useState("");
+  const [filtroDataDe, setFiltroDataDe] = useState("");
+  const [filtroDataAte,setFiltroDataAte]= useState("");
   const [busca,        setBusca]        = useState("");
   const [osSelecionada,setOsSelecionada]= useState(null);  // OS em detalhe/ação
   const [acao,         setAcao]         = useState(null);  // "aprovar"|"rejeitar"|"contestar"
@@ -5407,6 +5517,14 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, emailConfig
     if (filtroCliente && os.client !== filtroCliente) return false;
     if (filtroConsult && os.consultor !== filtroConsult) return false;
     if (filtroStatus  && os.osStatus  !== filtroStatus)  return false;
+    if (filtroProjeto && !(os.osDescricao||"").toLowerCase().includes(filtroProjeto.toLowerCase()) && !(os.osSistema||"").toLowerCase().includes(filtroProjeto.toLowerCase())) return false;
+    // Filtro de data: usa osPreenchidaEm ou day+month como referência
+    if (filtroDataDe || filtroDataAte) {
+      const osDate = os.osPreenchidaEm ? os.osPreenchidaEm.slice(0,10) : null;
+      if (!osDate) return !filtroDataDe && !filtroDataAte;
+      if (filtroDataDe && osDate < filtroDataDe) return false;
+      if (filtroDataAte && osDate > filtroDataAte) return false;
+    }
     if (busca.trim()) {
       const q = busca.toLowerCase();
       return (os.osNumero||"").toLowerCase().includes(q)
@@ -5418,8 +5536,19 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, emailConfig
     return true;
   });
 
+  // Total de horas das OS filtradas
+  const totalHorasOS = osFiltradas.reduce((acc, os) => {
+    if (!os.horaInicio || !os.horaFim || os.horaInicio >= os.horaFim) return acc;
+    const [hi,mi] = os.horaInicio.split(":").map(Number);
+    const [hf,mf] = os.horaFim.split(":").map(Number);
+    const mins = (hf*60+mf) - (hi*60+mi) - (Number(os.intervalo)||0);
+    return acc + Math.max(0, mins);
+  }, 0);
+  const totalHorasStr = totalHorasOS > 0 ? `${Math.floor(totalHorasOS/60)}h${totalHorasOS%60>0?" "+totalHorasOS%60+"min":""}` : null;
+
   const clientesUnicos  = [...new Set(allOS.map(o=>o.client).filter(Boolean))].sort();
   const consultoresUnicos = [...new Set(allOS.map(o=>o.consultor).filter(Boolean))].sort();
+  const projetosUnicos = [...new Set(allOS.map(o=>o.osSistema).filter(Boolean))].sort();
 
   const inp = { padding:"8px 13px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"#0d0d14",color:"#c8c8d8",fontSize:"12px",fontFamily:"inherit",outline:"none" };
 
@@ -5435,7 +5564,10 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, emailConfig
       <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"24px",flexWrap:"wrap",gap:"12px" }}>
         <div>
           <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>📋 Ordens de Serviço</h2>
-          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>{allOS.length} OS registradas · {osFiltradas.length} exibidas</p>
+          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>
+            {allOS.length} OS registradas · {osFiltradas.length} exibidas
+            {totalHorasStr && <span style={{ marginLeft:"10px",color:"#22d3a0",fontWeight:700 }}>⏱ {totalHorasStr} no período</span>}
+          </p>
         </div>
         {/* Contadores por status */}
         <div style={{ display:"flex",gap:"8px",flexWrap:"wrap" }}>
@@ -5472,8 +5604,18 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, emailConfig
           <option value="">Todos os status</option>
           {Object.entries(OS_STATUS).map(([k,v])=><option key={k} value={k}>{v.icon} {v.label}</option>)}
         </select>
-        {(busca||filtroConsult||filtroCliente||filtroStatus) && (
-          <button onClick={()=>{setBusca("");setFiltroConsult("");setFiltroCliente("");setFiltroStatus("");}}
+        <select value={filtroProjeto} onChange={e=>setFiltroProjeto(e.target.value)} style={{...inp,minWidth:"140px"}}>
+          <option value="">Todos os sistemas</option>
+          {projetosUnicos.map(p=><option key={p} value={p}>{p}</option>)}
+        </select>
+        <div style={{ display:"flex",alignItems:"center",gap:"6px" }}>
+          <span style={{ fontSize:"11px",color:"#6e6e88",whiteSpace:"nowrap" }}>De:</span>
+          <input type="date" value={filtroDataDe} onChange={e=>setFiltroDataDe(e.target.value)} style={{...inp,width:"130px"}}/>
+          <span style={{ fontSize:"11px",color:"#6e6e88" }}>Até:</span>
+          <input type="date" value={filtroDataAte} onChange={e=>setFiltroDataAte(e.target.value)} style={{...inp,width:"130px"}}/>
+        </div>
+        {(busca||filtroConsult||filtroCliente||filtroStatus||filtroProjeto||filtroDataDe||filtroDataAte) && (
+          <button onClick={()=>{setBusca("");setFiltroConsult("");setFiltroCliente("");setFiltroStatus("");setFiltroProjeto("");setFiltroDataDe("");setFiltroDataAte("");}}
             style={{ padding:"7px 12px",borderRadius:"9px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontSize:"11px",fontFamily:"inherit" }}>✕ Limpar</button>
         )}
       </div>
@@ -7527,7 +7669,7 @@ function Dashboard({ currentUser, onLogout }) {
           <div style={{ padding:"28px 32px",flex:1 }}>
             {isConsultor
               ? <GradeConhecimento consultorName={currentUser.consultorName||currentUser.nome||currentUser.username||""} userId={currentUser.uid} readOnly={false}/>
-              : <GradeAdminView consultores={consultores}/>
+              : <GradeAdminView consultores={consultores} scheduleData={scheduleData}/>
             }
           </div>
         )}
