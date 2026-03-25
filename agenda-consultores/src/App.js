@@ -7307,20 +7307,30 @@ function Dashboard({ currentUser, onLogout }) {
 </div>`.trim();
 
     // ── Montar destinatários
+    const addRecipient = (emailOrUser, nameHint) => {
+      if (!emailOrUser) return;
+      const email = typeof emailOrUser === 'string' ? emailOrUser : emailOrUser.email;
+      const name  = typeof emailOrUser === 'string' ? (nameHint || emailOrUser) : (emailOrUser.nome || emailOrUser.name || emailOrUser.email);
+      if (email && !recipients.find(r => r.email === email))
+        recipients.push({ email, name: name || email });
+    };
     const recipients = [];
     if (action === 'nova') {
+      // Nova entrada: notifica o consultor + quem criou (currentUser)
       const cons = findUser(consultor);
-      if (cons?.email) recipients.push({ email: cons.email, name: cons.nome || cons.consultorName || cons.email });
-      if (currentUser.email && !recipients.find(r => r.email === currentUser.email))
-        recipients.push({ email: currentUser.email, name: currentUser.nome || currentUser.email });
+      addRecipient(cons);
+      addRecipient(currentUser.email, currentUser.nome || currentUser.email);
     } else {
+      // Alteração: notifica o consultor + quem criou a entrada original + quem alterou (currentUser)
       const cons = findUser(consultor);
-      if (cons?.email) recipients.push({ email: cons.email, name: cons.nome || cons.consultorName || cons.email });
-      if (criadoPor && criadoPor !== nomeUsuario) {
+      addRecipient(cons);
+      // Quem criou originalmente (editor/coordenador que incluiu a agenda)
+      if (criadoPor) {
         const orig = findUser(criadoPor);
-        if (orig?.email && !recipients.find(r => r.email === orig.email))
-          recipients.push({ email: orig.email, name: orig.nome || orig.email });
+        addRecipient(orig || criadoPor);
       }
+      // Quem fez a alteração (pode ser diferente de quem criou)
+      addRecipient(currentUser.email, currentUser.nome || currentUser.email);
     }
 
     if (recipients.length === 0) {
