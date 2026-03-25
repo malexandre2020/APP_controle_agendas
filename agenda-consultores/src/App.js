@@ -2646,7 +2646,7 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
           </div>
 
           {/* Corpo do detalhe */}
-          <div style={{ padding:"14px 16px",overflowY:"auto" }}>
+          <div style={{ padding:"14px 16px",overflowY:"auto",flex:1 }}>
             {/* Cor + cliente */}
             <div style={{ background:getColor(popup.entry),borderRadius:"10px",padding:"10px 14px",marginBottom:"12px" }}>
               <div style={{ fontSize:"13px",fontWeight:800,color:"#fff" }}>
@@ -2695,8 +2695,9 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
               </div>
             )}
 
-            {/* Botões de ação */}
-            <div style={{ display:"flex",flexDirection:"column",gap:"7px",marginTop:"12px" }}>
+            {/* Botões de ação — fora do scroll, sempre visíveis */}
+            </div>
+          <div style={{ padding:"0 16px 14px",flexShrink:0,display:"flex",flexDirection:"column",gap:"7px",borderTop:"1px solid #1f1f2e",paddingTop:"12px" }}>
               {onOsClick && (
                 <button onMouseDown={e=>e.stopPropagation()}
                   onClick={()=>{ onOsClick({...popup.entry, consultor:popup.name}); setPopup(null); }}
@@ -2711,7 +2712,6 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
                   ✏️ Editar agenda
                 </button>
               )}
-            </div>
           </div>
         </div>
       )}
