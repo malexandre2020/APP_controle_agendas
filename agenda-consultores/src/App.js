@@ -7029,8 +7029,34 @@ function Dashboard({ currentUser, onLogout }) {
   // ── Carregar dados do Firestore na inicialização ──
   useEffect(() => {
     async function loadData() {
-      const [sd, cl, pj] = await Promise.all([
-        loadFromFirestore("scheduleData", SCHEDULE_DATA),
+      // Carregar cada consultor individualmente (schedule_Nome) para evitar limite 1MB
+      // Fallback: tenta o documento legado "scheduleData" se os individuais não existirem
+      let sd = null;
+      const consultoresDefault = Object.keys(SCHEDULE_DATA);
+      const porConsultor = await Promise.all(
+        consultoresDefault.map(nome =>
+          loadFromFirestore("schedule_" + nome, null).then(v => ({ nome, v }))
+        )
+      );
+      const algumCarregado = porConsultor.some(({ v }) => v !== null);
+      if (algumCarregado) {
+        sd = {};
+        porConsultor.forEach(({ nome, v }) => { if (v !== null) sd[nome] = v; });
+        // Verificar se há consultores extras no Firestore além dos do SCHEDULE_DATA
+        // (consultores adicionados depois do deploy)
+        try {
+          const legadoSnap = await loadFromFirestore("scheduleData", null);
+          if (legadoSnap) {
+            Object.keys(legadoSnap).forEach(nome => {
+              if (!sd[nome]) sd[nome] = legadoSnap[nome];
+            });
+          }
+        } catch(e) {}
+      } else {
+        // Primeira vez — usa o documento legado ou o SCHEDULE_DATA padrão
+        sd = await loadFromFirestore("scheduleData", SCHEDULE_DATA);
+      }
+      const [cl, pj] = await Promise.all([
         loadFromFirestore("clientList", INITIAL_CLIENTS.map(n=>({ name:n, color:CLIENT_COLORS[n]||CLIENT_COLORS.default }))),
         loadFromFirestore("projects", []),
       ]);
@@ -7063,10 +7089,13 @@ function Dashboard({ currentUser, onLogout }) {
     loadData();
   }, []);
 
-  // ── Salvar scheduleData no Firestore quando mudar ──
+  // ── Salvar scheduleData no Firestore quando mudar — por consultor individual ──
   useEffect(() => {
     if (!dbLoaded) return;
-    saveToFirestore("scheduleData", scheduleData);
+    // Salva cada consultor separadamente para evitar limite de 1MB do Firestore
+    Object.entries(scheduleData).forEach(([nome, entradas]) => {
+      saveToFirestore("schedule_" + nome, entradas);
+    });
   }, [scheduleData, dbLoaded]);
 
   // ── Salvar clientList no Firestore quando mudar ──
@@ -7174,6 +7203,8 @@ function Dashboard({ currentUser, onLogout }) {
     setScheduleData(prev=>{ const u={...prev}; delete u[name]; return u; });
     window.__consultoresMeta = (window.__consultoresMeta||[]).filter(c=>c.name!==name);
     saveToFirestore("consultores_meta", window.__consultoresMeta);
+    // Remover documento individual do Firestore
+    deleteDoc(doc(db, "app_data", "schedule_" + name)).catch(()=>{});
     showToast("🗑 Consultor removido","#ef4444");
   };
   const handleUpdateConsultor = (oldName, updated) => {
