@@ -7970,7 +7970,7 @@ function Dashboard({ currentUser, onLogout }) {
                       onOsClick={isConsultor?(e)=>setOsEntry(e):null}
                     />
               )}
-              {view==="semanal" && <WeeklyGlobalView weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={canEdit} onEdit={(entry,name)=>{setEditEntry({...entry,consultor:name});setShowModal(true);}} onNewEntry={canEdit?({consultor,month,day,year})=>{setEditEntry({consultor,month,day,year,prefill:true});setShowModal(true);}:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null} theme={T}/>}
+              {view==="semanal" && <WeeklyGlobalView key={"weekly-"+scheduleVersion} weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={canEdit} onEdit={(entry,name)=>{setEditEntry({...entry,consultor:name});setShowModal(true);}} onNewEntry={canEdit?({consultor,month,day,year})=>{setEditEntry({consultor,month,day,year,prefill:true});setShowModal(true);}:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null} theme={T}/>}
               {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
               {view==="stats" && <StatsView stats={stats}/>}
             </div>
