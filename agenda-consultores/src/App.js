@@ -7275,19 +7275,6 @@ function Dashboard({ currentUser, onLogout }) {
         ].join('\r\n');
         const icsUri = `data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`;
         const diaLabel2 = `${pad(dia)}/${pad(monthIdx+1)}/${year}`;
-        // Microsoft To Do — título pré-formatado para copiar + link direto ao app
-        const todoTitulo = `${client||'—'} — ${consultor.split(' ')[0]} | ${diaLabel2}`;
-        const todoNota   = [
-          `Consultor: ${consultor}`,
-          `Cliente: ${client||'—'}`,
-          `Data: ${diaLabel2}`,
-          `Horário: ${horarioTexto}`,
-          `Modalidade: ${modalidade==='remoto'?'💻 Remoto':'🏢 Presencial'}`,
-          atividades ? `Atividades: ${atividades}` : '',
-          `Agendado por: ${nomeUsuario}`,
-        ].filter(Boolean).join('\n');
-        // Página de ponte hospedada no Firebase — passa título e nota via query string
-        const todoRedirectUrl = `${window.location.origin}/todo-redirect.html?t=${encodeURIComponent(todoTitulo)}&n=${encodeURIComponent(todoNota)}`;
         return `
           <div style="margin-bottom:12px">
             <div style="margin-bottom:6px">
@@ -7296,15 +7283,14 @@ function Dashboard({ currentUser, onLogout }) {
             <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
               <a href="${gcUrl}" target="_blank" style="display:inline-block;padding:5px 12px;background:#4285F4;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none">📅 Google Agenda</a>
               <a href="${icsUri}" download="agenda_gsc_${dia}_${monthIdx+1}_${year}.ics" style="display:inline-block;padding:5px 12px;background:#6c63ff;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none">📥 Outlook / Apple (.ics)</a>
-              <a href="${todoRedirectUrl}" target="_blank" style="display:inline-block;padding:5px 12px;background:#0078d4;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none" title="Abre página com título e notas prontos para copiar no To Do">☑ Microsoft To Do</a>
             </div>
           </div>`;
       }).join('');
       return `
         <div style="margin-top:16px;padding:14px 16px;background:#f0f7ff;border-radius:8px;border:1px solid #bfdbfe">
-          <div style="font-size:12px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">📅 Adicionar ao Calendário / Tarefas</div>
+          <div style="font-size:12px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">📅 Adicionar ao Calendário</div>
           ${links}
-          <p style="margin:10px 0 0;font-size:11px;color:#6b7280"><strong>Google Agenda</strong> → abre direto no Google Calendar pré-preenchido. <strong>Outlook / Apple (.ics)</strong> → baixa arquivo para importar. <strong>Microsoft To Do</strong> → abre página com título e notas prontos para copiar, com botão direto para o app.</p>
+          <p style="margin:10px 0 0;font-size:11px;color:#6b7280"><strong>Google Agenda</strong> → abre direto no Google Calendar pré-preenchido. <strong>Outlook / Apple (.ics)</strong> → baixa arquivo para importar no Outlook, Apple Calendar ou qualquer app de calendário.</p>
         </div>`;
     };
 
