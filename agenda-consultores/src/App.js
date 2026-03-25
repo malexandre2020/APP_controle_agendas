@@ -6203,7 +6203,7 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientLis
 // ─────────────────────────────────────────────────────────────────────────────
 // MÓDULO: GESTÃO DE PROJETOS
 // ─────────────────────────────────────────────────────────────────────────────
-function ModuloProjetos({ currentUser, canEdit, canManage, isGestor, consultores, clients, theme: T }) {
+function ModuloProjetos({ currentUser, canEdit, canManage, isGestor, consultores, clients, scheduleData, onSaveEntry, theme: T }) {
   const [projetos, setProjetos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [projetoAtivo, setProjetoAtivo] = useState(null);
@@ -6403,8 +6403,8 @@ function ModuloProjetos({ currentUser, canEdit, canManage, isGestor, consultores
         </div>
 
         {/* Abas */}
-        <div style={{ display:"flex",gap:"2px",background:"#0d0d14",borderRadius:"10px",padding:"3px",border:"1px solid #2a2a3a",marginBottom:"20px",width:"fit-content" }}>
-          {[["kanban","📋 Kanban"],["cronograma","📊 Cronograma"],["horas","⏱ Horas"]].map(([v,l])=>(
+        <div style={{ display:"flex",gap:"2px",background:"#0d0d14",borderRadius:"10px",padding:"3px",border:"1px solid #2a2a3a",marginBottom:"20px",flexWrap:"wrap" }}>
+          {[["kanban","📋 Kanban"],["gantt","📊 Gantt"],["importar","📥 Importar MS Project"],["cronograma","📈 Cronograma"],["horas","⏱ Horas"]].map(([v,l])=>(
             <button key={v} onClick={()=>setAbaProj(v)} style={{ padding:"6px 16px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"12px",fontFamily:"inherit",background:abaProj===v?"#6c63ff":"transparent",color:abaProj===v?"#fff":"#6e6e88" }}>{l}</button>
           ))}
         </div>
@@ -6525,6 +6525,420 @@ function ModuloProjetos({ currentUser, canEdit, canManage, isGestor, consultores
             </div>
           </div>
         )}
+
+        {/* ── ABA GANTT ── */}
+        {abaProj==="gantt" && (()=>{
+          const tarefasGantt = (proj.tarefas||[]).filter(t=>t.dataInicio&&t.dataFim);
+          if (tarefasGantt.length===0) return (
+            <div style={{ textAlign:"center",padding:"48px",background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e" }}>
+              <div style={{ fontSize:"40px",marginBottom:"12px" }}>📊</div>
+              <div style={{ fontSize:"14px",color:"#3e3e55",marginBottom:"8px" }}>Nenhuma tarefa com datas definidas</div>
+              <div style={{ fontSize:"12px",color:"#3e3e55" }}>Importe do MS Project ou adicione datas nas tarefas do Kanban</div>
+            </div>
+          );
+          const allDates = tarefasGantt.flatMap(t=>[new Date(t.dataInicio),new Date(t.dataFim)]);
+          const minDate = new Date(Math.min(...allDates));
+          const maxDate = new Date(Math.max(...allDates));
+          minDate.setDate(minDate.getDate()-2);
+          maxDate.setDate(maxDate.getDate()+4);
+          const totalDias = Math.ceil((maxDate-minDate)/(1000*60*60*24));
+          const hoje = new Date(); hoje.setHours(0,0,0,0);
+          const pxPorDia = Math.max(28, Math.min(50, 1100/totalDias));
+          const larguraTotal = totalDias * pxPorDia;
+
+          const posX = (data) => Math.max(0, Math.ceil((new Date(data)-minDate)/(1000*60*60*24))) * pxPorDia;
+          const largura = (ini,fim) => Math.max(pxPorDia, Math.ceil((new Date(fim)-new Date(ini))/(1000*60*60*24)+1)*pxPorDia);
+
+          // Cabeçalho de meses e dias
+          const meses = [];
+          let cur = new Date(minDate);
+          while (cur <= maxDate) {
+            const mes = cur.toLocaleDateString("pt-BR",{month:"short",year:"2-digit"});
+            const x = posX(cur.toISOString().slice(0,10));
+            if (!meses.length || meses[meses.length-1].label!==mes) meses.push({label:mes,x});
+            cur.setDate(cur.getDate()+1);
+          }
+
+          const CORES_TIPO = { concluido:"#22d3a0", em_progresso:"#6c63ff", revisao:"#f5a623", backlog:"#3e3e55", milestone:"#f04f5e" };
+          const ROW_H = 44;
+          const LABEL_W = 200;
+          const svgH = tarefasGantt.length * ROW_H + 60;
+
+          return (
+            <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",overflow:"hidden" }}>
+              <div style={{ padding:"14px 18px",borderBottom:"1px solid #1f1f2e",display:"flex",alignItems:"center",gap:"12px",flexWrap:"wrap" }}>
+                <span style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa" }}>📊 Gráfico de Gantt</span>
+                <span style={{ fontSize:"11px",color:"#6e6e88" }}>{tarefasGantt.length} tarefa(s) com datas</span>
+                <div style={{ display:"flex",gap:"10px",marginLeft:"auto",flexWrap:"wrap" }}>
+                  {Object.entries(CORES_TIPO).map(([k,c])=>(
+                    <span key={k} style={{ display:"flex",alignItems:"center",gap:"5px",fontSize:"10px",color:"#6e6e88" }}>
+                      <span style={{ width:"10px",height:"10px",borderRadius:k==="milestone"?"50%":"3px",background:c,display:"inline-block" }}/>
+                      {k==="em_progresso"?"Em progresso":k==="revisao"?"Revisão":k.charAt(0).toUpperCase()+k.slice(1)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div style={{ overflowX:"auto",overflowY:"auto",maxHeight:"520px" }}>
+                <div style={{ display:"flex",minWidth:LABEL_W+larguraTotal+"px" }}>
+                  {/* Coluna de labels */}
+                  <div style={{ width:LABEL_W+"px",flexShrink:0,borderRight:"1px solid #1f1f2e" }}>
+                    <div style={{ height:"60px",padding:"8px 12px",borderBottom:"1px solid #1f1f2e",display:"flex",alignItems:"flex-end" }}>
+                      <span style={{ fontSize:"10px",color:"#3e3e55",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px" }}>Tarefa</span>
+                    </div>
+                    {tarefasGantt.map((t,i)=>(
+                      <div key={t.id} style={{ height:ROW_H+"px",padding:"0 12px",display:"flex",alignItems:"center",borderBottom:"1px solid #1a1a28",background:i%2===0?"#111118":"#0f0f1a" }}>
+                        <div style={{ overflow:"hidden" }}>
+                          <div style={{ fontSize:"12px",fontWeight:600,color:"#c8c8d8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:LABEL_W-24+"px" }}>{t.isMilestone?"🔷":""}{t.nome}</div>
+                          {t.responsavel && <div style={{ fontSize:"10px",color:"#6e6e88",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>👤 {t.responsavel}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Área do Gantt */}
+                  <div style={{ flex:1,position:"relative" }}>
+                    <svg width={larguraTotal} height={svgH} style={{ display:"block",overflow:"visible" }}>
+                      {/* Cabeçalho meses */}
+                      {meses.map((m,i)=>(
+                        <g key={i}>
+                          <line x1={m.x} y1={0} x2={m.x} y2={svgH} stroke="#1f1f2e" strokeWidth="1"/>
+                          <text x={m.x+4} y={16} fill="#6e6e88" fontSize="10" fontWeight="600">{m.label.toUpperCase()}</text>
+                        </g>
+                      ))}
+                      {/* Grid de dias */}
+                      {Array.from({length:totalDias},(_,i)=>{
+                        const d = new Date(minDate); d.setDate(d.getDate()+i);
+                        const isWeekend = d.getDay()===0||d.getDay()===6;
+                        const x = i*pxPorDia;
+                        return (
+                          <g key={i}>
+                            {isWeekend && <rect x={x} y={0} width={pxPorDia} height={svgH} fill="#0a0a12" opacity="0.5"/>}
+                            <text x={x+pxPorDia/2} y={38} fill={isWeekend?"#2a2a3a":"#3e3e55"} fontSize="9" textAnchor="middle">{d.getDate()}</text>
+                          </g>
+                        );
+                      })}
+                      {/* Linha horizontal de cabeçalho */}
+                      <line x1={0} y1={44} x2={larguraTotal} y2={44} stroke="#2a2a3a" strokeWidth="1"/>
+                      {/* Linha de HOJE */}
+                      {hoje>=minDate && hoje<=maxDate && (()=>{
+                        const xHoje = posX(hoje.toISOString().slice(0,10));
+                        return (
+                          <g>
+                            <line x1={xHoje} y1={44} x2={xHoje} y2={svgH} stroke="#22d3a0" strokeWidth="2" strokeDasharray="4,3" opacity="0.8"/>
+                            <rect x={xHoje-14} y={44} width={28} height={14} rx={3} fill="#22d3a0"/>
+                            <text x={xHoje} y={54} fill="#000" fontSize="8" fontWeight="800" textAnchor="middle">HOJE</text>
+                          </g>
+                        );
+                      })()}
+                      {/* Barras de tarefas */}
+                      {tarefasGantt.map((t,i)=>{
+                        const y = 60 + i*ROW_H;
+                        const x = posX(t.dataInicio);
+                        const w = largura(t.dataInicio,t.dataFim);
+                        const cor = t.isMilestone ? CORES_TIPO.milestone : (CORES_TIPO[t.coluna]||"#6c63ff");
+                        const pct = Math.min(100,Math.max(0,t.progresso||0));
+                        const bg = i%2===0?"#111118":"#0f0f1a";
+                        return (
+                          <g key={t.id}>
+                            <rect x={0} y={y} width={larguraTotal} height={ROW_H} fill={bg}/>
+                            <line x1={0} y1={y+ROW_H} x2={larguraTotal} y2={y+ROW_H} stroke="#1a1a28" strokeWidth="1"/>
+                            {t.isMilestone ? (
+                              // Diamante para milestone
+                              <polygon points={`${x},${y+ROW_H/2-10} ${x+10},${y+ROW_H/2} ${x},${y+ROW_H/2+10} ${x-10},${y+ROW_H/2}`} fill={cor}/>
+                            ) : (
+                              <g>
+                                {/* Barra fundo */}
+                                <rect x={x} y={y+8} width={w} height={ROW_H-16} rx={5} fill={cor} opacity="0.25"/>
+                                {/* Barra progresso */}
+                                <rect x={x} y={y+8} width={w*pct/100} height={ROW_H-16} rx={5} fill={cor} opacity="0.9"/>
+                                {/* Texto % */}
+                                {w>40 && <text x={x+w/2} y={y+ROW_H/2+4} fill="#fff" fontSize="10" fontWeight="700" textAnchor="middle">{pct}%</text>}
+                              </g>
+                            )}
+                            {/* Predecessoras — linhas de dependência */}
+                            {(t.predecessoras||[]).map(predId=>{
+                              const predIdx = tarefasGantt.findIndex(p=>p.id===predId||p.idOriginal===predId);
+                              if (predIdx<0) return null;
+                              const pred = tarefasGantt[predIdx];
+                              const x1 = posX(pred.dataFim)+largura(pred.dataInicio,pred.dataFim);
+                              const y1 = 60 + predIdx*ROW_H + ROW_H/2;
+                              const x2 = posX(t.dataInicio);
+                              const y2 = y + ROW_H/2;
+                              return <path key={predId} d={`M${x1},${y1} C${x1+20},${y1} ${x2-20},${y2} ${x2},${y2}`} stroke="#f5a623" strokeWidth="1.5" fill="none" strokeDasharray="5,3" opacity="0.6" markerEnd="url(#arrow)"/>;
+                            })}
+                          </g>
+                        );
+                      })}
+                      <defs>
+                        <marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                          <path d="M0,0 L6,3 L0,6 Z" fill="#f5a623" opacity="0.7"/>
+                        </marker>
+                      </defs>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── ABA IMPORTAR MS PROJECT ── */}
+        {abaProj==="importar" && (()=>{
+          const [importStep, setImportStep] = React.useState("upload"); // upload | mapeamento | preview | done
+          const [importTarefas, setImportTarefas] = React.useState([]);
+          const [mapeamento, setMapeamento] = React.useState({}); // recursoNome -> consultorGSC
+          const [importLog, setImportLog] = React.useState([]);
+          const [gerarAgenda, setGerarAgenda] = React.useState(true);
+          const [importing, setImporting] = React.useState(false);
+          const consultoresMeta = window.__consultoresMeta||[];
+
+          const recursosUnicos = [...new Set(importTarefas.flatMap(t=>t.recursos||[]).filter(Boolean))];
+
+          const parseXML = (xmlStr) => {
+            try {
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(xmlStr,"text/xml");
+              const tarefas = [];
+              const tasks = doc.querySelectorAll("Task");
+              tasks.forEach(task => {
+                const uid = task.querySelector("UID")?.textContent;
+                const nome = task.querySelector("Name")?.textContent;
+                const ini = task.querySelector("Start")?.textContent?.slice(0,10);
+                const fim = task.querySelector("Finish")?.textContent?.slice(0,10);
+                const pct = task.querySelector("PercentComplete")?.textContent || task.querySelector("PercentWorkComplete")?.textContent || "0";
+                const summary = task.querySelector("Summary")?.textContent==="1";
+                const milestone = task.querySelector("Milestone")?.textContent==="1";
+                const predecessoras = [];
+                task.querySelectorAll("PredecessorLink UID").forEach(p=>predecessoras.push(p.textContent));
+                if (!nome||!uid||nome==="Projeto") return;
+                tarefas.push({ id:uid, idOriginal:uid, nome, dataInicio:ini, dataFim:fim, progresso:Number(pct), predecessoras, isSummary:summary, isMilestone:milestone, recursos:[], coluna:"backlog" });
+              });
+              // Atribuições de recursos
+              const assigns = doc.querySelectorAll("Assignment");
+              assigns.forEach(a => {
+                const tuid = a.querySelector("TaskUID")?.textContent;
+                const ruid = a.querySelector("ResourceUID")?.textContent;
+                const t = tarefas.find(t=>t.id===tuid);
+                if (!t) return;
+                // Buscar nome do recurso
+                const res = doc.querySelector(`Resource UID:not(:empty)`);
+                const recursos = doc.querySelectorAll("Resource");
+                recursos.forEach(r => {
+                  if (r.querySelector("UID")?.textContent===ruid) {
+                    const nome = r.querySelector("Name")?.textContent;
+                    if (nome && !t.recursos.includes(nome)) t.recursos.push(nome);
+                  }
+                });
+              });
+              return tarefas;
+            } catch(e) { return null; }
+          };
+
+          const parseCSV = (text) => {
+            const lines = text.trim().split("\n");
+            if (lines.length<2) return null;
+            const sep = lines[0].includes(";") ? ";" : ",";
+            const headers = lines[0].split(sep).map(h=>h.trim().toLowerCase().replace(/[^a-z0-9]/g,""));
+            const idxNome = headers.findIndex(h=>["nome","name","task","tarefa","taskname"].includes(h));
+            const idxIni = headers.findIndex(h=>["inicio","start","datainicio","datastart","startdate"].includes(h));
+            const idxFim = headers.findIndex(h=>["fim","finish","datafim","enddate","finishdate"].includes(h));
+            const idxPct = headers.findIndex(h=>["pct","percentual","progresso","percentcomplete","done"].includes(h));
+            const idxRec = headers.findIndex(h=>["recurso","resource","responsavel","assignedto","responsible"].includes(h));
+            const idxPred = headers.findIndex(h=>["predecessora","predecessor","depends","dependencia"].includes(h));
+            if (idxNome<0) return null;
+            const tarefas = [];
+            lines.slice(1).forEach((line,i)=>{
+              const cols = line.split(sep).map(c=>c.trim().replace(/^"|"$/g,""));
+              const nome = cols[idxNome];
+              if (!nome) return;
+              const ini = idxIni>=0 ? cols[idxIni] : "";
+              const fim = idxFim>=0 ? cols[idxFim] : "";
+              const pct = idxPct>=0 ? Number(cols[idxPct])||0 : 0;
+              const rec = idxRec>=0 ? cols[idxRec].split(/[;,/]/).map(r=>r.trim()).filter(Boolean) : [];
+              const pred = idxPred>=0 ? cols[idxPred].split(/[;,]/).map(r=>r.trim()).filter(Boolean) : [];
+              tarefas.push({ id:String(i+1), idOriginal:String(i+1), nome, dataInicio:ini||null, dataFim:fim||null, progresso:pct, predecessoras:pred, recursos:rec, isMilestone:false, isSummary:false, coluna:"backlog" });
+            });
+            return tarefas;
+          };
+
+          const handleFile = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              const content = ev.target.result;
+              let tarefas = null;
+              if (file.name.endsWith(".xml")) tarefas = parseXML(content);
+              else if (file.name.endsWith(".csv")) tarefas = parseCSV(content);
+              else if (file.name.endsWith(".xlsx")||file.name.endsWith(".xls")) {
+                alert("Para Excel, exporte como CSV do MS Project primeiro.");
+                return;
+              } else if (file.name.endsWith(".mpp")) {
+                alert("Arquivo .mpp não pode ser lido diretamente pelo navegador. Use Arquivo > Salvar como > XML no MS Project.");
+                return;
+              }
+              if (!tarefas||tarefas.length===0) { alert("Não foi possível ler as tarefas. Verifique o formato do arquivo."); return; }
+              // Auto-mapear por código de consultor
+              const novoMapa = {};
+              const todosRecursos = [...new Set(tarefas.flatMap(t=>t.recursos||[]))];
+              todosRecursos.forEach(recurso => {
+                // Buscar por código exato ou nome
+                const meta = consultoresMeta.find(c=>c.codigo&&c.codigo.toLowerCase()===recurso.toLowerCase());
+                if (meta) novoMapa[recurso] = meta.name;
+                else {
+                  const metaNome = consultoresMeta.find(c=>c.name.toLowerCase().includes(recurso.toLowerCase())||recurso.toLowerCase().includes(c.name.split(" ")[0].toLowerCase()));
+                  if (metaNome) novoMapa[recurso] = metaNome.name;
+                }
+              });
+              setImportTarefas(tarefas);
+              setMapeamento(novoMapa);
+              setImportStep("mapeamento");
+            };
+            reader.readAsText(file);
+          };
+
+          const executarImportacao = async () => {
+            setImporting(true);
+            const log = [];
+            // Atualizar tarefas do projeto com as importadas
+            const tarefasAtualizadas = importTarefas.map(t => ({
+              ...t,
+              id: t.id||Date.now().toString(36)+Math.random().toString(36).slice(2),
+              responsavel: t.recursos.map(r=>mapeamento[r]||r).join(", "),
+            }));
+            await atualizarProjeto({...proj, tarefas:[...(proj.tarefas||[]).filter(t=>!t.importado), ...tarefasAtualizadas.map(t=>({...t,importado:true}))]});
+            log.push(`✅ ${tarefasAtualizadas.length} tarefa(s) importada(s) para o projeto`);
+            // Gerar agenda para consultores
+            if (gerarAgenda && onSaveEntry) {
+              const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+              let agendaGeradas = 0;
+              for (const tarefa of tarefasAtualizadas) {
+                if (!tarefa.dataInicio||!tarefa.dataFim||tarefa.isMilestone||tarefa.isSummary) continue;
+                const consultoresRecurso = tarefa.recursos.map(r=>mapeamento[r]).filter(Boolean);
+                for (const nomeConsultor of consultoresRecurso) {
+                  // Gerar uma entrada de agenda por dia útil entre dataInicio e dataFim
+                  const ini = new Date(tarefa.dataInicio);
+                  const fim = new Date(tarefa.dataFim);
+                  const diasUteis = [];
+                  const cur2 = new Date(ini);
+                  while (cur2 <= fim) {
+                    const dow = cur2.getDay();
+                    if (dow!==0&&dow!==6) diasUteis.push(new Date(cur2));
+                    cur2.setDate(cur2.getDate()+1);
+                  }
+                  // Agrupar por mês/ano para fazer uma entrada por mês
+                  const porMesAno = {};
+                  diasUteis.forEach(d => {
+                    const key = `${MONTHS_PT[d.getMonth()]}_${d.getFullYear()}`;
+                    if (!porMesAno[key]) porMesAno[key] = { month:MONTHS_PT[d.getMonth()], year:d.getFullYear(), days:[] };
+                    porMesAno[key].days.push(d.getDate());
+                  });
+                  for (const { month, year, days } of Object.values(porMesAno)) {
+                    onSaveEntry({ consultor:nomeConsultor, month, year, days, client:proj.cliente||proj.nome, type:"client", modalidade:"presencial", horaInicio:"08:00", horaFim:"17:00", intervalo:"", atividades:`Projeto: ${proj.nome}\nTarefa: ${tarefa.nome}`, notifyEmail:false });
+                    agendaGeradas++;
+                  }
+                }
+              }
+              log.push(`📅 ${agendaGeradas} entrada(s) de agenda gerada(s) para consultores mapeados`);
+            }
+            const semMapa = [...new Set(importTarefas.flatMap(t=>t.recursos||[]))].filter(r=>!mapeamento[r]);
+            if (semMapa.length) log.push(`⚠️ Recursos sem mapeamento (sem agenda): ${semMapa.join(", ")}`);
+            setImportLog(log);
+            setImporting(false);
+            setImportStep("done");
+          };
+
+          if (importStep==="upload") return (
+            <div style={{ maxWidth:"600px" }}>
+              <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",padding:"28px",marginBottom:"16px" }}>
+                <h3 style={{ fontSize:"16px",fontWeight:700,color:"#f0f0fa",margin:"0 0 6px" }}>📥 Importar do MS Project</h3>
+                <p style={{ fontSize:"12px",color:"#6e6e88",margin:"0 0 20px",lineHeight:1.6 }}>Suporte a <strong style={{color:"#a78bfa"}}>XML</strong> (recomendado) e <strong style={{color:"#a78bfa"}}>CSV</strong>. Para XML, use <em>Arquivo → Salvar como → XML</em> no MS Project.</p>
+                <label style={{ display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"12px",border:"2px dashed #2a2a3a",borderRadius:"12px",padding:"36px",cursor:"pointer",background:"#0d0d14",transition:"border-color .2s" }}
+                  onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor="#6c63ff"}}
+                  onDragLeave={e=>e.currentTarget.style.borderColor="#2a2a3a"}
+                  onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f){const inp=document.createElement("input");inp.files=e.dataTransfer.files;handleFile({target:{files:e.dataTransfer.files}});}}}
+                >
+                  <div style={{ fontSize:"40px" }}>📂</div>
+                  <div style={{ fontSize:"14px",fontWeight:600,color:"#c8c8d8" }}>Arraste o arquivo aqui ou clique para selecionar</div>
+                  <div style={{ fontSize:"11px",color:"#3e3e55" }}>.xml · .csv · .xlsx (exportar como CSV)</div>
+                  <input type="file" accept=".xml,.csv,.xlsx,.xls,.mpp" onChange={handleFile} style={{ display:"none" }}/>
+                </label>
+              </div>
+              <div style={{ background:"#0d0d14",borderRadius:"12px",border:"1px solid #1f1f2e",padding:"16px",fontSize:"12px",color:"#6e6e88",lineHeight:1.8 }}>
+                <strong style={{ color:"#a78bfa",display:"block",marginBottom:"6px" }}>📋 Campos capturados automaticamente:</strong>
+                Nome da tarefa · Data início/fim · Recursos (consultores) · % concluído · Predecessoras · Milestones
+              </div>
+            </div>
+          );
+
+          if (importStep==="mapeamento") return (
+            <div style={{ maxWidth:"640px" }}>
+              <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",padding:"24px",marginBottom:"16px" }}>
+                <h3 style={{ fontSize:"15px",fontWeight:700,color:"#f0f0fa",margin:"0 0 4px" }}>👥 Mapeamento de Recursos → Consultores GSC</h3>
+                <p style={{ fontSize:"12px",color:"#6e6e88",margin:"0 0 18px" }}>Foram encontrados <strong style={{color:"#a78bfa"}}>{recursosUnicos.length}</strong> recurso(s). Vincule cada um ao consultor do GSC pelo código ou nome.</p>
+                {recursosUnicos.length===0 ? (
+                  <div style={{ fontSize:"12px",color:"#6e6e88",padding:"12px",background:"#0d0d14",borderRadius:"8px" }}>Nenhum recurso encontrado nas tarefas — a agenda não será gerada automaticamente.</div>
+                ) : recursosUnicos.map(recurso=>(
+                  <div key={recurso} style={{ display:"flex",alignItems:"center",gap:"12px",marginBottom:"10px",background:"#0d0d14",borderRadius:"10px",padding:"10px 14px" }}>
+                    <div style={{ flex:1,fontSize:"13px",color:"#c8c8d8",fontWeight:600 }}>
+                      <span style={{ fontSize:"10px",color:"#6e6e88",display:"block",marginBottom:"2px" }}>Recurso no MS Project</span>
+                      {recurso}
+                    </div>
+                    <div style={{ fontSize:"18px",color:"#3e3e55" }}>→</div>
+                    <div style={{ flex:1 }}>
+                      <span style={{ fontSize:"10px",color:"#6e6e88",display:"block",marginBottom:"4px" }}>Consultor no GSC</span>
+                      <select value={mapeamento[recurso]||""} onChange={e=>setMapeamento(p=>({...p,[recurso]:e.target.value}))}
+                        style={{ padding:"7px 10px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#111118",color:"#c8c8d8",fontSize:"12px",width:"100%",fontFamily:"inherit" }}>
+                        <option value="">— Não mapear —</option>
+                        {consultores.map(c=>{
+                          const meta = consultoresMeta.find(m=>m.name===c);
+                          return <option key={c} value={c}>{c}{meta?.codigo?" ("+meta.codigo+")":""}</option>;
+                        })}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+                <div style={{ marginTop:"16px",padding:"12px 14px",background:"#0d0d14",borderRadius:"10px",border:"1px solid #1f1f2e",display:"flex",alignItems:"center",gap:"10px" }}>
+                  <input type="checkbox" id="gerarAgendaChk" checked={gerarAgenda} onChange={e=>setGerarAgenda(e.target.checked)} style={{ accentColor:"#6c63ff",width:"16px",height:"16px" }}/>
+                  <label htmlFor="gerarAgendaChk" style={{ fontSize:"13px",color:"#c8c8d8",cursor:"pointer" }}>
+                    📅 Gerar agenda automaticamente para consultores mapeados
+                  </label>
+                </div>
+              </div>
+              <div style={{ background:"#111118",borderRadius:"12px",border:"1px solid #1f1f2e",padding:"16px",marginBottom:"16px",maxHeight:"220px",overflowY:"auto" }}>
+                <div style={{ fontSize:"11px",color:"#6e6e88",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:"10px" }}>Preview — {importTarefas.length} tarefas</div>
+                {importTarefas.map((t,i)=>(
+                  <div key={i} style={{ display:"flex",alignItems:"center",gap:"10px",padding:"6px 0",borderBottom:"1px solid #1a1a28" }}>
+                    <span style={{ fontSize:"11px",color:t.isMilestone?"#f04f5e":t.isSummary?"#f5a623":"#c8c8d8",flex:1 }}>{t.isMilestone?"🔷 ":t.isSummary?"📁 ":""}{t.nome}</span>
+                    <span style={{ fontSize:"10px",color:"#6e6e88",whiteSpace:"nowrap" }}>{t.dataInicio||"?"} → {t.dataFim||"?"}</span>
+                    <span style={{ fontSize:"10px",color:"#6c63ff",whiteSpace:"nowrap" }}>{t.progresso}%</span>
+                    <span style={{ fontSize:"10px",color:"#22d3a0",whiteSpace:"nowrap" }}>{t.recursos.map(r=>mapeamento[r]?mapeamento[r].split(" ")[0]:r).join(", ")||"—"}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display:"flex",gap:"10px",justifyContent:"flex-end" }}>
+                <button onClick={()=>setImportStep("upload")} style={{ padding:"9px 18px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>← Voltar</button>
+                <button onClick={executarImportacao} disabled={importing} style={{ padding:"9px 24px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44",opacity:importing?0.6:1 }}>
+                  {importing?"⏳ Importando...":"✅ Importar e gerar agenda"}
+                </button>
+              </div>
+            </div>
+          );
+
+          if (importStep==="done") return (
+            <div style={{ maxWidth:"560px" }}>
+              <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #22d3a033",padding:"28px",textAlign:"center" }}>
+                <div style={{ fontSize:"48px",marginBottom:"12px" }}>✅</div>
+                <h3 style={{ fontSize:"16px",fontWeight:700,color:"#22d3a0",margin:"0 0 16px" }}>Importação concluída!</h3>
+                {importLog.map((l,i)=><div key={i} style={{ fontSize:"13px",color:"#c8c8d8",marginBottom:"8px",textAlign:"left",background:"#0d0d14",borderRadius:"8px",padding:"10px 14px" }}>{l}</div>)}
+                <div style={{ display:"flex",gap:"10px",justifyContent:"center",marginTop:"20px" }}>
+                  <button onClick={()=>{setImportStep("upload");setImportTarefas([]);setImportLog([]);}} style={{ padding:"9px 18px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>Nova importação</button>
+                  <button onClick={()=>setAbaProj("gantt")} style={{ padding:"9px 22px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit" }}>Ver Gantt →</button>
+                </div>
+              </div>
+            </div>
+          );
+          return null;
+        })()}
       </div>
     );
   }
@@ -8048,7 +8462,7 @@ function Dashboard({ currentUser, onLogout }) {
         {/* ── MODULE: PROJETOS ── */}
         {activeModule==="projetos" && (
           <div style={{ padding:"28px 32px",flex:1 }}>
-            <ModuloProjetos currentUser={currentUser} canEdit={canEdit} canManage={canManage} isGestor={isGestor} consultores={consultores} clients={clientList} theme={T}/>
+            <ModuloProjetos currentUser={currentUser} canEdit={canEdit} canManage={canManage} isGestor={isGestor} consultores={consultores} clients={clientList} scheduleData={scheduleData} onSaveEntry={handleSaveEntry} theme={T}/>
           </div>
         )}
 
