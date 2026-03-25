@@ -7286,9 +7286,8 @@ function Dashboard({ currentUser, onLogout }) {
           atividades ? `Atividades: ${atividades}` : '',
           `Agendado por: ${nomeUsuario}`,
         ].filter(Boolean).join('\n');
-        // ms-todo:// abre o app desktop direto (Windows/Mac); fallback para web
-        const todoDesktop = `ms-todo://tasks/new?title=${encodeURIComponent(todoTitulo)}&note=${encodeURIComponent(todoNota)}`;
-        const todoWeb     = `https://todo.microsoft.com/tasks/`;
+        // Página de ponte hospedada no Firebase — passa título e nota via query string
+        const todoRedirectUrl = `${window.location.origin}/todo-redirect.html?t=${encodeURIComponent(todoTitulo)}&n=${encodeURIComponent(todoNota)}`;
         return `
           <div style="margin-bottom:12px">
             <div style="margin-bottom:6px">
@@ -7297,14 +7296,7 @@ function Dashboard({ currentUser, onLogout }) {
             <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
               <a href="${gcUrl}" target="_blank" style="display:inline-block;padding:5px 12px;background:#4285F4;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none">📅 Google Agenda</a>
               <a href="${icsUri}" download="agenda_gsc_${dia}_${monthIdx+1}_${year}.ics" style="display:inline-block;padding:5px 12px;background:#6c63ff;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none">📥 Outlook / Apple (.ics)</a>
-              <a href="${todoDesktop}" style="display:inline-block;padding:5px 12px;background:#0078d4;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none" title="Abre o app Microsoft To Do com o título pré-preenchido">☑ To Do (app)</a>
-              <a href="${todoWeb}" target="_blank" style="display:inline-block;padding:5px 12px;background:#e3f2fd;color:#0078d4;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;border:1px solid #90caf9">☑ To Do (web)</a>
-            </div>
-            <div style="margin-top:8px;padding:10px 12px;background:#f0f6ff;border-left:3px solid #0078d4;border-radius:0 6px 6px 0;font-size:11px;color:#1e3a5f">
-              <div style="font-weight:700;color:#0078d4;margin-bottom:4px;font-size:11px">📋 Título da tarefa (copie e cole no To Do):</div>
-              <div style="font-family:monospace;background:#fff;padding:5px 8px;border-radius:4px;border:1px solid #bdd7f5;color:#1e293b;font-size:12px;letter-spacing:0.1px">${todoTitulo}</div>
-              <div style="font-weight:700;color:#0078d4;margin:8px 0 4px;font-size:11px">📝 Notas:</div>
-              <div style="font-family:monospace;background:#fff;padding:5px 8px;border-radius:4px;border:1px solid #bdd7f5;color:#1e293b;font-size:11px;white-space:pre-wrap">${todoNota}</div>
+              <a href="${todoRedirectUrl}" target="_blank" style="display:inline-block;padding:5px 12px;background:#0078d4;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none" title="Abre página com título e notas prontos para copiar no To Do">☑ Microsoft To Do</a>
             </div>
           </div>`;
       }).join('');
@@ -7312,7 +7304,7 @@ function Dashboard({ currentUser, onLogout }) {
         <div style="margin-top:16px;padding:14px 16px;background:#f0f7ff;border-radius:8px;border:1px solid #bfdbfe">
           <div style="font-size:12px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">📅 Adicionar ao Calendário / Tarefas</div>
           ${links}
-          <p style="margin:10px 0 0;font-size:11px;color:#6b7280"><strong>Google Agenda</strong> → abre direto no Google Calendar pré-preenchido. <strong>Outlook / Apple (.ics)</strong> → baixa o arquivo para importar. <strong>To Do (app)</strong> → abre o Microsoft To Do desktop com o título pré-preenchido (requer o app instalado). <strong>To Do (web)</strong> → abre o site do To Do para criar manualmente usando o título e notas exibidos acima.</p>
+          <p style="margin:10px 0 0;font-size:11px;color:#6b7280"><strong>Google Agenda</strong> → abre direto no Google Calendar pré-preenchido. <strong>Outlook / Apple (.ics)</strong> → baixa arquivo para importar. <strong>Microsoft To Do</strong> → abre página com título e notas prontos para copiar, com botão direto para o app.</p>
         </div>`;
     };
 
