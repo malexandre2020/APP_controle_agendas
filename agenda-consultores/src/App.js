@@ -2745,9 +2745,19 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
   const [showClientFilter, setShowClientFilter] = React.useState(false);
   const [selectedClients, setSelectedClients] = React.useState(new Set());
 
-  // Sincronizar selectedConsultores quando a lista de consultores muda externamente
+  // Sincronizar selectedConsultores apenas quando consultores são adicionados/removidos
+  // Não reseta o filtro ao salvar agenda (scheduleData muda mas consultores permanecem iguais)
   React.useEffect(() => {
-    setSelectedConsultores(new Set(consultores));
+    setSelectedConsultores(prev => {
+      const prevList = [...prev];
+      const added   = consultores.filter(c => !prevList.includes(c));
+      const removed = prevList.filter(c => !consultores.includes(c));
+      if (added.length === 0 && removed.length === 0) return prev;
+      const next = new Set(prev);
+      added.forEach(c => next.add(c));
+      removed.forEach(c => next.delete(c));
+      return next;
+    });
   }, [consultores.join(",")]);
 
   // Sincronizar calMes quando o filtro externo muda para um mês específico
