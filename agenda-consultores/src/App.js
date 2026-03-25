@@ -2580,9 +2580,9 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
                     const yr = d.getFullYear();
                     return (
                       <td key={ci}
-                        onClick={()=>{ if(canEdit&&!isWknd&&onNewEntry&&entries.length===0) onNewEntry({consultor:name,month:mName,day:d.getDate(),year:yr}); }}
-                        style={{ padding:"4px",verticalAlign:"top",background:isToday?"#16102a18":isWknd?"#0a0a12":"transparent",borderLeft:"1px solid #18181f",cursor:(canEdit&&!isWknd&&entries.length===0)?"pointer":"default",minHeight:"64px" }}>
-                        {entries.length===0 && !isWknd && canEdit && (
+                        onClick={()=>{ if(canEdit&&onNewEntry&&entries.length===0) onNewEntry({consultor:name,month:mName,day:d.getDate(),year:yr}); }}
+                        style={{ padding:"4px",verticalAlign:"top",background:isToday?"#16102a18":isWknd?"#0a0a12":"transparent",borderLeft:"1px solid #18181f",cursor:(canEdit&&entries.length===0)?"pointer":"default",minHeight:"64px" }}>
+                        {entries.length===0 && canEdit && (
                           <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"56px",opacity:0.1,fontSize:"20px",color:"#6e6e88" }}>+</div>
                         )}
                         {entries.map((entry,ei)=>{
