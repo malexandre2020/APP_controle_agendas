@@ -7242,7 +7242,7 @@ function Dashboard({ currentUser, onLogout }) {
 
     // ── Compor assunto: "Agenda incluída: Dia 17 — VEDACIT (Março 2026)"
     const diaLabel = days && days.length === 1 ? `Dia ${days[0]}` : `Dias ${diasStr}`;
-    const assunto = `Agenda ${acao}: ${diaLabel} — ${client || '—'} (${mesAno})`;
+    const assunto = `Agenda ${acao}: ${diaLabel} — ${consultor.split(" ")[0]} | ${client || '—'} (${mesAno})`;
 
     // ── Gerar links de calendário (Google Calendar + ICS)
     const monthIdx = MONTHS_ORDER.indexOf(month);
