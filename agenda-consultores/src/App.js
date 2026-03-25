@@ -7922,7 +7922,7 @@ function Dashboard({ currentUser, onLogout }) {
                     ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
                     : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}><div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>Selecione um mês específico para ver a visualização semanal</div>
                   : <CalendarioMensal
-                      key={"cal-"+(selectedConsultor||"all")+"-"+scheduleVersion}
+                      key={"cal-"+(selectedConsultor||"all")}
                       data={selectedConsultor ? {[selectedConsultor]: scheduleData[selectedConsultor]||[]} : filteredData}
                       selectedMonth={selectedMonth}
                       allMonths={allMonths}
