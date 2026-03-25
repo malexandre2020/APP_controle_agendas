@@ -6203,6 +6203,243 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientLis
 // ─────────────────────────────────────────────────────────────────────────────
 // MÓDULO: GESTÃO DE PROJETOS
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// ABA IMPORTAR MS PROJECT (componente separado para não violar regras de hooks)
+// ─────────────────────────────────────────────────────────────────────────────
+function AbaImportarMSProject({ proj, consultores, atualizarProjeto, onSaveEntry, setAbaProj }) {
+  const [importStep, setImportStep] = React.useState("upload");
+  const [importTarefas, setImportTarefas] = React.useState([]);
+  const [mapeamento, setMapeamento] = React.useState({});
+  const [importLog, setImportLog] = React.useState([]);
+  const [gerarAgenda, setGerarAgenda] = React.useState(true);
+  const [importing, setImporting] = React.useState(false);
+  const consultoresMeta = window.__consultoresMeta || [];
+
+  const recursosUnicos = [...new Set(importTarefas.flatMap(t => t.recursos || []).filter(Boolean))];
+
+  const parseXML = (xmlStr) => {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlStr, "text/xml");
+      const tarefas = [];
+      doc.querySelectorAll("Task").forEach(task => {
+        const uid = task.querySelector("UID")?.textContent;
+        const nome = task.querySelector("n")?.textContent || task.querySelector("Name")?.textContent;
+        const ini = task.querySelector("Start")?.textContent?.slice(0, 10);
+        const fim = task.querySelector("Finish")?.textContent?.slice(0, 10);
+        const pct = task.querySelector("PercentComplete")?.textContent || "0";
+        const summary = task.querySelector("Summary")?.textContent === "1";
+        const milestone = task.querySelector("Milestone")?.textContent === "1";
+        const predecessoras = [];
+        task.querySelectorAll("PredecessorLink UID, PredecessorLink PredecessorUID").forEach(p => predecessoras.push(p.textContent));
+        if (!nome || !uid) return;
+        tarefas.push({ id: uid, idOriginal: uid, nome, dataInicio: ini, dataFim: fim, progresso: Number(pct), predecessoras, isSummary: summary, isMilestone: milestone, recursos: [], coluna: "backlog" });
+      });
+      // Atribuições
+      const recursos = {};
+      doc.querySelectorAll("Resource").forEach(r => {
+        const ruid = r.querySelector("UID")?.textContent;
+        const rnome = r.querySelector("n")?.textContent || r.querySelector("Name")?.textContent;
+        if (ruid && rnome) recursos[ruid] = rnome;
+      });
+      doc.querySelectorAll("Assignment").forEach(a => {
+        const tuid = a.querySelector("TaskUID")?.textContent;
+        const ruid = a.querySelector("ResourceUID")?.textContent;
+        const t = tarefas.find(t => t.id === tuid);
+        if (!t || !ruid || !recursos[ruid]) return;
+        if (!t.recursos.includes(recursos[ruid])) t.recursos.push(recursos[ruid]);
+      });
+      return tarefas.filter(t => t.nome && t.nome !== proj?.nome);
+    } catch(e) { console.warn("Erro XML:", e); return null; }
+  };
+
+  const parseCSV = (text) => {
+    const lines = text.trim().split("\n");
+    if (lines.length < 2) return null;
+    const sep = lines[0].includes(";") ? ";" : ",";
+    const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/[^a-z0-9]/g, ""));
+    const idx = (opts) => headers.findIndex(h => opts.includes(h));
+    const iNome = idx(["nome","name","task","tarefa","taskname"]);
+    const iIni  = idx(["inicio","start","datainicio","startdate"]);
+    const iFim  = idx(["fim","finish","datafim","enddate","finishdate"]);
+    const iPct  = idx(["pct","percentual","progresso","percentcomplete","done"]);
+    const iRec  = idx(["recurso","resource","responsavel","assignedto"]);
+    const iPred = idx(["predecessora","predecessor","depends","dependencia"]);
+    if (iNome < 0) return null;
+    return lines.slice(1).map((line, i) => {
+      const cols = line.split(sep).map(c => c.trim().replace(/^"|"$/g, ""));
+      const nome = cols[iNome]; if (!nome) return null;
+      return {
+        id: String(i + 1), idOriginal: String(i + 1), nome,
+        dataInicio: iIni >= 0 ? cols[iIni] || null : null,
+        dataFim:    iFim >= 0 ? cols[iFim] || null : null,
+        progresso:  iPct >= 0 ? Number(cols[iPct]) || 0 : 0,
+        recursos:   iRec >= 0 ? cols[iRec].split(/[;,\/]/).map(r => r.trim()).filter(Boolean) : [],
+        predecessoras: iPred >= 0 ? cols[iPred].split(/[;,]/).map(r => r.trim()).filter(Boolean) : [],
+        isMilestone: false, isSummary: false, coluna: "backlog"
+      };
+    }).filter(Boolean);
+  };
+
+  const handleFile = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    if (file.name.endsWith(".mpp")) { alert("Arquivo .mpp não pode ser lido pelo navegador. Use Arquivo > Salvar como > XML no MS Project."); return; }
+    if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) { alert("Para Excel, exporte como CSV do MS Project primeiro."); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target.result;
+      const tarefas = file.name.endsWith(".xml") ? parseXML(content) : parseCSV(content);
+      if (!tarefas || tarefas.length === 0) { alert("Não foi possível ler as tarefas. Verifique o formato do arquivo."); return; }
+      const novoMapa = {};
+      [...new Set(tarefas.flatMap(t => t.recursos || []))].forEach(recurso => {
+        const meta = consultoresMeta.find(c => c.codigo && c.codigo.toLowerCase() === recurso.toLowerCase());
+        if (meta) { novoMapa[recurso] = meta.name; return; }
+        const metaNome = consultoresMeta.find(c => c.name.toLowerCase().includes(recurso.toLowerCase()) || recurso.toLowerCase().includes(c.name.split(" ")[0].toLowerCase()));
+        // também tenta match direto por nome exato
+        const direto = consultores.find(c => c.toLowerCase() === recurso.toLowerCase() || c.toLowerCase().startsWith(recurso.toLowerCase().split(" ")[0]));
+        if (metaNome) novoMapa[recurso] = metaNome.name;
+        else if (direto) novoMapa[recurso] = direto;
+      });
+      setImportTarefas(tarefas);
+      setMapeamento(novoMapa);
+      setImportStep("mapeamento");
+    };
+    reader.readAsText(file);
+  };
+
+  const executarImportacao = async () => {
+    setImporting(true);
+    const log = [];
+    const tarefasAtualizadas = importTarefas.map(t => ({
+      ...t,
+      id: t.id || Date.now().toString(36) + Math.random().toString(36).slice(2),
+      responsavel: t.recursos.map(r => mapeamento[r] || r).join(", "),
+    }));
+    await atualizarProjeto({ ...proj, tarefas: [...(proj.tarefas || []).filter(t => !t.importado), ...tarefasAtualizadas.map(t => ({ ...t, importado: true }))] });
+    log.push(`✅ ${tarefasAtualizadas.length} tarefa(s) importada(s)`);
+    if (gerarAgenda && onSaveEntry) {
+      const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+      let agendaGeradas = 0;
+      for (const tarefa of tarefasAtualizadas) {
+        if (!tarefa.dataInicio || !tarefa.dataFim || tarefa.isMilestone || tarefa.isSummary) continue;
+        const consultoresRec = tarefa.recursos.map(r => mapeamento[r]).filter(Boolean);
+        for (const nomeConsultor of consultoresRec) {
+          const ini = new Date(tarefa.dataInicio), fim = new Date(tarefa.dataFim);
+          const porMesAno = {};
+          const cur = new Date(ini);
+          while (cur <= fim) {
+            const dow = cur.getDay();
+            if (dow !== 0 && dow !== 6) {
+              const key = `${MONTHS_PT[cur.getMonth()]}_${cur.getFullYear()}`;
+              if (!porMesAno[key]) porMesAno[key] = { month: MONTHS_PT[cur.getMonth()], year: cur.getFullYear(), days: [] };
+              porMesAno[key].days.push(cur.getDate());
+            }
+            cur.setDate(cur.getDate() + 1);
+          }
+          for (const { month, year, days } of Object.values(porMesAno)) {
+            onSaveEntry({ consultor: nomeConsultor, month, year, days, client: proj.cliente || proj.nome, type: "client", modalidade: "presencial", horaInicio: "08:00", horaFim: "17:00", intervalo: "", atividades: `Projeto: ${proj.nome}\nTarefa: ${tarefa.nome}`, notifyEmail: false });
+            agendaGeradas++;
+          }
+        }
+      }
+      if (agendaGeradas > 0) log.push(`📅 ${agendaGeradas} entrada(s) de agenda gerada(s)`);
+    }
+    const semMapa = recursosUnicos.filter(r => !mapeamento[r]);
+    if (semMapa.length) log.push(`⚠️ Sem mapeamento (sem agenda): ${semMapa.join(", ")}`);
+    setImportLog(log);
+    setImporting(false);
+    setImportStep("done");
+  };
+
+  if (importStep === "upload") return (
+    <div style={{ maxWidth: "600px" }}>
+      <div style={{ background: "#111118", borderRadius: "14px", border: "1px solid #1f1f2e", padding: "28px", marginBottom: "16px" }}>
+        <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#f0f0fa", margin: "0 0 6px" }}>📥 Importar do MS Project</h3>
+        <p style={{ fontSize: "12px", color: "#6e6e88", margin: "0 0 20px", lineHeight: 1.6 }}>Suporte a <strong style={{ color: "#a78bfa" }}>XML</strong> (recomendado) e <strong style={{ color: "#a78bfa" }}>CSV</strong>. Para XML, use <em>Arquivo → Salvar como → XML</em> no MS Project.</p>
+        <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", border: "2px dashed #2a2a3a", borderRadius: "12px", padding: "36px", cursor: "pointer", background: "#0d0d14" }}>
+          <div style={{ fontSize: "40px" }}>📂</div>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#c8c8d8" }}>Arraste o arquivo aqui ou clique para selecionar</div>
+          <div style={{ fontSize: "11px", color: "#3e3e55" }}>.xml · .csv · .xlsx (exportar como CSV)</div>
+          <input type="file" accept=".xml,.csv,.xlsx,.xls,.mpp" onChange={handleFile} style={{ display: "none" }} />
+        </label>
+      </div>
+      <div style={{ background: "#0d0d14", borderRadius: "12px", border: "1px solid #1f1f2e", padding: "16px", fontSize: "12px", color: "#6e6e88", lineHeight: 1.8 }}>
+        <strong style={{ color: "#a78bfa", display: "block", marginBottom: "6px" }}>📋 Campos capturados automaticamente:</strong>
+        Nome da tarefa · Data início/fim · Recursos (consultores) · % concluído · Predecessoras · Milestones
+      </div>
+    </div>
+  );
+
+  if (importStep === "mapeamento") return (
+    <div style={{ maxWidth: "640px" }}>
+      <div style={{ background: "#111118", borderRadius: "14px", border: "1px solid #1f1f2e", padding: "24px", marginBottom: "16px" }}>
+        <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#f0f0fa", margin: "0 0 4px" }}>👥 Mapeamento de Recursos → Consultores GSC</h3>
+        <p style={{ fontSize: "12px", color: "#6e6e88", margin: "0 0 18px" }}>Foram encontrados <strong style={{ color: "#a78bfa" }}>{recursosUnicos.length}</strong> recurso(s). Vincule cada um ao consultor do GSC.</p>
+        {recursosUnicos.length === 0
+          ? <div style={{ fontSize: "12px", color: "#6e6e88", padding: "12px", background: "#0d0d14", borderRadius: "8px" }}>Nenhum recurso encontrado — a agenda não será gerada automaticamente.</div>
+          : recursosUnicos.map(recurso => (
+            <div key={recurso} style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px", background: "#0d0d14", borderRadius: "10px", padding: "10px 14px" }}>
+              <div style={{ flex: 1, fontSize: "13px", color: "#c8c8d8", fontWeight: 600 }}>
+                <span style={{ fontSize: "10px", color: "#6e6e88", display: "block", marginBottom: "2px" }}>Recurso MS Project</span>
+                {recurso}
+              </div>
+              <div style={{ fontSize: "18px", color: "#3e3e55" }}>→</div>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: "10px", color: "#6e6e88", display: "block", marginBottom: "4px" }}>Consultor GSC</span>
+                <select value={mapeamento[recurso] || ""} onChange={e => setMapeamento(p => ({ ...p, [recurso]: e.target.value }))}
+                  style={{ padding: "7px 10px", borderRadius: "8px", border: "1px solid #2a2a3a", background: "#111118", color: "#c8c8d8", fontSize: "12px", width: "100%", fontFamily: "inherit" }}>
+                  <option value="">— Não mapear —</option>
+                  {consultores.map(c => {
+                    const meta = consultoresMeta.find(m => m.name === c);
+                    return <option key={c} value={c}>{c}{meta?.codigo ? " (" + meta.codigo + ")" : ""}</option>;
+                  })}
+                </select>
+              </div>
+            </div>
+          ))
+        }
+        <div style={{ marginTop: "16px", padding: "12px 14px", background: "#0d0d14", borderRadius: "10px", border: "1px solid #1f1f2e", display: "flex", alignItems: "center", gap: "10px" }}>
+          <input type="checkbox" id="gerarAgendaChk" checked={gerarAgenda} onChange={e => setGerarAgenda(e.target.checked)} style={{ accentColor: "#6c63ff", width: "16px", height: "16px" }} />
+          <label htmlFor="gerarAgendaChk" style={{ fontSize: "13px", color: "#c8c8d8", cursor: "pointer" }}>📅 Gerar agenda automaticamente para consultores mapeados</label>
+        </div>
+      </div>
+      <div style={{ background: "#111118", borderRadius: "12px", border: "1px solid #1f1f2e", padding: "16px", marginBottom: "16px", maxHeight: "220px", overflowY: "auto" }}>
+        <div style={{ fontSize: "11px", color: "#6e6e88", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "10px" }}>Preview — {importTarefas.length} tarefa(s)</div>
+        {importTarefas.map((t, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "6px 0", borderBottom: "1px solid #1a1a28" }}>
+            <span style={{ fontSize: "11px", color: t.isMilestone ? "#f04f5e" : t.isSummary ? "#f5a623" : "#c8c8d8", flex: 1 }}>{t.isMilestone ? "🔷 " : t.isSummary ? "📁 " : ""}{t.nome}</span>
+            <span style={{ fontSize: "10px", color: "#6e6e88", whiteSpace: "nowrap" }}>{t.dataInicio || "?"} → {t.dataFim || "?"}</span>
+            <span style={{ fontSize: "10px", color: "#6c63ff", whiteSpace: "nowrap" }}>{t.progresso}%</span>
+            <span style={{ fontSize: "10px", color: "#22d3a0", whiteSpace: "nowrap" }}>{t.recursos.map(r => mapeamento[r] ? mapeamento[r].split(" ")[0] : r).join(", ") || "—"}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+        <button onClick={() => setImportStep("upload")} style={{ padding: "9px 18px", borderRadius: "10px", border: "1px solid #2a2a3a", background: "transparent", color: "#6e6e88", cursor: "pointer", fontWeight: 600, fontSize: "13px", fontFamily: "inherit" }}>← Voltar</button>
+        <button onClick={executarImportacao} disabled={importing} style={{ padding: "9px 24px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg,#6c63ff,#a78bfa)", color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: "13px", fontFamily: "inherit", opacity: importing ? 0.6 : 1 }}>
+          {importing ? "⏳ Importando..." : "✅ Importar e gerar agenda"}
+        </button>
+      </div>
+    </div>
+  );
+
+  if (importStep === "done") return (
+    <div style={{ maxWidth: "560px" }}>
+      <div style={{ background: "#111118", borderRadius: "14px", border: "1px solid #22d3a033", padding: "28px", textAlign: "center" }}>
+        <div style={{ fontSize: "48px", marginBottom: "12px" }}>✅</div>
+        <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#22d3a0", margin: "0 0 16px" }}>Importação concluída!</h3>
+        {importLog.map((l, i) => <div key={i} style={{ fontSize: "13px", color: "#c8c8d8", marginBottom: "8px", textAlign: "left", background: "#0d0d14", borderRadius: "8px", padding: "10px 14px" }}>{l}</div>)}
+        <div style={{ display: "flex", gap: "10px", justifyContent: "center", marginTop: "20px" }}>
+          <button onClick={() => { setImportStep("upload"); setImportTarefas([]); setImportLog([]); }} style={{ padding: "9px 18px", borderRadius: "10px", border: "1px solid #2a2a3a", background: "transparent", color: "#6e6e88", cursor: "pointer", fontWeight: 600, fontSize: "13px", fontFamily: "inherit" }}>Nova importação</button>
+          <button onClick={() => setAbaProj("gantt")} style={{ padding: "9px 22px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg,#6c63ff,#a78bfa)", color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: "13px", fontFamily: "inherit" }}>Ver Gantt →</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return null;
+}
+
 function ModuloProjetos({ currentUser, canEdit, canManage, isGestor, consultores, clients, scheduleData, onSaveEntry, theme: T }) {
   const [projetos, setProjetos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -6682,263 +6919,15 @@ function ModuloProjetos({ currentUser, canEdit, canManage, isGestor, consultores
         })()}
 
         {/* ── ABA IMPORTAR MS PROJECT ── */}
-        {abaProj==="importar" && (()=>{
-          const [importStep, setImportStep] = React.useState("upload"); // upload | mapeamento | preview | done
-          const [importTarefas, setImportTarefas] = React.useState([]);
-          const [mapeamento, setMapeamento] = React.useState({}); // recursoNome -> consultorGSC
-          const [importLog, setImportLog] = React.useState([]);
-          const [gerarAgenda, setGerarAgenda] = React.useState(true);
-          const [importing, setImporting] = React.useState(false);
-          const consultoresMeta = window.__consultoresMeta||[];
-
-          const recursosUnicos = [...new Set(importTarefas.flatMap(t=>t.recursos||[]).filter(Boolean))];
-
-          const parseXML = (xmlStr) => {
-            try {
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(xmlStr,"text/xml");
-              const tarefas = [];
-              const tasks = doc.querySelectorAll("Task");
-              tasks.forEach(task => {
-                const uid = task.querySelector("UID")?.textContent;
-                const nome = task.querySelector("Name")?.textContent;
-                const ini = task.querySelector("Start")?.textContent?.slice(0,10);
-                const fim = task.querySelector("Finish")?.textContent?.slice(0,10);
-                const pct = task.querySelector("PercentComplete")?.textContent || task.querySelector("PercentWorkComplete")?.textContent || "0";
-                const summary = task.querySelector("Summary")?.textContent==="1";
-                const milestone = task.querySelector("Milestone")?.textContent==="1";
-                const predecessoras = [];
-                task.querySelectorAll("PredecessorLink UID").forEach(p=>predecessoras.push(p.textContent));
-                if (!nome||!uid||nome==="Projeto") return;
-                tarefas.push({ id:uid, idOriginal:uid, nome, dataInicio:ini, dataFim:fim, progresso:Number(pct), predecessoras, isSummary:summary, isMilestone:milestone, recursos:[], coluna:"backlog" });
-              });
-              // Atribuições de recursos
-              const assigns = doc.querySelectorAll("Assignment");
-              assigns.forEach(a => {
-                const tuid = a.querySelector("TaskUID")?.textContent;
-                const ruid = a.querySelector("ResourceUID")?.textContent;
-                const t = tarefas.find(t=>t.id===tuid);
-                if (!t) return;
-                // Buscar nome do recurso
-                const res = doc.querySelector(`Resource UID:not(:empty)`);
-                const recursos = doc.querySelectorAll("Resource");
-                recursos.forEach(r => {
-                  if (r.querySelector("UID")?.textContent===ruid) {
-                    const nome = r.querySelector("Name")?.textContent;
-                    if (nome && !t.recursos.includes(nome)) t.recursos.push(nome);
-                  }
-                });
-              });
-              return tarefas;
-            } catch(e) { return null; }
-          };
-
-          const parseCSV = (text) => {
-            const lines = text.trim().split("\n");
-            if (lines.length<2) return null;
-            const sep = lines[0].includes(";") ? ";" : ",";
-            const headers = lines[0].split(sep).map(h=>h.trim().toLowerCase().replace(/[^a-z0-9]/g,""));
-            const idxNome = headers.findIndex(h=>["nome","name","task","tarefa","taskname"].includes(h));
-            const idxIni = headers.findIndex(h=>["inicio","start","datainicio","datastart","startdate"].includes(h));
-            const idxFim = headers.findIndex(h=>["fim","finish","datafim","enddate","finishdate"].includes(h));
-            const idxPct = headers.findIndex(h=>["pct","percentual","progresso","percentcomplete","done"].includes(h));
-            const idxRec = headers.findIndex(h=>["recurso","resource","responsavel","assignedto","responsible"].includes(h));
-            const idxPred = headers.findIndex(h=>["predecessora","predecessor","depends","dependencia"].includes(h));
-            if (idxNome<0) return null;
-            const tarefas = [];
-            lines.slice(1).forEach((line,i)=>{
-              const cols = line.split(sep).map(c=>c.trim().replace(/^"|"$/g,""));
-              const nome = cols[idxNome];
-              if (!nome) return;
-              const ini = idxIni>=0 ? cols[idxIni] : "";
-              const fim = idxFim>=0 ? cols[idxFim] : "";
-              const pct = idxPct>=0 ? Number(cols[idxPct])||0 : 0;
-              const rec = idxRec>=0 ? cols[idxRec].split(/[;,/]/).map(r=>r.trim()).filter(Boolean) : [];
-              const pred = idxPred>=0 ? cols[idxPred].split(/[;,]/).map(r=>r.trim()).filter(Boolean) : [];
-              tarefas.push({ id:String(i+1), idOriginal:String(i+1), nome, dataInicio:ini||null, dataFim:fim||null, progresso:pct, predecessoras:pred, recursos:rec, isMilestone:false, isSummary:false, coluna:"backlog" });
-            });
-            return tarefas;
-          };
-
-          const handleFile = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-              const content = ev.target.result;
-              let tarefas = null;
-              if (file.name.endsWith(".xml")) tarefas = parseXML(content);
-              else if (file.name.endsWith(".csv")) tarefas = parseCSV(content);
-              else if (file.name.endsWith(".xlsx")||file.name.endsWith(".xls")) {
-                alert("Para Excel, exporte como CSV do MS Project primeiro.");
-                return;
-              } else if (file.name.endsWith(".mpp")) {
-                alert("Arquivo .mpp não pode ser lido diretamente pelo navegador. Use Arquivo > Salvar como > XML no MS Project.");
-                return;
-              }
-              if (!tarefas||tarefas.length===0) { alert("Não foi possível ler as tarefas. Verifique o formato do arquivo."); return; }
-              // Auto-mapear por código de consultor
-              const novoMapa = {};
-              const todosRecursos = [...new Set(tarefas.flatMap(t=>t.recursos||[]))];
-              todosRecursos.forEach(recurso => {
-                // Buscar por código exato ou nome
-                const meta = consultoresMeta.find(c=>c.codigo&&c.codigo.toLowerCase()===recurso.toLowerCase());
-                if (meta) novoMapa[recurso] = meta.name;
-                else {
-                  const metaNome = consultoresMeta.find(c=>c.name.toLowerCase().includes(recurso.toLowerCase())||recurso.toLowerCase().includes(c.name.split(" ")[0].toLowerCase()));
-                  if (metaNome) novoMapa[recurso] = metaNome.name;
-                }
-              });
-              setImportTarefas(tarefas);
-              setMapeamento(novoMapa);
-              setImportStep("mapeamento");
-            };
-            reader.readAsText(file);
-          };
-
-          const executarImportacao = async () => {
-            setImporting(true);
-            const log = [];
-            // Atualizar tarefas do projeto com as importadas
-            const tarefasAtualizadas = importTarefas.map(t => ({
-              ...t,
-              id: t.id||Date.now().toString(36)+Math.random().toString(36).slice(2),
-              responsavel: t.recursos.map(r=>mapeamento[r]||r).join(", "),
-            }));
-            await atualizarProjeto({...proj, tarefas:[...(proj.tarefas||[]).filter(t=>!t.importado), ...tarefasAtualizadas.map(t=>({...t,importado:true}))]});
-            log.push(`✅ ${tarefasAtualizadas.length} tarefa(s) importada(s) para o projeto`);
-            // Gerar agenda para consultores
-            if (gerarAgenda && onSaveEntry) {
-              const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-              let agendaGeradas = 0;
-              for (const tarefa of tarefasAtualizadas) {
-                if (!tarefa.dataInicio||!tarefa.dataFim||tarefa.isMilestone||tarefa.isSummary) continue;
-                const consultoresRecurso = tarefa.recursos.map(r=>mapeamento[r]).filter(Boolean);
-                for (const nomeConsultor of consultoresRecurso) {
-                  // Gerar uma entrada de agenda por dia útil entre dataInicio e dataFim
-                  const ini = new Date(tarefa.dataInicio);
-                  const fim = new Date(tarefa.dataFim);
-                  const diasUteis = [];
-                  const cur2 = new Date(ini);
-                  while (cur2 <= fim) {
-                    const dow = cur2.getDay();
-                    if (dow!==0&&dow!==6) diasUteis.push(new Date(cur2));
-                    cur2.setDate(cur2.getDate()+1);
-                  }
-                  // Agrupar por mês/ano para fazer uma entrada por mês
-                  const porMesAno = {};
-                  diasUteis.forEach(d => {
-                    const key = `${MONTHS_PT[d.getMonth()]}_${d.getFullYear()}`;
-                    if (!porMesAno[key]) porMesAno[key] = { month:MONTHS_PT[d.getMonth()], year:d.getFullYear(), days:[] };
-                    porMesAno[key].days.push(d.getDate());
-                  });
-                  for (const { month, year, days } of Object.values(porMesAno)) {
-                    onSaveEntry({ consultor:nomeConsultor, month, year, days, client:proj.cliente||proj.nome, type:"client", modalidade:"presencial", horaInicio:"08:00", horaFim:"17:00", intervalo:"", atividades:`Projeto: ${proj.nome}\nTarefa: ${tarefa.nome}`, notifyEmail:false });
-                    agendaGeradas++;
-                  }
-                }
-              }
-              log.push(`📅 ${agendaGeradas} entrada(s) de agenda gerada(s) para consultores mapeados`);
-            }
-            const semMapa = [...new Set(importTarefas.flatMap(t=>t.recursos||[]))].filter(r=>!mapeamento[r]);
-            if (semMapa.length) log.push(`⚠️ Recursos sem mapeamento (sem agenda): ${semMapa.join(", ")}`);
-            setImportLog(log);
-            setImporting(false);
-            setImportStep("done");
-          };
-
-          if (importStep==="upload") return (
-            <div style={{ maxWidth:"600px" }}>
-              <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",padding:"28px",marginBottom:"16px" }}>
-                <h3 style={{ fontSize:"16px",fontWeight:700,color:"#f0f0fa",margin:"0 0 6px" }}>📥 Importar do MS Project</h3>
-                <p style={{ fontSize:"12px",color:"#6e6e88",margin:"0 0 20px",lineHeight:1.6 }}>Suporte a <strong style={{color:"#a78bfa"}}>XML</strong> (recomendado) e <strong style={{color:"#a78bfa"}}>CSV</strong>. Para XML, use <em>Arquivo → Salvar como → XML</em> no MS Project.</p>
-                <label style={{ display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"12px",border:"2px dashed #2a2a3a",borderRadius:"12px",padding:"36px",cursor:"pointer",background:"#0d0d14",transition:"border-color .2s" }}
-                  onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor="#6c63ff"}}
-                  onDragLeave={e=>e.currentTarget.style.borderColor="#2a2a3a"}
-                  onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f){const inp=document.createElement("input");inp.files=e.dataTransfer.files;handleFile({target:{files:e.dataTransfer.files}});}}}
-                >
-                  <div style={{ fontSize:"40px" }}>📂</div>
-                  <div style={{ fontSize:"14px",fontWeight:600,color:"#c8c8d8" }}>Arraste o arquivo aqui ou clique para selecionar</div>
-                  <div style={{ fontSize:"11px",color:"#3e3e55" }}>.xml · .csv · .xlsx (exportar como CSV)</div>
-                  <input type="file" accept=".xml,.csv,.xlsx,.xls,.mpp" onChange={handleFile} style={{ display:"none" }}/>
-                </label>
-              </div>
-              <div style={{ background:"#0d0d14",borderRadius:"12px",border:"1px solid #1f1f2e",padding:"16px",fontSize:"12px",color:"#6e6e88",lineHeight:1.8 }}>
-                <strong style={{ color:"#a78bfa",display:"block",marginBottom:"6px" }}>📋 Campos capturados automaticamente:</strong>
-                Nome da tarefa · Data início/fim · Recursos (consultores) · % concluído · Predecessoras · Milestones
-              </div>
-            </div>
-          );
-
-          if (importStep==="mapeamento") return (
-            <div style={{ maxWidth:"640px" }}>
-              <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",padding:"24px",marginBottom:"16px" }}>
-                <h3 style={{ fontSize:"15px",fontWeight:700,color:"#f0f0fa",margin:"0 0 4px" }}>👥 Mapeamento de Recursos → Consultores GSC</h3>
-                <p style={{ fontSize:"12px",color:"#6e6e88",margin:"0 0 18px" }}>Foram encontrados <strong style={{color:"#a78bfa"}}>{recursosUnicos.length}</strong> recurso(s). Vincule cada um ao consultor do GSC pelo código ou nome.</p>
-                {recursosUnicos.length===0 ? (
-                  <div style={{ fontSize:"12px",color:"#6e6e88",padding:"12px",background:"#0d0d14",borderRadius:"8px" }}>Nenhum recurso encontrado nas tarefas — a agenda não será gerada automaticamente.</div>
-                ) : recursosUnicos.map(recurso=>(
-                  <div key={recurso} style={{ display:"flex",alignItems:"center",gap:"12px",marginBottom:"10px",background:"#0d0d14",borderRadius:"10px",padding:"10px 14px" }}>
-                    <div style={{ flex:1,fontSize:"13px",color:"#c8c8d8",fontWeight:600 }}>
-                      <span style={{ fontSize:"10px",color:"#6e6e88",display:"block",marginBottom:"2px" }}>Recurso no MS Project</span>
-                      {recurso}
-                    </div>
-                    <div style={{ fontSize:"18px",color:"#3e3e55" }}>→</div>
-                    <div style={{ flex:1 }}>
-                      <span style={{ fontSize:"10px",color:"#6e6e88",display:"block",marginBottom:"4px" }}>Consultor no GSC</span>
-                      <select value={mapeamento[recurso]||""} onChange={e=>setMapeamento(p=>({...p,[recurso]:e.target.value}))}
-                        style={{ padding:"7px 10px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#111118",color:"#c8c8d8",fontSize:"12px",width:"100%",fontFamily:"inherit" }}>
-                        <option value="">— Não mapear —</option>
-                        {consultores.map(c=>{
-                          const meta = consultoresMeta.find(m=>m.name===c);
-                          return <option key={c} value={c}>{c}{meta?.codigo?" ("+meta.codigo+")":""}</option>;
-                        })}
-                      </select>
-                    </div>
-                  </div>
-                ))}
-                <div style={{ marginTop:"16px",padding:"12px 14px",background:"#0d0d14",borderRadius:"10px",border:"1px solid #1f1f2e",display:"flex",alignItems:"center",gap:"10px" }}>
-                  <input type="checkbox" id="gerarAgendaChk" checked={gerarAgenda} onChange={e=>setGerarAgenda(e.target.checked)} style={{ accentColor:"#6c63ff",width:"16px",height:"16px" }}/>
-                  <label htmlFor="gerarAgendaChk" style={{ fontSize:"13px",color:"#c8c8d8",cursor:"pointer" }}>
-                    📅 Gerar agenda automaticamente para consultores mapeados
-                  </label>
-                </div>
-              </div>
-              <div style={{ background:"#111118",borderRadius:"12px",border:"1px solid #1f1f2e",padding:"16px",marginBottom:"16px",maxHeight:"220px",overflowY:"auto" }}>
-                <div style={{ fontSize:"11px",color:"#6e6e88",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:"10px" }}>Preview — {importTarefas.length} tarefas</div>
-                {importTarefas.map((t,i)=>(
-                  <div key={i} style={{ display:"flex",alignItems:"center",gap:"10px",padding:"6px 0",borderBottom:"1px solid #1a1a28" }}>
-                    <span style={{ fontSize:"11px",color:t.isMilestone?"#f04f5e":t.isSummary?"#f5a623":"#c8c8d8",flex:1 }}>{t.isMilestone?"🔷 ":t.isSummary?"📁 ":""}{t.nome}</span>
-                    <span style={{ fontSize:"10px",color:"#6e6e88",whiteSpace:"nowrap" }}>{t.dataInicio||"?"} → {t.dataFim||"?"}</span>
-                    <span style={{ fontSize:"10px",color:"#6c63ff",whiteSpace:"nowrap" }}>{t.progresso}%</span>
-                    <span style={{ fontSize:"10px",color:"#22d3a0",whiteSpace:"nowrap" }}>{t.recursos.map(r=>mapeamento[r]?mapeamento[r].split(" ")[0]:r).join(", ")||"—"}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display:"flex",gap:"10px",justifyContent:"flex-end" }}>
-                <button onClick={()=>setImportStep("upload")} style={{ padding:"9px 18px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>← Voltar</button>
-                <button onClick={executarImportacao} disabled={importing} style={{ padding:"9px 24px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit",boxShadow:"0 4px 16px #6c63ff44",opacity:importing?0.6:1 }}>
-                  {importing?"⏳ Importando...":"✅ Importar e gerar agenda"}
-                </button>
-              </div>
-            </div>
-          );
-
-          if (importStep==="done") return (
-            <div style={{ maxWidth:"560px" }}>
-              <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #22d3a033",padding:"28px",textAlign:"center" }}>
-                <div style={{ fontSize:"48px",marginBottom:"12px" }}>✅</div>
-                <h3 style={{ fontSize:"16px",fontWeight:700,color:"#22d3a0",margin:"0 0 16px" }}>Importação concluída!</h3>
-                {importLog.map((l,i)=><div key={i} style={{ fontSize:"13px",color:"#c8c8d8",marginBottom:"8px",textAlign:"left",background:"#0d0d14",borderRadius:"8px",padding:"10px 14px" }}>{l}</div>)}
-                <div style={{ display:"flex",gap:"10px",justifyContent:"center",marginTop:"20px" }}>
-                  <button onClick={()=>{setImportStep("upload");setImportTarefas([]);setImportLog([]);}} style={{ padding:"9px 18px",borderRadius:"10px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontWeight:600,fontSize:"13px",fontFamily:"inherit" }}>Nova importação</button>
-                  <button onClick={()=>setAbaProj("gantt")} style={{ padding:"9px 22px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",cursor:"pointer",fontWeight:700,fontSize:"13px",fontFamily:"inherit" }}>Ver Gantt →</button>
-                </div>
-              </div>
-            </div>
-          );
-          return null;
-        })()}
+        {abaProj==="importar" && (
+          <AbaImportarMSProject
+            proj={proj}
+            consultores={consultores}
+            atualizarProjeto={atualizarProjeto}
+            onSaveEntry={onSaveEntry}
+            setAbaProj={setAbaProj}
+          />
+        )}
       </div>
     );
   }
