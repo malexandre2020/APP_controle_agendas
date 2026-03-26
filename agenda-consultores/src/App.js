@@ -3074,9 +3074,13 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                           const label=entry.type==="vacation"?"FÉR":entry.type==="holiday"?"FER":entry.type==="blocked"?"BLQ":entry.type==="reserved"?"RES":normalizeClient(entry.client).slice(0,3);
                           const filtered=entry.type==="client"&&clientFilterActive&&!selectedClients.has(normalizeClient(entry.client));
                           const osAprov = entry.osStatus==="aprovada" && !!entry.osAvaliadoPor;
+                          const temOS = !!entry.osNumero;
                           return (
-                            <div key={entry.id||ei} style={{ flex:1,background:filtered?"#18181f":color,display:"flex",alignItems:"center",justifyContent:"center",minHeight:"8px",opacity:filtered?0.2:osAprov?0.45:1,position:"relative" }}>
+                            <div key={entry.id||ei}
+                              title={temOS ? `${entry.client} · ${entry.osNumero}${osAprov?" ✅ Aprovada":""}` : entry.client}
+                              style={{ flex:1,background:filtered?"#18181f":color,display:"flex",alignItems:"center",justifyContent:"center",minHeight:"8px",opacity:filtered?0.2:osAprov?0.45:1,position:"relative" }}>
                               {!filtered&&dayEntries.length<=2&&<span style={{ fontSize:"6px",fontWeight:800,color:"#fff",letterSpacing:"-0.5px" }}>{label}</span>}
+                              {temOS&&!filtered&&<span style={{ position:"absolute",top:0,left:0,width:"5px",height:"5px",borderRadius:"50%",background:osAprov?"#22d3a0":"#fff",opacity:0.9 }}/>}
                               {osAprov&&!filtered&&<span style={{ position:"absolute",bottom:0,right:0,fontSize:"5px",lineHeight:1 }}>🔒</span>}
                             </div>
                           );
@@ -6295,7 +6299,7 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientLis
 // ─────────────────────────────────────────────────────────────────────────────
 // PAINEL DE OS DO CONSULTOR
 // ─────────────────────────────────────────────────────────────────────────────
-function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfig, currentUser, onSaveEntry, onSaveOS, theme: T, modoGestor }) {
+function PainelOSConsultor({ consultorName, scheduleData, setScheduleData, setScheduleVersion, clientList, emailConfig, currentUser, onSaveEntry, onSaveOS, theme: T, modoGestor }) {
   const [osEntry, setOsEntry] = React.useState(null);
   const [filtroStatus, setFiltroStatus] = React.useState("");
   const [busca, setBusca] = React.useState("");
@@ -6322,8 +6326,10 @@ function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfi
       const snap = await getDoc(doc(db, "app_data", "schedule_" + consultorName));
       const entradas = snap.exists() ? (snap.data().value || []) : (scheduleData[consultorName] || []);
       setEntradasFirestore(entradas);
+      // Sincronizar estado global para atualizar calendário
+      if (setScheduleData) setScheduleData(prev => ({ ...prev, [consultorName]: entradas }));
+      if (setScheduleVersion) setScheduleVersion(v => v + 1);
     } catch(e) {
-      // fallback para o estado React em caso de erro
       setEntradasFirestore(scheduleData[consultorName] || []);
     }
     setRecarregando(false);
@@ -7951,6 +7957,23 @@ function Dashboard({ currentUser, onLogout }) {
     saveToFirestore("projects", projects);
   }, [projects, dbLoaded]);
 
+  // ── Recarregar dados do consultor logado ao trocar de módulo (garante dados frescos do Firestore) ──
+  useEffect(() => {
+    if (!dbLoaded || !isConsultor || !currentUser.consultorName) return;
+    const nome = currentUser.consultorName;
+    getDoc(doc(db, "app_data", "schedule_" + nome)).then(snap => {
+      if (!snap.exists()) return;
+      const entradas = snap.data().value || [];
+      setScheduleData(prev => {
+        const atual = JSON.stringify(prev[nome] || []);
+        const novo  = JSON.stringify(entradas);
+        if (atual === novo) return prev;
+        setScheduleVersion(v => v + 1);
+        return { ...prev, [nome]: entradas };
+      });
+    }).catch(() => {});
+  }, [activeModule, dbLoaded]);
+
 
   const consultores = Object.keys(scheduleData).sort((a,b)=>a.localeCompare(b,"pt-BR"));
   const clientColorMap = useMemo(()=>{ const m={}; clientList.forEach(c=>{ m[c.name]=c.color; }); return m; },[clientList]);
@@ -7962,10 +7985,25 @@ function Dashboard({ currentUser, onLogout }) {
     const consultor = updatedEntry.consultor || currentUser.consultorName;
     if (!consultor) { showToast("❌ Consultor não identificado", "#ef4444"); return; }
 
-    // 1. Pegar lista atual do estado React (já está sincronizado)
+    // 1. Pegar lista atual do estado React
     const listaAtual = scheduleData[consultor] || [];
-    const idx = listaAtual.findIndex(e => e.id === updatedEntry.id);
 
+    // 2. Verificar se já existe outra OS com mesmo horário no mesmo dia (exceto a própria entrada)
+    const horaIni = updatedEntry.horaInicio;
+    const duplicada = listaAtual.find(e =>
+      e.id !== updatedEntry.id &&
+      e.osNumero &&
+      e.day === updatedEntry.day &&
+      e.month === updatedEntry.month &&
+      (e.year || "") === (updatedEntry.year || "") &&
+      horaIni && e.horaInicio === horaIni
+    );
+    if (duplicada) {
+      showToast(`⚠️ Já existe a OS ${duplicada.osNumero} neste horário (${horaIni})`, "#f5a623");
+      return;
+    }
+
+    const idx = listaAtual.findIndex(e => e.id === updatedEntry.id);
     let novaLista;
     if (idx >= 0) {
       novaLista = listaAtual.map(e => e.id === updatedEntry.id ? { ...e, ...updatedEntry } : e);
@@ -7973,7 +8011,7 @@ function Dashboard({ currentUser, onLogout }) {
       novaLista = [...listaAtual, { ...updatedEntry, consultor }];
     }
 
-    // 2. Salvar direto no Firestore — não depende de useEffect
+    // 3. Salvar direto no Firestore
     try {
       await setDoc(doc(db, "app_data", "schedule_" + consultor), { value: novaLista });
     } catch(e) {
@@ -7982,7 +8020,7 @@ function Dashboard({ currentUser, onLogout }) {
       return;
     }
 
-    // 3. Atualizar estado React para refletir na UI
+    // 4. Atualizar estado React e forçar re-render do calendário
     setScheduleData(prev => ({ ...prev, [consultor]: novaLista }));
     setScheduleVersion(v => v + 1);
     showToast("✅ OS salva com sucesso!");
@@ -8758,7 +8796,7 @@ function Dashboard({ currentUser, onLogout }) {
             {/* Resumo rápido da semana */}
             <div style={{ background:T.surface,borderRadius:"16px",border:"1px solid "+T.border,padding:"20px" }}>
               <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"15px",fontWeight:700,color:T.heading,margin:"0 0 16px" }}>📅 Agenda desta semana</h3>
-              <WeeklyGlobalView weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={false} onEdit={null} onNewEntry={null} onOsClick={isConsultor?(e)=>setOsEntry(e):null} theme={T}/>
+              <WeeklyGlobalView key={"home-weekly-"+scheduleVersion} weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={false} onEdit={null} onNewEntry={null} onOsClick={isConsultor?(e)=>setOsEntry(e):null} theme={T}/>
             </div>
           </div>
         )}
@@ -8830,7 +8868,7 @@ function Dashboard({ currentUser, onLogout }) {
                     ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
                     : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}><div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>Selecione um mês específico para ver a visualização semanal</div>
                   : <CalendarioMensal
-                      key={"cal-"+(selectedConsultor||"all")}
+                      key={"cal-"+(selectedConsultor||"all")+"-"+scheduleVersion}
                       data={selectedConsultor ? {[selectedConsultor]: scheduleData[selectedConsultor]||[]} : filteredData}
                       selectedMonth={selectedMonth}
                       allMonths={allMonths}
@@ -8850,6 +8888,8 @@ function Dashboard({ currentUser, onLogout }) {
                 <PainelOSConsultor
                   consultorName={selectedConsultor}
                   scheduleData={scheduleData}
+                  setScheduleData={setScheduleData}
+                  setScheduleVersion={setScheduleVersion}
                   clientList={clientList}
                   emailConfig={emailConfig}
                   currentUser={currentUser}
@@ -8917,6 +8957,8 @@ function Dashboard({ currentUser, onLogout }) {
             <PainelOSConsultor
               consultorName={currentUser.consultorName}
               scheduleData={scheduleData}
+              setScheduleData={setScheduleData}
+              setScheduleVersion={setScheduleVersion}
               clientList={clientList}
               emailConfig={emailConfig}
               currentUser={currentUser}
