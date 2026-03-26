@@ -6280,7 +6280,7 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientLis
 // ─────────────────────────────────────────────────────────────────────────────
 // PAINEL DE OS DO CONSULTOR
 // ─────────────────────────────────────────────────────────────────────────────
-function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfig, currentUser, onSaveEntry, theme: T, modoGestor }) {
+function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfig, currentUser, onSaveEntry, onSaveOS, theme: T, modoGestor }) {
   const [osEntry, setOsEntry] = React.useState(null);
   const [filtroStatus, setFiltroStatus] = React.useState("");
   const [busca, setBusca] = React.useState("");
@@ -6498,11 +6498,12 @@ function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfi
           consultorName={consultorName}
           emailConfig={emailConfig}
           clientList={clientList}
-          onSave={async (dadosOS)=>{
-            onSaveEntry(dadosOS);
+          onSave={async (dadosOS) => {
+            if (onSaveOS) await onSaveOS(dadosOS);
+            else if (onSaveEntry) await onSaveEntry(dadosOS);
             setOsEntry(null);
-            // Recarregar do Firestore após salvar para manter estado atualizado
-            setTimeout(carregarDoFirestore, 800);
+            // Recarregar do Firestore para refletir dados atualizados
+            carregarDoFirestore();
           }}
           onClose={()=>setOsEntry(null)}
         />
@@ -7944,8 +7945,39 @@ function Dashboard({ currentUser, onLogout }) {
 
   const showToast = (msg,color) => { setToast({msg,color:color||"#22c55e"}); setTimeout(()=>setToast(null),3000); };
 
+  // ── Salvar dados de OS (preserva todos os campos da entrada + campos OS) ──
+  const handleSaveOS = async (updatedEntry) => {
+    const consultor = updatedEntry.consultor || currentUser.consultorName;
+    if (!consultor) { showToast("❌ Consultor não identificado", "#ef4444"); return; }
+
+    try {
+      // Carregar lista atual direto do Firestore para não perder dados de outras sessões
+      const snap = await getDoc(doc(db, "app_data", "schedule_" + consultor));
+      const listaAtual = snap.exists() ? (snap.data().value || []) : (scheduleData[consultor] || []);
+
+      let novaLista;
+      const idx = listaAtual.findIndex(e => e.id === updatedEntry.id);
+      if (idx >= 0) {
+        // Atualizar entrada existente
+        novaLista = listaAtual.map(e => e.id === updatedEntry.id ? { ...e, ...updatedEntry } : e);
+      } else {
+        // Entrada nova — adicionar
+        novaLista = [...listaAtual, { ...updatedEntry, consultor }];
+      }
+
+      // Salvar no Firestore diretamente
+      await setDoc(doc(db, "app_data", "schedule_" + consultor), { value: novaLista });
+
+      // Sincronizar estado React
+      setScheduleData(prev => ({ ...prev, [consultor]: novaLista }));
+      showToast("✅ OS salva com sucesso!");
+    } catch(e) {
+      console.error("Erro ao salvar OS:", e);
+      showToast("❌ Erro ao salvar OS", "#ef4444");
+    }
+  };
+
   const handleSaveEntry = (entry) => {
-    const {id, consultor, month, year, days, client, type, modalidade, horaInicio, horaFim, intervalo, atividades, notifyEmail} = entry;
     const agora = new Date().toISOString();
     const nomeUsuario = currentUser.nome || currentUser.email;
 
@@ -8810,6 +8842,7 @@ function Dashboard({ currentUser, onLogout }) {
                   emailConfig={emailConfig}
                   currentUser={currentUser}
                   onSaveEntry={handleSaveEntry}
+                  onSaveOS={handleSaveOS}
                   theme={T}
                   modoGestor={true}
                 />
@@ -8876,6 +8909,7 @@ function Dashboard({ currentUser, onLogout }) {
               emailConfig={emailConfig}
               currentUser={currentUser}
               onSaveEntry={handleSaveEntry}
+              onSaveOS={handleSaveOS}
               theme={T}
             />
           </div>
@@ -8997,10 +9031,7 @@ function Dashboard({ currentUser, onLogout }) {
           emailConfig={emailConfig}
           clientList={clientList}
           onSave={async (updatedEntry) => {
-            const name = updatedEntry.consultor||currentUser.consultorName;
-            const novaLista = (scheduleData[name]||[]).map(e => e.id===updatedEntry.id ? updatedEntry : e);
-            setScheduleData(prev => ({...prev, [name]: novaLista}));
-            await saveToFirestore("schedule_"+name, novaLista);
+            handleSaveOS(updatedEntry);
           }}
           onClose={()=>setOsEntry(null)}
         />
