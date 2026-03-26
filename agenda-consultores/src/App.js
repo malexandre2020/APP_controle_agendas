@@ -8594,7 +8594,10 @@ function Dashboard({ currentUser, onLogout }) {
 
   const MODULES_ADMIN    = ALL_MODULES_GESTOR.filter(m => !modulosHabilitados || modulosHabilitados.includes(m.id));
   const MODULES = isConsultor
-    ? ALL_MODULES_CONSULTOR.filter(m => !modulosHabilitados || modulosHabilitados.includes(m.id))
+    ? ALL_MODULES_CONSULTOR.filter(m =>
+        m.id === "agenda" || m.id === "minhas-os" || // agenda e OS sempre visíveis para consultor
+        !modulosHabilitados || modulosHabilitados.includes(m.id)
+      )
     : baseModules.filter(m => !modulosHabilitados || modulosHabilitados.includes(m.id));
 
   const SIDEBAR_W     = sidebarCollapsed ? 60 : 220;
