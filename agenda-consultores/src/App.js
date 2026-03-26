@@ -6520,12 +6520,11 @@ function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfi
           consultorName={consultorName}
           emailConfig={emailConfig}
           clientList={clientList}
-          onSave={async (dadosOS) => {
-            if (onSaveOS) await onSaveOS(dadosOS);
-            else if (onSaveEntry) await onSaveEntry(dadosOS);
+          onSave={(dadosOS) => {
+            if (onSaveOS) onSaveOS(dadosOS);
+            else if (onSaveEntry) onSaveEntry(dadosOS);
             setOsEntry(null);
-            // Recarregar do Firestore para refletir dados atualizados
-            carregarDoFirestore();
+            setTimeout(carregarDoFirestore, 1200);
           }}
           onClose={()=>setOsEntry(null)}
         />
@@ -7968,35 +7967,26 @@ function Dashboard({ currentUser, onLogout }) {
   const showToast = (msg,color) => { setToast({msg,color:color||"#22c55e"}); setTimeout(()=>setToast(null),3000); };
 
   // ── Salvar dados de OS (preserva todos os campos da entrada + campos OS) ──
-  const handleSaveOS = async (updatedEntry) => {
+  const handleSaveOS = (updatedEntry) => {
     const consultor = updatedEntry.consultor || currentUser.consultorName;
     if (!consultor) { showToast("❌ Consultor não identificado", "#ef4444"); return; }
 
-    try {
-      // Carregar lista atual direto do Firestore para não perder dados de outras sessões
-      const snap = await getDoc(doc(db, "app_data", "schedule_" + consultor));
-      const listaAtual = snap.exists() ? (snap.data().value || []) : (scheduleData[consultor] || []);
-
+    setScheduleData(prev => {
+      const listaAtual = prev[consultor] || [];
       let novaLista;
       const idx = listaAtual.findIndex(e => e.id === updatedEntry.id);
       if (idx >= 0) {
-        // Atualizar entrada existente
-        novaLista = listaAtual.map(e => e.id === updatedEntry.id ? { ...e, ...updatedEntry } : e);
+        // Atualizar entrada existente preservando todos os campos
+        novaLista = listaAtual.map(e =>
+          e.id === updatedEntry.id ? { ...e, ...updatedEntry } : e
+        );
       } else {
-        // Entrada nova — adicionar
+        // Entrada sem id correspondente — adicionar
         novaLista = [...listaAtual, { ...updatedEntry, consultor }];
       }
-
-      // Salvar no Firestore diretamente
-      await setDoc(doc(db, "app_data", "schedule_" + consultor), { value: novaLista });
-
-      // Sincronizar estado React
-      setScheduleData(prev => ({ ...prev, [consultor]: novaLista }));
-      showToast("✅ OS salva com sucesso!");
-    } catch(e) {
-      console.error("Erro ao salvar OS:", e);
-      showToast("❌ Erro ao salvar OS", "#ef4444");
-    }
+      return { ...prev, [consultor]: novaLista };
+    });
+    showToast("✅ OS salva com sucesso!");
   };
 
   const handleSaveEntry = (entry) => {
@@ -9052,7 +9042,7 @@ function Dashboard({ currentUser, onLogout }) {
           consultorName={currentUser.consultorName||currentUser.username||""}
           emailConfig={emailConfig}
           clientList={clientList}
-          onSave={async (updatedEntry) => {
+          onSave={(updatedEntry) => {
             handleSaveOS(updatedEntry);
           }}
           onClose={()=>setOsEntry(null)}
