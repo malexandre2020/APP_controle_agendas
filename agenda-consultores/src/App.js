@@ -7939,15 +7939,6 @@ function Dashboard({ currentUser, onLogout }) {
     loadData();
   }, []);
 
-  // ── Salvar scheduleData no Firestore quando mudar — por consultor individual ──
-  useEffect(() => {
-    if (!dbLoaded) return;
-    // Salva cada consultor separadamente para evitar limite de 1MB do Firestore
-    Object.entries(scheduleData).forEach(([nome, entradas]) => {
-      saveToFirestore("schedule_" + nome, entradas);
-    });
-  }, [scheduleData, dbLoaded]);
-
   // ── Salvar clientList no Firestore quando mudar ──
   useEffect(() => {
     if (!dbLoaded) return;
@@ -8008,41 +7999,41 @@ function Dashboard({ currentUser, onLogout }) {
       criadoPorOriginal = existing?.criadoPor || nomeUsuario;
     }
 
-    setScheduleData(prev=>{
-      const updated={...prev};
-      let list=[...(updated[consultor]||[])];
-      days.forEach(day=>{
-        if (id) {
-          // Editar entrada existente pelo id
-          const idx = list.findIndex(e=>e.id===id);
-          if (idx>=0) {
-            const old = list[idx];
-            const alteracoes = [];
-            if (old.client !== client) alteracoes.push({campo:"cliente", de:old.client||"-", para:client});
-            if (old.type !== type) alteracoes.push({campo:"tipo", de:old.type||"-", para:type});
-            if (old.horaInicio !== horaInicio) alteracoes.push({campo:"início", de:old.horaInicio||"-", para:horaInicio});
-            if (old.horaFim !== horaFim) alteracoes.push({campo:"fim", de:old.horaFim||"-", para:horaFim});
-            if ((old.intervalo||"") !== (intervalo||"")) alteracoes.push({campo:"intervalo", de:old.intervalo||"-", para:intervalo||"-"});
-            const hist = [...(old.historico||[{acao:"criado",por:old.criadoPor||"?",em:old.criadoEm||agora}]), {acao:"alterado",por:nomeUsuario,em:agora,alteracoes}];
-            if ((old.atividades||'') !== (atividades||'')) alteracoes.push({campo:'atividades', de:old.atividades||'-', para:atividades||'-'});
-            list[idx]={...old,client,type,modalidade,horaInicio,horaFim,intervalo,atividades,alteradoPor:nomeUsuario,alteradoEm:agora,historico:hist};
-          }
-        } else {
-          // Nova entrada
-          const newId = genId();
-          list.push({id:newId,month,year,day,weekday:"-",client,type,modalidade,horaInicio,horaFim,intervalo,atividades,criadoPor:nomeUsuario,criadoEm:agora,historico:[{acao:"criado",por:nomeUsuario,em:agora}]});
+    // Calcular nova lista primeiro
+    let list = [...(scheduleData[consultor]||[])];
+    days.forEach(day=>{
+      if (id) {
+        const idx = list.findIndex(e=>e.id===id);
+        if (idx>=0) {
+          const old = list[idx];
+          const alteracoes = [];
+          if (old.client !== client) alteracoes.push({campo:"cliente", de:old.client||"-", para:client});
+          if (old.type !== type) alteracoes.push({campo:"tipo", de:old.type||"-", para:type});
+          if (old.horaInicio !== horaInicio) alteracoes.push({campo:"início", de:old.horaInicio||"-", para:horaInicio});
+          if (old.horaFim !== horaFim) alteracoes.push({campo:"fim", de:old.horaFim||"-", para:horaFim});
+          if ((old.intervalo||"") !== (intervalo||"")) alteracoes.push({campo:"intervalo", de:old.intervalo||"-", para:intervalo||"-"});
+          if ((old.atividades||'') !== (atividades||'')) alteracoes.push({campo:'atividades', de:old.atividades||'-', para:atividades||'-'});
+          const hist = [...(old.historico||[{acao:"criado",por:old.criadoPor||"?",em:old.criadoEm||agora}]), {acao:"alterado",por:nomeUsuario,em:agora,alteracoes}];
+          list[idx]={...old,client,type,modalidade,horaInicio,horaFim,intervalo,atividades,alteradoPor:nomeUsuario,alteradoEm:agora,historico:hist};
         }
-      });
-      list.sort((a,b)=>{
-        const mi=MONTHS_ORDER.findIndex(m=>m.toUpperCase()===a.month.toUpperCase());
-        const mj=MONTHS_ORDER.findIndex(m=>m.toUpperCase()===b.month.toUpperCase());
-        if (mi!==mj) return mi-mj;
-        if (a.day!==b.day) return a.day-b.day;
-        return (a.horaInicio||"00:00").localeCompare(b.horaInicio||"00:00");
-      });
-      updated[consultor]=list;
-      return updated;
+      } else {
+        const newId = genId();
+        list.push({id:newId,month,year,day,weekday:"-",client,type,modalidade,horaInicio,horaFim,intervalo,atividades,criadoPor:nomeUsuario,criadoEm:agora,historico:[{acao:"criado",por:nomeUsuario,em:agora}]});
+      }
     });
+    list.sort((a,b)=>{
+      const mi=MONTHS_ORDER.findIndex(m=>m.toUpperCase()===a.month.toUpperCase());
+      const mj=MONTHS_ORDER.findIndex(m=>m.toUpperCase()===b.month.toUpperCase());
+      if (mi!==mj) return mi-mj;
+      if (a.day!==b.day) return a.day-b.day;
+      return (a.horaInicio||"00:00").localeCompare(b.horaInicio||"00:00");
+    });
+
+    // Salvar no Firestore explicitamente
+    saveToFirestore("schedule_" + consultor, list);
+
+    // Atualizar estado React
+    setScheduleData(prev=>({ ...prev, [consultor]: list }));
     showToast("✅ "+(id?"Entrada atualizada":""+days.length+" dia(s) salvo(s)")+" para "+consultor.split(" ")[0]);
     setShowModal(false); setEditEntry(null);
     setScheduleVersion(v => v + 1);
