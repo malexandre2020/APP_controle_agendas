@@ -6204,6 +6204,101 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientLis
 // MÓDULO: GESTÃO DE PROJETOS
 // ─────────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
+// KANBAN BOARD (componente separado para não violar regras de hooks)
+// ─────────────────────────────────────────────────────────────────────────────
+function KanbanBoard({ tarefas, canEditProj, COLUNAS, COL_LABELS, PRIORIDADES, moverTarefa, removerTarefa, addTarefa }) {
+  const [dragId, setDragId] = React.useState(null);
+  const [dragOver, setDragOver] = React.useState(null);
+
+  const onDragStart = (e, id) => {
+    setDragId(id);
+    e.dataTransfer.effectAllowed = "move";
+    setTimeout(() => { const el = document.getElementById("kcard-" + id); if (el) el.style.opacity = "0.4"; }, 0);
+  };
+  const onDragEnd = () => {
+    const el = document.getElementById("kcard-" + dragId);
+    if (el) el.style.opacity = "1";
+    setDragId(null);
+    setDragOver(null);
+  };
+  const onDragOver = (e, col) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOver(col); };
+  const onDrop = (e, col) => {
+    e.preventDefault();
+    if (dragId && canEditProj) {
+      const t = tarefas.find(t => t.id === dragId);
+      if (t && t.coluna !== col) moverTarefa(dragId, col);
+    }
+    setDragId(null); setDragOver(null);
+  };
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px", overflowX: "auto", minWidth: "700px" }}>
+      {COLUNAS.map(col => {
+        const tarefasCol = tarefas.filter(t => t.coluna === col);
+        const isOver = dragOver === col;
+        return (
+          <div key={col}
+            onDragOver={canEditProj ? e => onDragOver(e, col) : undefined}
+            onDragLeave={canEditProj ? () => setDragOver(null) : undefined}
+            onDrop={canEditProj ? e => onDrop(e, col) : undefined}
+            style={{ background: isOver ? "#1a1a2e" : "#111118", borderRadius: "12px", border: "1px solid " + (isOver ? "#6c63ff" : "#1f1f2e"), minHeight: "200px", transition: "background .15s,border-color .15s" }}>
+            <div style={{ padding: "12px 14px", borderBottom: "1px solid #1f1f2e", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "#c8c8d8" }}>{COL_LABELS[col]}</span>
+              <span style={{ fontSize: "10px", background: "#1f1f2e", color: "#6e6e88", padding: "1px 7px", borderRadius: "99px", fontWeight: 700 }}>{tarefasCol.length}</span>
+            </div>
+            <div style={{ padding: "8px", minHeight: "100px" }}>
+              {isOver && dragId && tarefas.find(t => t.id === dragId)?.coluna !== col && (
+                <div style={{ height: "4px", background: "#6c63ff", borderRadius: "99px", marginBottom: "6px", opacity: 0.8 }} />
+              )}
+              {tarefasCol.map(t => {
+                const pr = PRIORIDADES[t.prioridade] || PRIORIDADES.media;
+                const isDragging = dragId === t.id;
+                return (
+                  <div id={"kcard-" + t.id} key={t.id}
+                    draggable={canEditProj}
+                    onDragStart={canEditProj ? e => onDragStart(e, t.id) : undefined}
+                    onDragEnd={canEditProj ? onDragEnd : undefined}
+                    style={{ background: "#18181f", borderRadius: "8px", border: "1px solid " + (isDragging ? "#6c63ff44" : "#2a2a3a"), padding: "10px 12px", marginBottom: "6px", cursor: canEditProj ? "grab" : "default", userSelect: "none", transition: "box-shadow .15s", boxShadow: isDragging ? "0 4px 20px rgba(108,99,255,0.3)" : "none" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "6px", marginBottom: "6px" }}>
+                      {canEditProj && <span style={{ fontSize: "11px", color: "#3e3e55", flexShrink: 0, marginTop: 1, cursor: "grab" }}>⠿</span>}
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "#c8c8d8", lineHeight: 1.4, flex: 1 }}>{t.nome}</span>
+                      <span style={{ fontSize: "9px", padding: "2px 6px", borderRadius: "99px", background: pr.color + "18", color: pr.color, fontWeight: 700, whiteSpace: "nowrap" }}>{pr.label}</span>
+                    </div>
+                    {t.responsavel && <div style={{ fontSize: "10px", color: "#6e6e88", marginBottom: "6px" }}>👤 {t.responsavel}</div>}
+                    {t.dataInicio && <div style={{ fontSize: "9px", color: "#3e3e55", marginBottom: "6px" }}>📅 {t.dataInicio}{t.dataFim ? " → " + t.dataFim : ""}</div>}
+                    {typeof t.progresso === "number" && t.progresso > 0 && (
+                      <div style={{ marginBottom: "6px" }}>
+                        <div style={{ height: "3px", background: "#1f1f2e", borderRadius: "99px", overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: t.progresso + "%", background: pr.color, borderRadius: "99px" }} />
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "4px" }}>
+                      {canEditProj && COLUNAS.filter(c => c !== col).map(c => (
+                        <button key={c} onClick={() => moverTarefa(t.id, c)} title={"Mover para " + COL_LABELS[c]}
+                          style={{ fontSize: "9px", padding: "2px 7px", borderRadius: "99px", border: "1px solid #2a2a3a", background: "transparent", color: "#6e6e88", cursor: "pointer", fontFamily: "inherit" }}>
+                          → {COL_LABELS[c].split(" ")[1]}
+                        </button>
+                      ))}
+                      {canEditProj && <button onClick={() => removerTarefa(t.id)}
+                        style={{ fontSize: "9px", padding: "2px 7px", borderRadius: "99px", border: "1px solid #f04f5e44", background: "transparent", color: "#f04f5e", cursor: "pointer", fontFamily: "inherit" }}>✕</button>}
+                    </div>
+                  </div>
+                );
+              })}
+              {canEditProj && <button onClick={() => addTarefa(col)}
+                style={{ width: "100%", padding: "7px", borderRadius: "8px", border: "1px dashed #2a2a3a", background: "transparent", color: "#3e3e55", cursor: "pointer", fontSize: "12px", fontFamily: "inherit", marginTop: "4px" }}>
+                + Adicionar
+              </button>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ABA IMPORTAR MS PROJECT (componente separado para não violar regras de hooks)
 // ─────────────────────────────────────────────────────────────────────────────
 function AbaImportarMSProject({ proj, consultores, atualizarProjeto, onSaveEntry, setAbaProj }) {
@@ -6647,106 +6742,18 @@ function ModuloProjetos({ currentUser, canEdit, canManage, isGestor, consultores
         </div>
 
         {/* Kanban com Drag & Drop */}
-        {abaProj==="kanban" && (()=>{
-          const [dragId, setDragId] = React.useState(null);
-          const [dragOver, setDragOver] = React.useState(null); // coluna sendo hover
-
-          const onDragStart = (e, id) => {
-            setDragId(id);
-            e.dataTransfer.effectAllowed = "move";
-            // ghost image via opacity
-            setTimeout(()=>{ const el=document.getElementById("kcard-"+id); if(el) el.style.opacity="0.4"; }, 0);
-          };
-          const onDragEnd = (e) => {
-            const el=document.getElementById("kcard-"+dragId);
-            if(el) el.style.opacity="1";
-            setDragId(null);
-            setDragOver(null);
-          };
-          const onDragOver = (e, col) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "move";
-            setDragOver(col);
-          };
-          const onDrop = (e, col) => {
-            e.preventDefault();
-            if (dragId && canEditProj) {
-              const t = tarefas.find(t=>t.id===dragId);
-              if (t && t.coluna !== col) moverTarefa(dragId, col);
-            }
-            setDragId(null);
-            setDragOver(null);
-          };
-
-          return (
-            <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"12px",overflowX:"auto",minWidth:"700px" }}>
-              {COLUNAS.map(col=>{
-                const tarefasCol = tarefas.filter(t=>t.coluna===col);
-                const isOver = dragOver===col;
-                return (
-                  <div key={col}
-                    onDragOver={canEditProj ? e=>onDragOver(e,col) : undefined}
-                    onDragLeave={canEditProj ? ()=>setDragOver(null) : undefined}
-                    onDrop={canEditProj ? e=>onDrop(e,col) : undefined}
-                    style={{ background:isOver?"#1a1a2e":"#111118", borderRadius:"12px", border:"1px solid "+(isOver?"#6c63ff":"#1f1f2e"), minHeight:"200px", transition:"background .15s,border-color .15s" }}>
-                    <div style={{ padding:"12px 14px",borderBottom:"1px solid #1f1f2e",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-                      <span style={{ fontSize:"12px",fontWeight:700,color:"#c8c8d8" }}>{COL_LABELS[col]}</span>
-                      <span style={{ fontSize:"10px",background:"#1f1f2e",color:"#6e6e88",padding:"1px 7px",borderRadius:"99px",fontWeight:700 }}>{tarefasCol.length}</span>
-                    </div>
-                    <div style={{ padding:"8px",minHeight:"100px" }}>
-                      {/* Indicador de drop */}
-                      {isOver && dragId && tarefas.find(t=>t.id===dragId)?.coluna!==col && (
-                        <div style={{ height:"4px",background:"#6c63ff",borderRadius:"99px",marginBottom:"6px",opacity:0.8 }}/>
-                      )}
-                      {tarefasCol.map(t=>{
-                        const pr = PRIORIDADES[t.prioridade]||PRIORIDADES.media;
-                        const isDragging = dragId===t.id;
-                        return (
-                          <div
-                            id={"kcard-"+t.id}
-                            key={t.id}
-                            draggable={canEditProj}
-                            onDragStart={canEditProj ? e=>onDragStart(e,t.id) : undefined}
-                            onDragEnd={canEditProj ? onDragEnd : undefined}
-                            style={{ background:"#18181f", borderRadius:"8px", border:"1px solid "+(isDragging?"#6c63ff44":"#2a2a3a"), padding:"10px 12px", marginBottom:"6px", cursor:canEditProj?"grab":"default", userSelect:"none", transition:"box-shadow .15s,border-color .15s", boxShadow:isDragging?"0 4px 20px rgba(108,99,255,0.3)":"none" }}>
-                            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"6px",marginBottom:"6px" }}>
-                              {canEditProj && <span style={{ fontSize:"11px",color:"#3e3e55",flexShrink:0,marginTop:1,cursor:"grab" }}>⠿</span>}
-                              <span style={{ fontSize:"12px",fontWeight:600,color:"#c8c8d8",lineHeight:1.4,flex:1 }}>{t.nome}</span>
-                              <span style={{ fontSize:"9px",padding:"2px 6px",borderRadius:"99px",background:pr.color+"18",color:pr.color,fontWeight:700,whiteSpace:"nowrap" }}>{pr.label}</span>
-                            </div>
-                            {t.responsavel && <div style={{ fontSize:"10px",color:"#6e6e88",marginBottom:"6px" }}>👤 {t.responsavel}</div>}
-                            {t.dataInicio && <div style={{ fontSize:"9px",color:"#3e3e55",marginBottom:"6px" }}>📅 {t.dataInicio}{t.dataFim?" → "+t.dataFim:""}</div>}
-                            {typeof t.progresso==="number" && t.progresso>0 && (
-                              <div style={{ marginBottom:"6px" }}>
-                                <div style={{ height:"3px",background:"#1f1f2e",borderRadius:"99px",overflow:"hidden" }}>
-                                  <div style={{ height:"100%",width:t.progresso+"%",background:pr.color,borderRadius:"99px" }}/>
-                                </div>
-                              </div>
-                            )}
-                            <div style={{ display:"flex",gap:"4px",flexWrap:"wrap",marginTop:"4px" }}>
-                              {canEditProj && COLUNAS.filter(c=>c!==col).map(c=>(
-                                <button key={c} onClick={()=>moverTarefa(t.id,c)} title={"Mover para "+COL_LABELS[c]}
-                                  style={{ fontSize:"9px",padding:"2px 7px",borderRadius:"99px",border:"1px solid #2a2a3a",background:"transparent",color:"#6e6e88",cursor:"pointer",fontFamily:"inherit" }}>
-                                  → {COL_LABELS[c].split(" ")[1]}
-                                </button>
-                              ))}
-                              {canEditProj && <button onClick={()=>removerTarefa(t.id)}
-                                style={{ fontSize:"9px",padding:"2px 7px",borderRadius:"99px",border:"1px solid #f04f5e44",background:"transparent",color:"#f04f5e",cursor:"pointer",fontFamily:"inherit" }}>✕</button>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {canEditProj && <button onClick={()=>addTarefa(col)}
-                        style={{ width:"100%",padding:"7px",borderRadius:"8px",border:"1px dashed #2a2a3a",background:"transparent",color:"#3e3e55",cursor:"pointer",fontSize:"12px",fontFamily:"inherit",marginTop:"4px" }}>
-                        + Adicionar
-                      </button>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
+        {abaProj==="kanban" && (
+          <KanbanBoard
+            tarefas={tarefas}
+            canEditProj={canEditProj}
+            COLUNAS={COLUNAS}
+            COL_LABELS={COL_LABELS}
+            PRIORIDADES={PRIORIDADES}
+            moverTarefa={moverTarefa}
+            removerTarefa={removerTarefa}
+            addTarefa={addTarefa}
+          />
+        )}
 
         {/* Cronograma */}
         {abaProj==="cronograma" && (
