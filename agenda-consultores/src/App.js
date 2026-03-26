@@ -7984,6 +7984,7 @@ function Dashboard({ currentUser, onLogout }) {
 
     // 3. Atualizar estado React para refletir na UI
     setScheduleData(prev => ({ ...prev, [consultor]: novaLista }));
+    setScheduleVersion(v => v + 1);
     showToast("✅ OS salva com sucesso!");
   };
 
