@@ -6261,6 +6261,8 @@ function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfi
   const [osEntry, setOsEntry] = React.useState(null);
   const [filtroStatus, setFiltroStatus] = React.useState("");
   const [busca, setBusca] = React.useState("");
+  const [entradasFirestore, setEntradasFirestore] = React.useState(null); // null = ainda carregando
+  const [recarregando, setRecarregando] = React.useState(false);
 
   const OS_STATUS = {
     em_andamento: { label:"Em andamento", color:"#6c63ff", bg:"#6c63ff18", icon:"⚙️", desc:"OS em execução pelo consultor" },
@@ -6272,16 +6274,34 @@ function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfi
     cancelada:    { label:"Cancelada",    color:"#f04f5e", bg:"#f04f5e18", icon:"❌", desc:"OS cancelada" },
   };
 
-  // OS bloqueada se aprovada por gestor/editor/coordenador (role salvo)
   const ROLES_BLOQUEIO = ["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"];
   const osBloquada = (os) => os.osStatus === "aprovada" && os.osAvaliadoPor && ROLES_BLOQUEIO.includes(os.osAvaliadoRole||"");
-
-  // Gestor só pode visualizar, não editar pelo painel do consultor
   const podeEditar = !modoGestor;
 
-  // Coletar todas as OS do consultor logado
+  // Carregar diretamente do Firestore — garante dados atualizados mesmo após aprovação em outra sessão
+  const carregarDoFirestore = React.useCallback(async () => {
+    setRecarregando(true);
+    try {
+      const snap = await getDoc(doc(db, "app_data", "schedule_" + consultorName));
+      const entradas = snap.exists() ? (snap.data().value || []) : (scheduleData[consultorName] || []);
+      setEntradasFirestore(entradas);
+    } catch(e) {
+      // fallback para o estado React em caso de erro
+      setEntradasFirestore(scheduleData[consultorName] || []);
+    }
+    setRecarregando(false);
+  }, [consultorName]);
+
+  // Carregar na montagem e quando consultorName mudar
+  React.useEffect(() => {
+    carregarDoFirestore();
+  }, [carregarDoFirestore]);
+
+  // Usar dados do Firestore se disponíveis, senão scheduleData como fallback
+  const entradas = entradasFirestore !== null ? entradasFirestore : (scheduleData[consultorName] || []);
+
+  // Coletar todas as OS
   const todasOS = React.useMemo(() => {
-    const entradas = scheduleData[consultorName] || [];
     return entradas
       .filter(e => e.osNumero)
       .sort((a,b) => {
@@ -6289,7 +6309,7 @@ function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfi
         const nb = parseInt(b.osNumero?.replace(/\D/g,""))||0;
         return nb - na;
       });
-  }, [scheduleData, consultorName]);
+  }, [entradas]);
 
   // Filtrar
   const osFiltradas = React.useMemo(() => {
@@ -6318,14 +6338,21 @@ function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfi
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom:"24px" }}>
-        <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:T.heading,margin:"0 0 4px",letterSpacing:"-0.3px" }}>
-          📋 {modoGestor ? `OS de ${consultorName.split(" ")[0]}` : "Minhas Ordens de Serviço"}
-        </h2>
-        <p style={{ fontSize:"12px",color:T.text2,margin:0 }}>
-          {todasOS.length} OS registrada{todasOS.length!==1?"s":""}
-          {modoGestor && <span style={{ marginLeft:8,padding:"2px 8px",borderRadius:"99px",background:"#f5a62318",border:"1px solid #f5a62330",color:"#f5a623",fontSize:"10px",fontWeight:600 }}>👁 Modo visualização</span>}
-        </p>
+      <div style={{ marginBottom:"24px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"12px",flexWrap:"wrap" }}>
+        <div>
+          <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:T.heading,margin:"0 0 4px",letterSpacing:"-0.3px" }}>
+            📋 {modoGestor ? `OS de ${consultorName.split(" ")[0]}` : "Minhas Ordens de Serviço"}
+          </h2>
+          <p style={{ fontSize:"12px",color:T.text2,margin:0,display:"flex",alignItems:"center",gap:"8px" }}>
+            {entradasFirestore===null ? "Carregando..." : `${todasOS.length} OS registrada${todasOS.length!==1?"s":""}`}
+            {modoGestor && <span style={{ padding:"2px 8px",borderRadius:"99px",background:"#f5a62318",border:"1px solid #f5a62330",color:"#f5a623",fontSize:"10px",fontWeight:600 }}>👁 Modo visualização</span>}
+          </p>
+        </div>
+        <button onClick={carregarDoFirestore} disabled={recarregando}
+          style={{ padding:"7px 14px",borderRadius:"8px",border:"1px solid "+T.border,background:T.surface,color:recarregando?T.text3:T.text2,cursor:recarregando?"wait":"pointer",fontSize:"12px",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px",flexShrink:0 }}>
+          <span style={{ display:"inline-block",animation:recarregando?"spin .7s linear infinite":"none" }}>🔄</span>
+          {recarregando?"Atualizando...":"Atualizar"}
+        </button>
       </div>
 
       {/* Cards de contagem por status */}
@@ -6452,6 +6479,8 @@ function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfi
           onSave={async (dadosOS)=>{
             onSaveEntry(dadosOS);
             setOsEntry(null);
+            // Recarregar do Firestore após salvar para manter estado atualizado
+            setTimeout(carregarDoFirestore, 800);
           }}
           onClose={()=>setOsEntry(null)}
         />
