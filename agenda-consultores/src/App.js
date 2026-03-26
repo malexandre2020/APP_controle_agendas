@@ -6520,11 +6520,11 @@ function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfi
           consultorName={consultorName}
           emailConfig={emailConfig}
           clientList={clientList}
-          onSave={(dadosOS) => {
-            if (onSaveOS) onSaveOS(dadosOS);
+          onSave={async (dadosOS) => {
+            if (onSaveOS) await onSaveOS(dadosOS);
             else if (onSaveEntry) onSaveEntry(dadosOS);
             setOsEntry(null);
-            setTimeout(carregarDoFirestore, 1200);
+            setTimeout(carregarDoFirestore, 800);
           }}
           onClose={()=>setOsEntry(null)}
         />
@@ -7967,25 +7967,32 @@ function Dashboard({ currentUser, onLogout }) {
   const showToast = (msg,color) => { setToast({msg,color:color||"#22c55e"}); setTimeout(()=>setToast(null),3000); };
 
   // ── Salvar dados de OS (preserva todos os campos da entrada + campos OS) ──
-  const handleSaveOS = (updatedEntry) => {
+  const handleSaveOS = async (updatedEntry) => {
     const consultor = updatedEntry.consultor || currentUser.consultorName;
     if (!consultor) { showToast("❌ Consultor não identificado", "#ef4444"); return; }
 
-    setScheduleData(prev => {
-      const listaAtual = prev[consultor] || [];
-      let novaLista;
-      const idx = listaAtual.findIndex(e => e.id === updatedEntry.id);
-      if (idx >= 0) {
-        // Atualizar entrada existente preservando todos os campos
-        novaLista = listaAtual.map(e =>
-          e.id === updatedEntry.id ? { ...e, ...updatedEntry } : e
-        );
-      } else {
-        // Entrada sem id correspondente — adicionar
-        novaLista = [...listaAtual, { ...updatedEntry, consultor }];
-      }
-      return { ...prev, [consultor]: novaLista };
-    });
+    // 1. Pegar lista atual do estado React (já está sincronizado)
+    const listaAtual = scheduleData[consultor] || [];
+    const idx = listaAtual.findIndex(e => e.id === updatedEntry.id);
+
+    let novaLista;
+    if (idx >= 0) {
+      novaLista = listaAtual.map(e => e.id === updatedEntry.id ? { ...e, ...updatedEntry } : e);
+    } else {
+      novaLista = [...listaAtual, { ...updatedEntry, consultor }];
+    }
+
+    // 2. Salvar direto no Firestore — não depende de useEffect
+    try {
+      await setDoc(doc(db, "app_data", "schedule_" + consultor), { value: novaLista });
+    } catch(e) {
+      console.error("Erro Firestore:", e);
+      showToast("❌ Erro ao salvar no servidor", "#ef4444");
+      return;
+    }
+
+    // 3. Atualizar estado React para refletir na UI
+    setScheduleData(prev => ({ ...prev, [consultor]: novaLista }));
     showToast("✅ OS salva com sucesso!");
   };
 
@@ -9043,8 +9050,8 @@ function Dashboard({ currentUser, onLogout }) {
           consultorName={currentUser.consultorName||currentUser.username||""}
           emailConfig={emailConfig}
           clientList={clientList}
-          onSave={(updatedEntry) => {
-            handleSaveOS(updatedEntry);
+          onSave={async (updatedEntry) => {
+            await handleSaveOS(updatedEntry);
           }}
           onClose={()=>setOsEntry(null)}
         />
