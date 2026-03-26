@@ -8811,7 +8811,7 @@ function Dashboard({ currentUser, onLogout }) {
             {/* Resumo rápido da semana */}
             <div style={{ background:T.surface,borderRadius:"16px",border:"1px solid "+T.border,padding:"20px" }}>
               <h3 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"15px",fontWeight:700,color:T.heading,margin:"0 0 16px" }}>📅 Agenda desta semana</h3>
-              <WeeklyGlobalView key={"home-weekly-"+scheduleVersion} weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={false} onEdit={null} onNewEntry={null} onOsClick={isConsultor?(e)=>setOsEntry(e):null} theme={T}/>
+              <WeeklyGlobalView key={"home-weekly"} weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={false} onEdit={null} onNewEntry={null} onOsClick={isConsultor?(e)=>setOsEntry(e):null} theme={T}/>
             </div>
           </div>
         )}
@@ -8896,7 +8896,7 @@ function Dashboard({ currentUser, onLogout }) {
                       onOsClick={isConsultor?(e)=>setOsEntry(e):null}
                     />
               )}
-              {view==="semanal" && <WeeklyGlobalView key={"weekly-"+scheduleVersion} weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={canEdit} onEdit={(entry,name)=>{setEditEntry({...entry,consultor:name});setShowModal(true);}} onNewEntry={canEdit?({consultor,month,day,year})=>{setEditEntry({consultor,month,day,year,prefill:true});setShowModal(true);}:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null} theme={T}/>}
+              {view==="semanal" && <WeeklyGlobalView key={"weekly"} weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={canEdit} onEdit={(entry,name)=>{setEditEntry({...entry,consultor:name});setShowModal(true);}} onNewEntry={canEdit?({consultor,month,day,year})=>{setEditEntry({consultor,month,day,year,prefill:true});setShowModal(true);}:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null} theme={T}/>}
               {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
               {view==="stats" && <StatsView stats={stats}/>}
               {view==="os-perfil" && selectedConsultor && (
