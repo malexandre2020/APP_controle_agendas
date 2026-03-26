@@ -2599,7 +2599,7 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
                               }}
                               style={{ background:color,borderRadius:"7px",padding:"5px 7px",marginBottom:"3px",cursor:"pointer",transition:"opacity .15s",...(()=>{ const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"]; return entry.osStatus==="aprovada"&&entry.osAvaliadoPor&&ROLES_BLQ.includes(entry.osAvaliadoRole||"")?{opacity:0.45}:{}; })() }}
                               onMouseEnter={e=>e.currentTarget.style.opacity="0.8"}
-                              onMouseLeave={e=>{ const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"]; e.currentTarget.style.opacity=entry.osStatus==="aprovada"&&entry.osAvaliadoPor&&ROLES_BLQ.includes(entry.osAvaliadoRole||"")??"0.45":"1"; }}
+                              onMouseLeave={e=>{ const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"]; const isAprov=entry.osStatus==="aprovada"&&entry.osAvaliadoPor&&ROLES_BLQ.includes(entry.osAvaliadoRole||""); e.currentTarget.style.opacity=isAprov?"0.45":"1"; }}
                             >
                               <div style={{ fontSize:"10px",fontWeight:800,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
                                 {entry.modalidade==="remoto"?"💻 ":entry.modalidade==="presencial"?"🏢 ":""}{entry.client||entry.type}
