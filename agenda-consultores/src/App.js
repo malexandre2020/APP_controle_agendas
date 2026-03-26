@@ -2597,9 +2597,9 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
                                 setPopupPos({x,y});
                                 setPopup({entry,name});
                               }}
-                              style={{ background:color,borderRadius:"7px",padding:"5px 7px",marginBottom:"3px",cursor:"pointer",transition:"opacity .15s" }}
+                              style={{ background:color,borderRadius:"7px",padding:"5px 7px",marginBottom:"3px",cursor:"pointer",transition:"opacity .15s",...(()=>{ const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"]; return entry.osStatus==="aprovada"&&entry.osAvaliadoPor&&ROLES_BLQ.includes(entry.osAvaliadoRole||"")?{opacity:0.45}:{}; })() }}
                               onMouseEnter={e=>e.currentTarget.style.opacity="0.8"}
-                              onMouseLeave={e=>e.currentTarget.style.opacity="1"}
+                              onMouseLeave={e=>{ const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"]; e.currentTarget.style.opacity=entry.osStatus==="aprovada"&&entry.osAvaliadoPor&&ROLES_BLQ.includes(entry.osAvaliadoRole||"")??"0.45":"1"; }}
                             >
                               <div style={{ fontSize:"10px",fontWeight:800,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
                                 {entry.modalidade==="remoto"?"💻 ":entry.modalidade==="presencial"?"🏢 ":""}{entry.client||entry.type}
@@ -2610,6 +2610,7 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
                               {entry.osNumero && (
                                 <div style={{ fontSize:"8px",color:"rgba(255,255,255,0.6)",marginTop:"1px",display:"flex",alignItems:"center",gap:"2px" }}>
                                   <span>📋</span><span style={{ overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{entry.osNumero}</span>
+                                  {(()=>{ const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"]; return entry.osStatus==="aprovada"&&entry.osAvaliadoPor&&ROLES_BLQ.includes(entry.osAvaliadoRole||""); })()&&<span>🔒</span>}
                                 </div>
                               )}
                             </div>
@@ -2698,20 +2699,42 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
             {/* Botões de ação — fora do scroll, sempre visíveis */}
             </div>
           <div style={{ padding:"0 16px 14px",flexShrink:0,display:"flex",flexDirection:"column",gap:"7px",borderTop:"1px solid #1f1f2e",paddingTop:"12px" }}>
-              {onOsClick && (
-                <button onMouseDown={e=>e.stopPropagation()}
-                  onClick={()=>{ onOsClick({...popup.entry, consultor:popup.name}); setPopup(null); }}
-                  style={{ width:"100%",padding:"9px",borderRadius:"9px",border:"1px solid #22d3a044",background:"#22d3a015",color:"#22d3a0",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit" }}>
-                  📋 Preencher Ordem de Serviço
-                </button>
-              )}
-              {canEdit && onEdit && (
-                <button onMouseDown={e=>e.stopPropagation()}
-                  onClick={()=>{ onEdit(popup.entry, popup.name); setPopup(null); }}
-                  style={{ width:"100%",padding:"9px",borderRadius:"9px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 14px #6c63ff44" }}>
-                  ✏️ Editar agenda
-                </button>
-              )}
+              {(()=>{
+                const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"];
+                const osAprov = popup.entry.osStatus==="aprovada" && popup.entry.osAvaliadoPor && ROLES_BLQ.includes(popup.entry.osAvaliadoRole||"");
+                return (
+                  <>
+                    {popup.entry.osNumero && (
+                      <div style={{ display:"flex",alignItems:"center",gap:"6px",padding:"6px 8px",background:"#22d3a00a",borderRadius:"8px",border:"1px solid #22d3a020" }}>
+                        <span style={{ fontSize:"11px",fontWeight:700,color:"#22d3a0" }}>📋 OS {popup.entry.osNumero}</span>
+                        {osAprov && <span style={{ fontSize:"9px",padding:"1px 7px",borderRadius:"99px",background:"#22d3a018",color:"#22d3a0",fontWeight:700 }}>✅ Aprovada</span>}
+                      </div>
+                    )}
+                    {osAprov ? (
+                      <div style={{ fontSize:"10px",color:"#6e6e88",padding:"6px 8px",background:"#1f1f2e",borderRadius:"8px",textAlign:"center" }}>
+                        🔒 Aprovada por <strong style={{ color:"#a0a0b0" }}>{popup.entry.osAvaliadoPor}</strong> — somente leitura
+                      </div>
+                    ) : (
+                      <>
+                        {onOsClick && (
+                          <button onMouseDown={e=>e.stopPropagation()}
+                            onClick={()=>{ onOsClick({...popup.entry, consultor:popup.name}); setPopup(null); }}
+                            style={{ width:"100%",padding:"9px",borderRadius:"9px",border:"1px solid #22d3a044",background:"#22d3a015",color:"#22d3a0",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit" }}>
+                            📋 Preencher Ordem de Serviço
+                          </button>
+                        )}
+                        {canEdit && onEdit && (
+                          <button onMouseDown={e=>e.stopPropagation()}
+                            onClick={()=>{ onEdit(popup.entry, popup.name); setPopup(null); }}
+                            style={{ width:"100%",padding:"9px",borderRadius:"9px",border:"none",background:"linear-gradient(135deg,#6c63ff,#a78bfa)",color:"#fff",fontWeight:700,fontSize:"12px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 14px #6c63ff44" }}>
+                            ✏️ Editar agenda
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </>
+                );
+              })()}
           </div>
         </div>
       )}
@@ -3050,9 +3073,12 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                           const color=getColor(entry);
                           const label=entry.type==="vacation"?"FÉR":entry.type==="holiday"?"FER":entry.type==="blocked"?"BLQ":entry.type==="reserved"?"RES":normalizeClient(entry.client).slice(0,3);
                           const filtered=entry.type==="client"&&clientFilterActive&&!selectedClients.has(normalizeClient(entry.client));
+                          const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"];
+                          const osAprov = entry.osStatus==="aprovada" && entry.osAvaliadoPor && ROLES_BLQ.includes(entry.osAvaliadoRole||"");
                           return (
-                            <div key={entry.id||ei} style={{ flex:1,background:filtered?"#18181f":color,display:"flex",alignItems:"center",justifyContent:"center",minHeight:"8px",opacity:filtered?0.2:1 }}>
+                            <div key={entry.id||ei} style={{ flex:1,background:filtered?"#18181f":color,display:"flex",alignItems:"center",justifyContent:"center",minHeight:"8px",opacity:filtered?0.2:osAprov?0.45:1,position:"relative" }}>
                               {!filtered&&dayEntries.length<=2&&<span style={{ fontSize:"6px",fontWeight:800,color:"#fff",letterSpacing:"-0.5px" }}>{label}</span>}
+                              {osAprov&&!filtered&&<span style={{ position:"absolute",bottom:0,right:0,fontSize:"5px",lineHeight:1 }}>🔒</span>}
                             </div>
                           );
                         })}
@@ -3124,19 +3150,39 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                     ) : (
                       <span style={{ fontSize:"10px",color:"#6e6e88",fontStyle:"italic" }}>Sem histórico</span>
                     )}
-                    {/* Actions */}
-                    <div style={{ display:"flex",gap:"6px",marginTop:"8px",flexWrap:"wrap" }}>
-                      {onOsClick && (
-                        <button onClick={()=>{ onOsClick({...entry,consultor:popup.name,month:calMes}); setPopup(null); }}
-                          style={{ flex:1,padding:"5px 8px",borderRadius:"5px",border:"1px solid #22d3a044",background:"#22d3a015",color:"#22d3a0",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>📋 OS</button>
-                      )}
-                      {!readonly && (
+                    {/* OS aprovada — número + badge */}
+                    {(()=>{
+                      const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"];
+                      const osAprov = entry.osStatus==="aprovada" && entry.osAvaliadoPor && ROLES_BLQ.includes(entry.osAvaliadoRole||"");
+                      return (
                         <>
-                          <button onClick={()=>{ onEdit({...entry,consultor:popup.name,month:calMes}); setPopup(null); }} style={{ flex:1,padding:"5px",borderRadius:"5px",border:"none",background:"#6c63ff",color:"#fff",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>✏️ Editar</button>
-                          <button onClick={()=>{ onDelete(popup.name,entry.id); setPopup(null); }} style={{ padding:"5px 10px",borderRadius:"5px",border:"1px solid #ef4444",background:"transparent",color:"#ef4444",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>🗑</button>
+                          {entry.osNumero && (
+                            <div style={{ display:"flex",alignItems:"center",gap:"6px",marginTop:"6px",marginBottom:"2px" }}>
+                              <span style={{ fontSize:"10px",fontWeight:700,color:"#22d3a0" }}>📋 OS {entry.osNumero}</span>
+                              {osAprov && <span style={{ fontSize:"9px",padding:"1px 7px",borderRadius:"99px",background:"#22d3a018",border:"1px solid #22d3a033",color:"#22d3a0",fontWeight:700 }}>✅ Aprovada</span>}
+                            </div>
+                          )}
+                          {osAprov && (
+                            <div style={{ fontSize:"10px",color:"#6e6e88",marginTop:"4px",padding:"4px 8px",background:"#22d3a00a",borderRadius:"6px",border:"1px solid #22d3a020" }}>
+                              🔒 Aprovada por <strong style={{ color:"#a0a0b0" }}>{entry.osAvaliadoPor}</strong> — somente leitura
+                            </div>
+                          )}
+                          {/* Actions */}
+                          <div style={{ display:"flex",gap:"6px",marginTop:"8px",flexWrap:"wrap" }}>
+                            {onOsClick && !osAprov && (
+                              <button onClick={()=>{ onOsClick({...entry,consultor:popup.name,month:calMes}); setPopup(null); }}
+                                style={{ flex:1,padding:"5px 8px",borderRadius:"5px",border:"1px solid #22d3a044",background:"#22d3a015",color:"#22d3a0",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>📋 OS</button>
+                            )}
+                            {!readonly && !osAprov && (
+                              <>
+                                <button onClick={()=>{ onEdit({...entry,consultor:popup.name,month:calMes}); setPopup(null); }} style={{ flex:1,padding:"5px",borderRadius:"5px",border:"none",background:"#6c63ff",color:"#fff",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>✏️ Editar</button>
+                                <button onClick={()=>{ onDelete(popup.name,entry.id); setPopup(null); }} style={{ padding:"5px 10px",borderRadius:"5px",border:"1px solid #ef4444",background:"transparent",color:"#ef4444",fontSize:"11px",fontWeight:700,cursor:"pointer" }}>🗑</button>
+                              </>
+                            )}
+                          </div>
                         </>
-                      )}
-                    </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
