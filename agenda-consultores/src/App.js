@@ -2597,9 +2597,9 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
                                 setPopupPos({x,y});
                                 setPopup({entry,name});
                               }}
-                              style={{ background:color,borderRadius:"7px",padding:"5px 7px",marginBottom:"3px",cursor:"pointer",transition:"opacity .15s",...(()=>{ const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"]; return entry.osStatus==="aprovada"&&entry.osAvaliadoPor&&ROLES_BLQ.includes(entry.osAvaliadoRole||"")?{opacity:0.45}:{}; })() }}
+                              style={{ background:color,borderRadius:"7px",padding:"5px 7px",marginBottom:"3px",cursor:"pointer",transition:"opacity .15s",...(entry.osStatus==="aprovada"&&!!entry.osAvaliadoPor?{opacity:0.45}:{}) }}
                               onMouseEnter={e=>e.currentTarget.style.opacity="0.8"}
-                              onMouseLeave={e=>{ const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"]; const isAprov=entry.osStatus==="aprovada"&&entry.osAvaliadoPor&&ROLES_BLQ.includes(entry.osAvaliadoRole||""); e.currentTarget.style.opacity=isAprov?"0.45":"1"; }}
+                              onMouseLeave={e=>{ const isAprov=entry.osStatus==="aprovada"&&!!entry.osAvaliadoPor; e.currentTarget.style.opacity=isAprov?"0.45":"1"; }}
                             >
                               <div style={{ fontSize:"10px",fontWeight:800,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
                                 {entry.modalidade==="remoto"?"💻 ":entry.modalidade==="presencial"?"🏢 ":""}{entry.client||entry.type}
@@ -2610,7 +2610,7 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
                               {entry.osNumero && (
                                 <div style={{ fontSize:"8px",color:"rgba(255,255,255,0.6)",marginTop:"1px",display:"flex",alignItems:"center",gap:"2px" }}>
                                   <span>📋</span><span style={{ overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{entry.osNumero}</span>
-                                  {(()=>{ const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"]; return entry.osStatus==="aprovada"&&entry.osAvaliadoPor&&ROLES_BLQ.includes(entry.osAvaliadoRole||""); })()&&<span>🔒</span>}
+                                  {(()=>{ return entry.osStatus==="aprovada"&&!!entry.osAvaliadoPor; })()&&<span>🔒</span>}
                                 </div>
                               )}
                             </div>
@@ -2700,8 +2700,7 @@ function WeeklyGlobalView({ weeklyData, offset, setOffset, clientColorMap, canEd
             </div>
           <div style={{ padding:"0 16px 14px",flexShrink:0,display:"flex",flexDirection:"column",gap:"7px",borderTop:"1px solid #1f1f2e",paddingTop:"12px" }}>
               {(()=>{
-                const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"];
-                const osAprov = popup.entry.osStatus==="aprovada" && popup.entry.osAvaliadoPor && ROLES_BLQ.includes(popup.entry.osAvaliadoRole||"");
+                const osAprov = popup.entry.osStatus==="aprovada" && !!popup.entry.osAvaliadoPor;
                 return (
                   <>
                     {popup.entry.osNumero && (
@@ -3073,8 +3072,7 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                           const color=getColor(entry);
                           const label=entry.type==="vacation"?"FÉR":entry.type==="holiday"?"FER":entry.type==="blocked"?"BLQ":entry.type==="reserved"?"RES":normalizeClient(entry.client).slice(0,3);
                           const filtered=entry.type==="client"&&clientFilterActive&&!selectedClients.has(normalizeClient(entry.client));
-                          const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"];
-                          const osAprov = entry.osStatus==="aprovada" && entry.osAvaliadoPor && ROLES_BLQ.includes(entry.osAvaliadoRole||"");
+                          const osAprov = entry.osStatus==="aprovada" && !!entry.osAvaliadoPor;
                           return (
                             <div key={entry.id||ei} style={{ flex:1,background:filtered?"#18181f":color,display:"flex",alignItems:"center",justifyContent:"center",minHeight:"8px",opacity:filtered?0.2:osAprov?0.45:1,position:"relative" }}>
                               {!filtered&&dayEntries.length<=2&&<span style={{ fontSize:"6px",fontWeight:800,color:"#fff",letterSpacing:"-0.5px" }}>{label}</span>}
@@ -3152,8 +3150,7 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
                     )}
                     {/* OS aprovada — número + badge */}
                     {(()=>{
-                      const ROLES_BLQ=["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"];
-                      const osAprov = entry.osStatus==="aprovada" && entry.osAvaliadoPor && ROLES_BLQ.includes(entry.osAvaliadoRole||"");
+                      const osAprov = entry.osStatus==="aprovada" && !!entry.osAvaliadoPor;
                       return (
                         <>
                           {entry.osNumero && (
@@ -6300,8 +6297,7 @@ function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfi
     cancelada:    { label:"Cancelada",    color:"#f04f5e", bg:"#f04f5e18", icon:"❌", desc:"OS cancelada" },
   };
 
-  const ROLES_BLOQUEIO = ["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"];
-  const osBloquada = (os) => os.osStatus === "aprovada" && os.osAvaliadoPor && ROLES_BLOQUEIO.includes(os.osAvaliadoRole||"");
+  const osBloquada = (os) => os.osStatus === "aprovada" && !!os.osAvaliadoPor;
   const podeEditar = !modoGestor;
 
   // Carregar diretamente do Firestore — garante dados atualizados mesmo após aprovação em outra sessão
