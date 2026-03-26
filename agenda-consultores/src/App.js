@@ -2814,9 +2814,24 @@ function CalendarioMensal({ data, selectedMonth, allMonths, consultores, clientC
     return [...set].sort();
   }, [data, consultores, calMes]);
 
-  // Sincronizar selectedClients quando mês muda OU quando novos clientes aparecem nos dados
+  // Sincronizar selectedClients: resetar só quando mês muda; adicionar novos clientes sem remover seleção atual
+  const prevCalMesRef = React.useRef(calMes);
   React.useEffect(() => {
-    setSelectedClients(new Set(allClientsInMonth));
+    const mesChanged = prevCalMesRef.current !== calMes;
+    prevCalMesRef.current = calMes;
+    if (mesChanged) {
+      // Mês mudou → resetar filtro completamente
+      setSelectedClients(new Set(allClientsInMonth));
+    } else {
+      // Dados mudaram (novo save) → apenas adicionar novos clientes, preservar seleção atual
+      setSelectedClients(prev => {
+        const novos = allClientsInMonth.filter(c => ![...prev].includes(c));
+        if (novos.length === 0) return prev;
+        const next = new Set(prev);
+        novos.forEach(c => next.add(c));
+        return next;
+      });
+    }
   }, [calMes, allClientsInMonth.join(",")]);
 
   const toggleConsultor = (name) => {
@@ -8855,7 +8870,7 @@ function Dashboard({ currentUser, onLogout }) {
                     ? selectedMonth!=="Todos"&&calendarData
                       ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
                       : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}><div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>Selecione um mês específico para ver a visualização semanal</div>
-                    : <CalendarioMensal key={"grid-"+selectedConsultor+"-"+scheduleVersion} data={{[selectedConsultor]: scheduleData[selectedConsultor]||[]}} selectedMonth={selectedMonth} allMonths={allMonths} consultores={[selectedConsultor]} clientColors={clientColorMap} readonly={!canEdit} onEdit={canEdit?(entry)=>{setEditEntry(entry);setShowModal(true);}:null} onDelete={canEdit?handleDeleteEntry:null} onNewEntry={canEdit?({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); }:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null}/>
+                    : <CalendarioMensal key={"grid-"+selectedConsultor} data={{[selectedConsultor]: scheduleData[selectedConsultor]||[]}} selectedMonth={selectedMonth} allMonths={allMonths} consultores={[selectedConsultor]} clientColors={clientColorMap} readonly={!canEdit} onEdit={canEdit?(entry)=>{setEditEntry(entry);setShowModal(true);}:null} onDelete={canEdit?handleDeleteEntry:null} onNewEntry={canEdit?({consultor,month,day})=>{ setEditEntry({consultor,month,day,prefill:true}); setShowModal(true); }:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null}/>
                   : <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:"16px" }}>
                       {Object.entries(filteredData).filter(([,e])=>e.length>0).map(([name,entries])=>(
                         <ConsultorCard key={name} name={name} entries={entries} idx={consultores.indexOf(name)} onClick={()=>!isConsultor&&setSelectedConsultor(selectedConsultor===name?null:name)} selected={selectedConsultor===name}/>
@@ -8868,7 +8883,7 @@ function Dashboard({ currentUser, onLogout }) {
                     ? <CalendarView consultant={selectedConsultor} month={selectedMonth} byDay={calendarData}/>
                     : <div style={{ textAlign:"center",padding:"60px 20px",color:T.text2,fontSize:"14px" }}><div style={{ fontSize:"36px",marginBottom:"12px" }}>📅</div>Selecione um mês específico para ver a visualização semanal</div>
                   : <CalendarioMensal
-                      key={"cal-"+(selectedConsultor||"all")+"-"+scheduleVersion}
+                      key={"cal-"+(selectedConsultor||"all")}
                       data={selectedConsultor ? {[selectedConsultor]: scheduleData[selectedConsultor]||[]} : filteredData}
                       selectedMonth={selectedMonth}
                       allMonths={allMonths}
