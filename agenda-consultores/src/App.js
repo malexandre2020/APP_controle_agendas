@@ -5519,7 +5519,7 @@ function ModuloAlcadas({ currentUser, canManage, canApprove, consultores, usuari
 // ─────────────────────────────────────────────────────────────────────────────
 // MÓDULO: PAINEL DE ORDENS DE SERVIÇO (editor / admin)
 // ─────────────────────────────────────────────────────────────────────────────
-function ModuloOrdemServico({ consultores, clientList, scheduleData, emailConfig, currentUser, theme: T }) {
+function ModuloOrdemServico({ consultores, clientList, scheduleData, setScheduleData, emailConfig, currentUser, theme: T }) {
   const [loading,      setLoading]      = useState(true);
   const [allOS,        setAllOS]        = useState([]);   // todas as OS extraídas das agendas
   const [filtroCliente,setFiltroCliente]= useState("");
@@ -5571,16 +5571,18 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, emailConfig
     try {
       const snap = await getDoc(doc(db, "app_data", "schedule_"+os.consultor));
       const lista = snap.exists() ? (snap.data().value||[]) : (scheduleData[os.consultor]||[]);
-      const nova = lista.map(e => e.id===os.id
-        ? { ...e, osStatus:novoStatus, osComentarioGestor:obs, osAvaliadoPor:currentUser.nome||currentUser.username, osAvaliadoRole:currentUser.role||"", osAvaliadoEm:new Date().toISOString() }
-        : e
-      );
+      const dadosAtualizados = { osStatus:novoStatus, osComentarioGestor:obs, osAvaliadoPor:currentUser.nome||currentUser.username, osAvaliadoRole:currentUser.role||"", osAvaliadoEm:new Date().toISOString() };
+      const nova = lista.map(e => e.id===os.id ? { ...e, ...dadosAtualizados } : e);
       await setDoc(doc(db, "app_data", "schedule_"+os.consultor), { value: nova });
-      // Atualizar lista local
-      setAllOS(prev => prev.map(o => o.id===os.id&&o.consultor===os.consultor
-        ? { ...o, osStatus:novoStatus, osComentarioGestor:obs, osAvaliadoPor:currentUser.nome||currentUser.username, osAvaliadoRole:currentUser.role||"", osAvaliadoEm:new Date().toISOString() }
-        : o
-      ));
+      // Atualizar lista local do módulo OS
+      setAllOS(prev => prev.map(o => o.id===os.id&&o.consultor===os.consultor ? { ...o, ...dadosAtualizados } : o));
+      // Atualizar estado global React para que PainelOSConsultor reflita imediatamente
+      if (setScheduleData) {
+        setScheduleData(prev => ({
+          ...prev,
+          [os.consultor]: (prev[os.consultor]||[]).map(e => e.id===os.id ? { ...e, ...dadosAtualizados } : e)
+        }));
+      }
     } catch(e) { console.error(e); }
     setSalvando(false);
   };
@@ -6292,21 +6294,15 @@ function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfi
         ) : null)}
       </div>
 
-      {/* Legenda de status */}
-      <div style={{ background:T.surface,borderRadius:"12px",border:"1px solid "+T.border,padding:"14px 16px",marginBottom:"20px" }}>
-        <div style={{ fontSize:"11px",fontWeight:700,color:T.text2,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:"10px" }}>📖 Legenda de Status</div>
-        <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:"8px" }}>
-          {Object.entries(OS_STATUS).map(([k,v])=>(
-            <div key={k} style={{ display:"flex",alignItems:"center",gap:"8px",padding:"6px 10px",borderRadius:"8px",background:v.bg,border:"1px solid "+v.color+"33" }}>
-              <span style={{ fontSize:"14px",flexShrink:0 }}>{v.icon}</span>
-              <div>
-                <div style={{ fontSize:"11px",fontWeight:700,color:v.color }}>{v.label}</div>
-                <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px" }}>{v.desc}</div>
-              </div>
-              {k==="aprovada" && <span style={{ marginLeft:"auto",fontSize:"10px",color:"#f04f5e",flexShrink:0 }}>🔒</span>}
-            </div>
-          ))}
-        </div>
+      {/* Legenda de status — compacta */}
+      <div style={{ background:T.surface,borderRadius:"10px",border:"1px solid "+T.border,padding:"10px 14px",marginBottom:"20px",display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap" }}>
+        <span style={{ fontSize:"10px",fontWeight:700,color:T.text3,textTransform:"uppercase",letterSpacing:"0.5px",whiteSpace:"nowrap" }}>Legenda:</span>
+        {Object.entries(OS_STATUS).map(([k,v])=>(
+          <span key={k} style={{ display:"inline-flex",alignItems:"center",gap:"4px",padding:"3px 9px",borderRadius:"99px",background:v.bg,border:"1px solid "+v.color+"44",fontSize:"10px",fontWeight:600,color:v.color,whiteSpace:"nowrap" }}
+            title={v.desc}>
+            {v.icon} {v.label}{k==="aprovada"?" 🔒":""}
+          </span>
+        ))}
       </div>
 
       {/* Filtros */}
@@ -8794,6 +8790,7 @@ function Dashboard({ currentUser, onLogout }) {
               consultores={consultores}
               clientList={clientList}
               scheduleData={scheduleData}
+              setScheduleData={setScheduleData}
               emailConfig={emailConfig}
               currentUser={currentUser}
               theme={T}
