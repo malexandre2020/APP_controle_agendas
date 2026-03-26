@@ -6773,144 +6773,193 @@ function ModuloProjetos({ currentUser, canEdit, canManage, isGestor, consultores
               <div style={{ fontSize:"12px",color:"#3e3e55" }}>Importe do MS Project ou adicione datas nas tarefas do Kanban</div>
             </div>
           );
-          const allDates = tarefasGantt.flatMap(t=>[new Date(t.dataInicio),new Date(t.dataFim)]);
-          const minDate = new Date(Math.min(...allDates));
-          const maxDate = new Date(Math.max(...allDates));
-          minDate.setDate(minDate.getDate()-2);
-          maxDate.setDate(maxDate.getDate()+4);
-          const totalDias = Math.ceil((maxDate-minDate)/(1000*60*60*24));
+
+          // ── datas limites ──
+          const toD = s => { const d=new Date(s); d.setHours(0,0,0,0); return d; };
+          const allD = tarefasGantt.flatMap(t=>[toD(t.dataInicio),toD(t.dataFim)]);
+          const minDate = new Date(Math.min(...allD)); minDate.setDate(minDate.getDate()-1);
+          const maxDate = new Date(Math.max(...allD)); maxDate.setDate(maxDate.getDate()+3);
+          const totalDias = Math.round((maxDate-minDate)/(864e5));
           const hoje = new Date(); hoje.setHours(0,0,0,0);
-          const pxPorDia = Math.max(28, Math.min(50, 1100/totalDias));
-          const larguraTotal = totalDias * pxPorDia;
 
-          const posX = (data) => Math.max(0, Math.ceil((new Date(data)-minDate)/(1000*60*60*24))) * pxPorDia;
-          const largura = (ini,fim) => Math.max(pxPorDia, Math.ceil((new Date(fim)-new Date(ini))/(1000*60*60*24)+1)*pxPorDia);
+          // px por dia — adaptativo
+          const PX = Math.max(22, Math.min(44, Math.floor(900/totalDias)));
+          const ROW_H = 42;
+          const HEAD_H = 52; // cabeçalho duplo: mês (24px) + dias (28px)
+          const LABEL_W = 220;
+          const COR = { concluido:"#22d3a0", em_progresso:"#6c63ff", revisao:"#f5a623", backlog:"#475569", milestone:"#f04f5e", summary:"#94a3b8" };
 
-          // Cabeçalho de meses e dias
+          // dias do período
+          const dias = Array.from({length:totalDias},(_,i)=>{ const d=new Date(minDate); d.setDate(d.getDate()+i); return d; });
+
+          // grupos de meses para o cabeçalho superior
           const meses = [];
-          let cur = new Date(minDate);
-          while (cur <= maxDate) {
-            const mes = cur.toLocaleDateString("pt-BR",{month:"short",year:"2-digit"});
-            const x = posX(cur.toISOString().slice(0,10));
-            if (!meses.length || meses[meses.length-1].label!==mes) meses.push({label:mes,x});
-            cur.setDate(cur.getDate()+1);
-          }
+          dias.forEach((d,i)=>{
+            const key = d.getFullYear()*100+d.getMonth();
+            const label = d.toLocaleDateString("pt-BR",{month:"short",year:"2-digit"}).replace(".","/");
+            if (!meses.length||meses[meses.length-1].key!==key) meses.push({key,label,col:i,span:1});
+            else meses[meses.length-1].span++;
+          });
 
-          const CORES_TIPO = { concluido:"#22d3a0", em_progresso:"#6c63ff", revisao:"#f5a623", backlog:"#3e3e55", milestone:"#f04f5e" };
-          const ROW_H = 44;
-          const LABEL_W = 200;
-          const svgH = tarefasGantt.length * ROW_H + 60;
+          const posX   = d => Math.round((toD(d)-minDate)/864e5)*PX;
+          const barW   = (s,e) => Math.max(PX, Math.round((toD(e)-toD(s))/864e5+1)*PX);
+          const xHoje  = Math.round((hoje-minDate)/864e5)*PX;
+          const mostrarHoje = hoje>=minDate && hoje<=maxDate;
+
+          const gridW = totalDias*PX;
+          const gridH = tarefasGantt.length*ROW_H;
 
           return (
-            <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",overflow:"hidden" }}>
-              <div style={{ padding:"14px 18px",borderBottom:"1px solid #1f1f2e",display:"flex",alignItems:"center",gap:"12px",flexWrap:"wrap" }}>
+            <div style={{ background:"#111118",borderRadius:"14px",border:"1px solid #1f1f2e",overflow:"hidden",fontFamily:"inherit" }}>
+
+              {/* ── Cabeçalho fixo ── */}
+              <div style={{ padding:"12px 18px 10px",borderBottom:"1px solid #1f1f2e",display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap" }}>
                 <span style={{ fontSize:"14px",fontWeight:700,color:"#f0f0fa" }}>📊 Gráfico de Gantt</span>
-                <span style={{ fontSize:"11px",color:"#6e6e88" }}>{tarefasGantt.length} tarefa(s) com datas</span>
-                <div style={{ display:"flex",gap:"10px",marginLeft:"auto",flexWrap:"wrap" }}>
-                  {Object.entries(CORES_TIPO).map(([k,c])=>(
-                    <span key={k} style={{ display:"flex",alignItems:"center",gap:"5px",fontSize:"10px",color:"#6e6e88" }}>
-                      <span style={{ width:"10px",height:"10px",borderRadius:k==="milestone"?"50%":"3px",background:c,display:"inline-block" }}/>
-                      {k==="em_progresso"?"Em progresso":k==="revisao"?"Revisão":k.charAt(0).toUpperCase()+k.slice(1)}
-                    </span>
-                  ))}
-                </div>
+                <span style={{ fontSize:"11px",color:"#6e6e88",background:"#1f1f2e",padding:"2px 8px",borderRadius:"99px" }}>{tarefasGantt.length} tarefas</span>
+                <span style={{ fontSize:"11px",color:"#6e6e88",marginLeft:"auto" }}>
+                  {proj.dataInicio&&proj.dataFim ? `${proj.dataInicio} → ${proj.dataFim}` : ""}
+                </span>
               </div>
-              <div style={{ overflowX:"auto",overflowY:"auto",maxHeight:"520px" }}>
-                <div style={{ display:"flex",minWidth:LABEL_W+larguraTotal+"px" }}>
-                  {/* Coluna de labels */}
-                  <div style={{ width:LABEL_W+"px",flexShrink:0,borderRight:"1px solid #1f1f2e" }}>
-                    <div style={{ height:"60px",padding:"8px 12px",borderBottom:"1px solid #1f1f2e",display:"flex",alignItems:"flex-end" }}>
-                      <span style={{ fontSize:"10px",color:"#3e3e55",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px" }}>Tarefa</span>
-                    </div>
+
+              {/* ── Legenda ── */}
+              <div style={{ padding:"6px 18px",borderBottom:"1px solid #1a1a28",display:"flex",gap:"14px",flexWrap:"wrap" }}>
+                {[["Concluído","#22d3a0"],["Em progresso","#6c63ff"],["Revisão","#f5a623"],["Backlog","#475569"],["Milestone","#f04f5e"]].map(([l,c])=>(
+                  <span key={l} style={{ display:"flex",alignItems:"center",gap:"5px",fontSize:"10px",color:"#6e6e88" }}>
+                    <span style={{ width:l==="Milestone"?10:12,height:l==="Milestone"?10:8,borderRadius:l==="Milestone"?"50%":3,background:c,display:"inline-block",flexShrink:0 }}/>
+                    {l}
+                  </span>
+                ))}
+                {mostrarHoje && <span style={{ display:"flex",alignItems:"center",gap:"5px",fontSize:"10px",color:"#22d3a0" }}>
+                  <span style={{ width:2,height:10,background:"#22d3a0",display:"inline-block" }}/>Hoje
+                </span>}
+              </div>
+
+              {/* ── Grid principal ── */}
+              <div style={{ overflowX:"auto",overflowY:"auto",maxHeight:"560px" }}>
+                <div style={{ display:"flex",minWidth:LABEL_W+gridW+"px" }}>
+
+                  {/* Coluna de nomes — sticky left */}
+                  <div style={{ width:LABEL_W,flexShrink:0,borderRight:"1px solid #2a2a3a",position:"sticky",left:0,zIndex:10,background:"#111118" }}>
+                    {/* espaço do cabeçalho */}
+                    <div style={{ height:HEAD_H,borderBottom:"1px solid #2a2a3a",background:"#0d0d14" }}/>
+                    {/* linhas de nome */}
                     {tarefasGantt.map((t,i)=>(
-                      <div key={t.id} style={{ height:ROW_H+"px",padding:"0 12px",display:"flex",alignItems:"center",borderBottom:"1px solid #1a1a28",background:i%2===0?"#111118":"#0f0f1a" }}>
-                        <div style={{ overflow:"hidden" }}>
-                          <div style={{ fontSize:"12px",fontWeight:600,color:"#c8c8d8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:LABEL_W-24+"px" }}>{t.isMilestone?"🔷":""}{t.nome}</div>
-                          {t.responsavel && <div style={{ fontSize:"10px",color:"#6e6e88",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>👤 {t.responsavel}</div>}
+                      <div key={t.id||i} style={{ height:ROW_H,display:"flex",alignItems:"center",padding:"0 10px 0 14px",borderBottom:"1px solid #1a1a28",background:t.isSummary?"#0f1a2e":i%2===0?"#111118":"#0f0f1a",gap:6 }}>
+                        {t.isMilestone && <span style={{ fontSize:10,flexShrink:0 }}>🔷</span>}
+                        {t.isSummary  && <span style={{ fontSize:10,flexShrink:0 }}>📁</span>}
+                        <div style={{ minWidth:0 }}>
+                          <div style={{ fontSize:11,fontWeight:t.isSummary?700:500,color:t.isSummary?"#a78bfa":t.isMilestone?"#f04f5e":"#c8c8d8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:LABEL_W-36 }}>{t.nome}</div>
+                          {t.responsavel && <div style={{ fontSize:9,color:"#3e3e55",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>👤 {t.responsavel}</div>}
                         </div>
                       </div>
                     ))}
                   </div>
-                  {/* Área do Gantt */}
-                  <div style={{ flex:1,position:"relative" }}>
-                    <svg width={larguraTotal} height={svgH} style={{ display:"block",overflow:"visible" }}>
-                      {/* Cabeçalho meses */}
-                      {meses.map((m,i)=>(
-                        <g key={i}>
-                          <line x1={m.x} y1={0} x2={m.x} y2={svgH} stroke="#1f1f2e" strokeWidth="1"/>
-                          <text x={m.x+4} y={16} fill="#6e6e88" fontSize="10" fontWeight="600">{m.label.toUpperCase()}</text>
-                        </g>
+
+                  {/* Área do gráfico */}
+                  <div style={{ flex:1,position:"relative",minWidth:gridW }}>
+
+                    {/* ── Cabeçalho: linha de meses ── */}
+                    <div style={{ height:24,display:"flex",background:"#0d0d14",borderBottom:"1px solid #1f1f2e",position:"sticky",top:0,zIndex:9 }}>
+                      {meses.map(m=>(
+                        <div key={m.key} style={{ width:m.span*PX,flexShrink:0,borderRight:"1px solid #2a2a3a",padding:"0 6px",display:"flex",alignItems:"center",overflow:"hidden" }}>
+                          <span style={{ fontSize:10,fontWeight:700,color:"#6e6e88",whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:"0.5px" }}>{m.label}</span>
+                        </div>
                       ))}
-                      {/* Grid de dias */}
-                      {Array.from({length:totalDias},(_,i)=>{
-                        const d = new Date(minDate); d.setDate(d.getDate()+i);
-                        const isWeekend = d.getDay()===0||d.getDay()===6;
-                        const x = i*pxPorDia;
+                    </div>
+
+                    {/* ── Cabeçalho: linha de dias ── */}
+                    <div style={{ height:28,display:"flex",background:"#0a0a14",borderBottom:"1px solid #2a2a3a",position:"sticky",top:24,zIndex:9 }}>
+                      {dias.map((d,i)=>{
+                        const isWknd = d.getDay()===0||d.getDay()===6;
+                        const isHoje = d.getTime()===hoje.getTime();
                         return (
-                          <g key={i}>
-                            {isWeekend && <rect x={x} y={0} width={pxPorDia} height={svgH} fill="#0a0a12" opacity="0.5"/>}
-                            <text x={x+pxPorDia/2} y={38} fill={isWeekend?"#2a2a3a":"#3e3e55"} fontSize="9" textAnchor="middle">{d.getDate()}</text>
-                          </g>
+                          <div key={i} style={{ width:PX,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:isHoje?"#22d3a022":isWknd?"#06060d":"transparent",borderRight:"1px solid #1a1a28" }}>
+                            <span style={{ fontSize:9,color:isHoje?"#22d3a0":isWknd?"#2a2a3a":"#3e3e55",fontWeight:isHoje?800:400 }}>{d.getDate()}</span>
+                          </div>
                         );
                       })}
-                      {/* Linha horizontal de cabeçalho */}
-                      <line x1={0} y1={44} x2={larguraTotal} y2={44} stroke="#2a2a3a" strokeWidth="1"/>
-                      {/* Linha de HOJE */}
-                      {hoje>=minDate && hoje<=maxDate && (()=>{
-                        const xHoje = posX(hoje.toISOString().slice(0,10));
-                        return (
-                          <g>
-                            <line x1={xHoje} y1={44} x2={xHoje} y2={svgH} stroke="#22d3a0" strokeWidth="2" strokeDasharray="4,3" opacity="0.8"/>
-                            <rect x={xHoje-14} y={44} width={28} height={14} rx={3} fill="#22d3a0"/>
-                            <text x={xHoje} y={54} fill="#000" fontSize="8" fontWeight="800" textAnchor="middle">HOJE</text>
-                          </g>
-                        );
-                      })()}
-                      {/* Barras de tarefas */}
+                    </div>
+
+                    {/* ── Área das barras ── */}
+                    <div style={{ position:"relative",height:gridH }}>
+
+                      {/* Grid de fundo: colunas de dia */}
+                      {dias.map((d,i)=>{
+                        const isWknd = d.getDay()===0||d.getDay()===6;
+                        if (!isWknd) return null;
+                        return <div key={i} style={{ position:"absolute",top:0,left:i*PX,width:PX,height:"100%",background:"#06060d",pointerEvents:"none" }}/>;
+                      })}
+
+                      {/* Linhas horizontais de linha */}
+                      {tarefasGantt.map((_,i)=>(
+                        <div key={i} style={{ position:"absolute",top:i*ROW_H,left:0,right:0,height:ROW_H,background:i%2===0?"transparent":"rgba(255,255,255,0.01)",borderBottom:"1px solid #1a1a28" }}/>
+                      ))}
+
+                      {/* Linha de hoje */}
+                      {mostrarHoje && (
+                        <div style={{ position:"absolute",top:0,left:xHoje+PX/2,width:2,height:"100%",background:"#22d3a0",opacity:0.7,pointerEvents:"none",zIndex:4 }}>
+                          <div style={{ position:"absolute",top:-4,left:-18,width:38,height:14,background:"#22d3a0",borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                            <span style={{ fontSize:8,fontWeight:800,color:"#000" }}>HOJE</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SVG apenas para setas de dependência */}
+                      <svg style={{ position:"absolute",top:0,left:0,width:gridW,height:gridH,overflow:"visible",pointerEvents:"none",zIndex:3 }}>
+                        <defs>
+                          <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                            <path d="M0,0 L6,3 L0,6 Z" fill="#f5a623" opacity="0.8"/>
+                          </marker>
+                        </defs>
+                        {tarefasGantt.map((t,i)=>
+                          (t.predecessoras||[]).map(predId=>{
+                            const pi = tarefasGantt.findIndex(p=>p.id===predId||p.idOriginal===predId);
+                            if (pi<0) return null;
+                            const pred = tarefasGantt[pi];
+                            const x1 = posX(pred.dataFim)+barW(pred.dataInicio,pred.dataFim);
+                            const y1 = pi*ROW_H+ROW_H/2;
+                            const x2 = posX(t.dataInicio);
+                            const y2 = i*ROW_H+ROW_H/2;
+                            const mx = (x1+x2)/2;
+                            return <path key={`${t.id}-${predId}`} d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`} stroke="#f5a623" strokeWidth="1.5" fill="none" strokeDasharray="5,3" opacity="0.6" markerEnd="url(#arr)"/>;
+                          })
+                        )}
+                      </svg>
+
+                      {/* Barras das tarefas */}
                       {tarefasGantt.map((t,i)=>{
-                        const y = 60 + i*ROW_H;
                         const x = posX(t.dataInicio);
-                        const w = largura(t.dataInicio,t.dataFim);
-                        const cor = t.isMilestone ? CORES_TIPO.milestone : (CORES_TIPO[t.coluna]||"#6c63ff");
+                        const w = barW(t.dataInicio,t.dataFim);
                         const pct = Math.min(100,Math.max(0,t.progresso||0));
-                        const bg = i%2===0?"#111118":"#0f0f1a";
+                        const top = i*ROW_H;
+                        const cor = t.isMilestone ? COR.milestone : t.isSummary ? COR.summary : (COR[t.coluna]||"#6c63ff");
+
+                        if (t.isMilestone) return (
+                          <div key={t.id||i} title={t.nome} style={{ position:"absolute",top:top+ROW_H/2-9,left:x+PX/2-9,width:18,height:18,background:cor,transform:"rotate(45deg)",borderRadius:3,zIndex:2,boxShadow:`0 0 8px ${cor}88` }}/>
+                        );
+
+                        if (t.isSummary) return (
+                          <div key={t.id||i} title={t.nome} style={{ position:"absolute",top:top+ROW_H/2-5,left:x,width:w,height:10,background:cor,opacity:0.6,borderRadius:2,zIndex:2 }}>
+                            <div style={{ height:"100%",width:pct+"%",background:cor,borderRadius:2,opacity:0.9 }}/>
+                          </div>
+                        );
+
                         return (
-                          <g key={t.id}>
-                            <rect x={0} y={y} width={larguraTotal} height={ROW_H} fill={bg}/>
-                            <line x1={0} y1={y+ROW_H} x2={larguraTotal} y2={y+ROW_H} stroke="#1a1a28" strokeWidth="1"/>
-                            {t.isMilestone ? (
-                              // Diamante para milestone
-                              <polygon points={`${x},${y+ROW_H/2-10} ${x+10},${y+ROW_H/2} ${x},${y+ROW_H/2+10} ${x-10},${y+ROW_H/2}`} fill={cor}/>
-                            ) : (
-                              <g>
-                                {/* Barra fundo */}
-                                <rect x={x} y={y+8} width={w} height={ROW_H-16} rx={5} fill={cor} opacity="0.25"/>
-                                {/* Barra progresso */}
-                                <rect x={x} y={y+8} width={w*pct/100} height={ROW_H-16} rx={5} fill={cor} opacity="0.9"/>
-                                {/* Texto % */}
-                                {w>40 && <text x={x+w/2} y={y+ROW_H/2+4} fill="#fff" fontSize="10" fontWeight="700" textAnchor="middle">{pct}%</text>}
-                              </g>
+                          <div key={t.id||i} title={`${t.nome} — ${pct}%`} style={{ position:"absolute",top:top+7,left:x,width:w,height:ROW_H-14,borderRadius:6,overflow:"hidden",zIndex:2,cursor:"default" }}>
+                            {/* fundo */}
+                            <div style={{ position:"absolute",inset:0,background:cor,opacity:0.2,borderRadius:6 }}/>
+                            {/* barra de progresso */}
+                            <div style={{ position:"absolute",top:0,left:0,width:pct+"%",height:"100%",background:cor,opacity:0.85,borderRadius:6,transition:"width .3s" }}/>
+                            {/* texto */}
+                            {w>48 && (
+                              <div style={{ position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                                <span style={{ fontSize:10,fontWeight:700,color:"#fff",textShadow:"0 1px 3px rgba(0,0,0,0.7)",whiteSpace:"nowrap" }}>{pct}%</span>
+                              </div>
                             )}
-                            {/* Predecessoras — linhas de dependência */}
-                            {(t.predecessoras||[]).map(predId=>{
-                              const predIdx = tarefasGantt.findIndex(p=>p.id===predId||p.idOriginal===predId);
-                              if (predIdx<0) return null;
-                              const pred = tarefasGantt[predIdx];
-                              const x1 = posX(pred.dataFim)+largura(pred.dataInicio,pred.dataFim);
-                              const y1 = 60 + predIdx*ROW_H + ROW_H/2;
-                              const x2 = posX(t.dataInicio);
-                              const y2 = y + ROW_H/2;
-                              return <path key={predId} d={`M${x1},${y1} C${x1+20},${y1} ${x2-20},${y2} ${x2},${y2}`} stroke="#f5a623" strokeWidth="1.5" fill="none" strokeDasharray="5,3" opacity="0.6" markerEnd="url(#arrow)"/>;
-                            })}
-                          </g>
+                          </div>
                         );
                       })}
-                      <defs>
-                        <marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-                          <path d="M0,0 L6,3 L0,6 Z" fill="#f5a623" opacity="0.7"/>
-                        </marker>
-                      </defs>
-                    </svg>
+                    </div>
                   </div>
                 </div>
               </div>
