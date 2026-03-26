@@ -5572,13 +5572,13 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, emailConfig
       const snap = await getDoc(doc(db, "app_data", "schedule_"+os.consultor));
       const lista = snap.exists() ? (snap.data().value||[]) : (scheduleData[os.consultor]||[]);
       const nova = lista.map(e => e.id===os.id
-        ? { ...e, osStatus:novoStatus, osComentarioGestor:obs, osAvaliadoPor:currentUser.nome||currentUser.username, osAvaliadoEm:new Date().toISOString() }
+        ? { ...e, osStatus:novoStatus, osComentarioGestor:obs, osAvaliadoPor:currentUser.nome||currentUser.username, osAvaliadoRole:currentUser.role||"", osAvaliadoEm:new Date().toISOString() }
         : e
       );
       await setDoc(doc(db, "app_data", "schedule_"+os.consultor), { value: nova });
       // Atualizar lista local
       setAllOS(prev => prev.map(o => o.id===os.id&&o.consultor===os.consultor
-        ? { ...o, osStatus:novoStatus, osComentarioGestor:obs, osAvaliadoPor:currentUser.nome||currentUser.username, osAvaliadoEm:new Date().toISOString() }
+        ? { ...o, osStatus:novoStatus, osComentarioGestor:obs, osAvaliadoPor:currentUser.nome||currentUser.username, osAvaliadoRole:currentUser.role||"", osAvaliadoEm:new Date().toISOString() }
         : o
       ));
     } catch(e) { console.error(e); }
@@ -6206,6 +6206,218 @@ function ModuloViagens({ currentUser, canEdit, canManage, consultores, clientLis
 // ─────────────────────────────────────────────────────────────────────────────
 // KANBAN BOARD (componente separado para não violar regras de hooks)
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PAINEL DE OS DO CONSULTOR
+// ─────────────────────────────────────────────────────────────────────────────
+function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfig, currentUser, onSaveEntry, theme: T, modoGestor }) {
+  const [osEntry, setOsEntry] = React.useState(null);
+  const [filtroStatus, setFiltroStatus] = React.useState("");
+  const [busca, setBusca] = React.useState("");
+
+  const OS_STATUS = {
+    em_andamento: { label:"Em andamento", color:"#6c63ff", bg:"#6c63ff18", icon:"⚙️", desc:"OS em execução pelo consultor" },
+    pendente:     { label:"Pendente",     color:"#f5a623", bg:"#f5a62318", icon:"⏳", desc:"Aguardando revisão ou aprovação" },
+    concluida:    { label:"Concluída",    color:"#22d3a0", bg:"#22d3a018", icon:"✅", desc:"Atividade finalizada" },
+    aprovada:     { label:"Aprovada",     color:"#22d3a0", bg:"#22d3a018", icon:"👍", desc:"Aprovada por gestor — não editável" },
+    contestada:   { label:"Contestada",   color:"#f5a623", bg:"#f5a62318", icon:"⚠️", desc:"Gestor solicitou ajuste" },
+    rejeitada:    { label:"Rejeitada",    color:"#f04f5e", bg:"#f04f5e18", icon:"👎", desc:"Reprovada pelo gestor" },
+    cancelada:    { label:"Cancelada",    color:"#f04f5e", bg:"#f04f5e18", icon:"❌", desc:"OS cancelada" },
+  };
+
+  // OS bloqueada se aprovada por gestor/editor/coordenador (role salvo)
+  const ROLES_BLOQUEIO = ["admin","editor","diretor_executivo","diretor","gerente_executivo","gerente","coordenador"];
+  const osBloquada = (os) => os.osStatus === "aprovada" && os.osAvaliadoPor && ROLES_BLOQUEIO.includes(os.osAvaliadoRole||"");
+
+  // Gestor só pode visualizar, não editar pelo painel do consultor
+  const podeEditar = !modoGestor;
+
+  // Coletar todas as OS do consultor logado
+  const todasOS = React.useMemo(() => {
+    const entradas = scheduleData[consultorName] || [];
+    return entradas
+      .filter(e => e.osNumero)
+      .sort((a,b) => {
+        const na = parseInt(a.osNumero?.replace(/\D/g,""))||0;
+        const nb = parseInt(b.osNumero?.replace(/\D/g,""))||0;
+        return nb - na;
+      });
+  }, [scheduleData, consultorName]);
+
+  // Filtrar
+  const osFiltradas = React.useMemo(() => {
+    return todasOS.filter(os => {
+      if (filtroStatus && os.osStatus !== filtroStatus) return false;
+      if (busca.trim()) {
+        const q = busca.toLowerCase();
+        return (os.osNumero||"").toLowerCase().includes(q)
+          || (os.client||"").toLowerCase().includes(q)
+          || (os.atividades||"").toLowerCase().includes(q)
+          || (os.osSistema||"").toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [todasOS, filtroStatus, busca]);
+
+  // Contadores por status
+  const contadores = React.useMemo(() => {
+    const c = {};
+    todasOS.forEach(os => { c[os.osStatus||"em_andamento"] = (c[os.osStatus||"em_andamento"]||0)+1; });
+    return c;
+  }, [todasOS]);
+
+  const inp = { padding:"7px 12px",borderRadius:"8px",border:"1px solid "+T.inputBorder,background:T.inputBg,color:T.inputColor,fontSize:"12px",fontFamily:"inherit" };
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ marginBottom:"24px" }}>
+        <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:T.heading,margin:"0 0 4px",letterSpacing:"-0.3px" }}>
+          📋 {modoGestor ? `OS de ${consultorName.split(" ")[0]}` : "Minhas Ordens de Serviço"}
+        </h2>
+        <p style={{ fontSize:"12px",color:T.text2,margin:0 }}>
+          {todasOS.length} OS registrada{todasOS.length!==1?"s":""}
+          {modoGestor && <span style={{ marginLeft:8,padding:"2px 8px",borderRadius:"99px",background:"#f5a62318",border:"1px solid #f5a62330",color:"#f5a623",fontSize:"10px",fontWeight:600 }}>👁 Modo visualização</span>}
+        </p>
+      </div>
+
+      {/* Cards de contagem por status */}
+      <div style={{ display:"flex",gap:"10px",flexWrap:"wrap",marginBottom:"20px" }}>
+        {Object.entries(OS_STATUS).map(([k,v])=> contadores[k]>0 ? (
+          <div key={k} onClick={()=>setFiltroStatus(filtroStatus===k?"":k)}
+            style={{ padding:"10px 16px",borderRadius:"10px",background:filtroStatus===k?v.color:T.surface,border:"1px solid "+(filtroStatus===k?v.color:T.border),cursor:"pointer",transition:"all .15s" }}>
+            <div style={{ fontSize:"18px",marginBottom:"2px" }}>{v.icon}</div>
+            <div style={{ fontSize:"16px",fontWeight:800,color:filtroStatus===k?"#fff":v.color }}>{contadores[k]}</div>
+            <div style={{ fontSize:"10px",fontWeight:600,color:filtroStatus===k?"rgba(255,255,255,0.8)":T.text2,whiteSpace:"nowrap" }}>{v.label}</div>
+          </div>
+        ) : null)}
+      </div>
+
+      {/* Legenda de status */}
+      <div style={{ background:T.surface,borderRadius:"12px",border:"1px solid "+T.border,padding:"14px 16px",marginBottom:"20px" }}>
+        <div style={{ fontSize:"11px",fontWeight:700,color:T.text2,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:"10px" }}>📖 Legenda de Status</div>
+        <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:"8px" }}>
+          {Object.entries(OS_STATUS).map(([k,v])=>(
+            <div key={k} style={{ display:"flex",alignItems:"center",gap:"8px",padding:"6px 10px",borderRadius:"8px",background:v.bg,border:"1px solid "+v.color+"33" }}>
+              <span style={{ fontSize:"14px",flexShrink:0 }}>{v.icon}</span>
+              <div>
+                <div style={{ fontSize:"11px",fontWeight:700,color:v.color }}>{v.label}</div>
+                <div style={{ fontSize:"10px",color:T.text3,marginTop:"1px" }}>{v.desc}</div>
+              </div>
+              {k==="aprovada" && <span style={{ marginLeft:"auto",fontSize:"10px",color:"#f04f5e",flexShrink:0 }}>🔒</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div style={{ display:"flex",gap:"8px",marginBottom:"16px",flexWrap:"wrap" }}>
+        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar OS, cliente, atividade..." style={{...inp,flex:1,minWidth:"200px"}}/>
+        <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} style={inp}>
+          <option value="">Todos os status</option>
+          {Object.entries(OS_STATUS).map(([k,v])=><option key={k} value={k}>{v.icon} {v.label}</option>)}
+        </select>
+        {(filtroStatus||busca) && (
+          <button onClick={()=>{setFiltroStatus("");setBusca("");}} style={{ padding:"7px 12px",borderRadius:"8px",border:"1px solid "+T.border,background:"transparent",color:T.text2,cursor:"pointer",fontSize:"12px",fontFamily:"inherit" }}>✕ Limpar</button>
+        )}
+      </div>
+
+      {/* Lista de OS */}
+      {osFiltradas.length===0 ? (
+        <div style={{ textAlign:"center",padding:"48px",background:T.surface,borderRadius:"14px",border:"1px solid "+T.border }}>
+          <div style={{ fontSize:"36px",marginBottom:"12px" }}>📋</div>
+          <div style={{ fontSize:"14px",color:T.text2 }}>{todasOS.length===0 ? "Nenhuma OS registrada ainda" : "Nenhuma OS encontrada com os filtros selecionados"}</div>
+        </div>
+      ) : (
+        <div style={{ display:"flex",flexDirection:"column",gap:"10px" }}>
+          {osFiltradas.map((os,i)=>{
+            const st = OS_STATUS[os.osStatus||"em_andamento"]||OS_STATUS.em_andamento;
+            const bloqueada = osBloquada(os);
+            const editarBloqueado = bloqueada || !podeEditar;
+            const pad = n=>String(n).padStart(2,"0");
+            const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+            const dataStr = os.day && os.month ? `${pad(os.day)}/${pad(MESES.indexOf(os.month?.charAt(0).toUpperCase()+os.month?.slice(1).toLowerCase())+1)}/${os.year||""}` : "";
+            return (
+              <div key={os.id||i} style={{ background:T.surface,borderRadius:"12px",border:"1px solid "+T.border,overflow:"hidden",transition:"box-shadow .15s" }}>
+                {/* Faixa colorida de status no topo */}
+                <div style={{ height:"3px",background:st.color,opacity:0.7 }}/>
+                <div style={{ display:"flex",alignItems:"center",padding:"14px 18px",gap:"14px",flexWrap:"wrap" }}>
+                  {/* Número da OS */}
+                  <div style={{ minWidth:"80px" }}>
+                    <div style={{ fontSize:"10px",color:T.text3,fontWeight:700,textTransform:"uppercase",marginBottom:"2px" }}>Nº OS</div>
+                    <div style={{ fontSize:"14px",fontWeight:800,color:T.heading }}>{os.osNumero||"—"}</div>
+                  </div>
+                  {/* Cliente */}
+                  <div style={{ flex:1,minWidth:"120px" }}>
+                    <div style={{ fontSize:"10px",color:T.text3,fontWeight:700,textTransform:"uppercase",marginBottom:"2px" }}>Cliente</div>
+                    <div style={{ fontSize:"13px",fontWeight:600,color:T.text }}>{os.client||"—"}</div>
+                  </div>
+                  {/* Data */}
+                  {dataStr && (
+                    <div>
+                      <div style={{ fontSize:"10px",color:T.text3,fontWeight:700,textTransform:"uppercase",marginBottom:"2px" }}>Data</div>
+                      <div style={{ fontSize:"12px",color:T.text2 }}>📅 {dataStr}</div>
+                    </div>
+                  )}
+                  {/* Status badge */}
+                  <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"4px" }}>
+                    <span style={{ padding:"4px 12px",borderRadius:"99px",background:st.bg,border:"1px solid "+st.color+"44",fontSize:"11px",fontWeight:700,color:st.color,display:"flex",alignItems:"center",gap:"4px" }}>
+                      {st.icon} {st.label}
+                    </span>
+                    {bloqueada && (
+                      <span style={{ fontSize:"10px",color:T.text3,display:"flex",alignItems:"center",gap:"3px" }}>
+                        🔒 Aprovada por {os.osAvaliadoPor}
+                        {os.osAvaliadoEm && <span style={{ color:T.text3 }}> · {new Date(os.osAvaliadoEm).toLocaleDateString("pt-BR")}</span>}
+                      </span>
+                    )}
+                  </div>
+                  {/* Botão editar — só para consultor, não para gestor em modo visualização */}
+                  {!modoGestor && (
+                    <button
+                      onClick={()=>!editarBloqueado && setOsEntry(os)}
+                      disabled={editarBloqueado}
+                      title={bloqueada?"OS aprovada por gestor — não pode ser editada":"Editar OS"}
+                      style={{ padding:"7px 16px",borderRadius:"8px",border:"none",background:editarBloqueado?"#1f1f2e":"linear-gradient(135deg,#6c63ff,#a78bfa)",color:editarBloqueado?T.text3:"#fff",cursor:editarBloqueado?"not-allowed":"pointer",fontWeight:700,fontSize:"12px",fontFamily:"inherit",flexShrink:0,opacity:editarBloqueado?0.5:1 }}>
+                      {bloqueada?"🔒 Bloqueada":"✏️ Editar"}
+                    </button>
+                  )}
+                </div>
+                {/* Detalhes */}
+                {(os.atividades||os.osSistema||os.osDescricao||os.osComentarioGestor) && (
+                  <div style={{ padding:"12px 18px 14px",borderTop:"1px solid "+T.border+"88",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:"10px" }}>
+                    {os.osSistema && <div><span style={{ fontSize:"10px",color:T.text3,fontWeight:700,display:"block",marginBottom:"2px" }}>SISTEMA</span><span style={{ fontSize:"12px",color:T.text }}>{os.osSistema}</span></div>}
+                    {os.atividades && <div style={{ gridColumn:"1/-1" }}><span style={{ fontSize:"10px",color:T.text3,fontWeight:700,display:"block",marginBottom:"2px" }}>ATIVIDADES</span><span style={{ fontSize:"12px",color:T.text,whiteSpace:"pre-wrap" }}>{os.atividades}</span></div>}
+                    {os.osComentarioGestor && (
+                      <div style={{ gridColumn:"1/-1",background:"#f5a62310",borderRadius:"8px",padding:"8px 12px",border:"1px solid #f5a62330" }}>
+                        <span style={{ fontSize:"10px",color:"#f5a623",fontWeight:700,display:"block",marginBottom:"2px" }}>💬 COMENTÁRIO DO GESTOR</span>
+                        <span style={{ fontSize:"12px",color:T.text }}>{os.osComentarioGestor}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Modal de edição — só para consultor */}
+      {osEntry && !modoGestor && (
+        <OrdemServicoModal
+          entry={osEntry}
+          consultorName={consultorName}
+          emailConfig={emailConfig}
+          clientList={clientList}
+          onSave={async (dadosOS)=>{
+            onSaveEntry(dadosOS);
+            setOsEntry(null);
+          }}
+          onClose={()=>setOsEntry(null)}
+        />
+      )}
+    </div>
+  );
+}
+
 function KanbanBoard({ tarefas, canEditProj, COLUNAS, COL_LABELS, PRIORIDADES, moverTarefa, removerTarefa, addTarefa }) {
   const [dragId, setDragId] = React.useState(null);
   const [dragOver, setDragOver] = React.useState(null);
@@ -8141,7 +8353,7 @@ function Dashboard({ currentUser, onLogout }) {
   const VIEWS = canManage
     ? ["grid","calendario","semanal","timeline","stats","cadastros"]
     : ["grid","calendario","semanal","timeline","stats"];
-  const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", semanal:"📅 Semanal", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros", grade:"🎓 Grade de Conhecimento" };
+  const VIEW_LABELS = { grid:"🗓 Grade", calendario:"📆 Calendário", semanal:"📅 Semanal", timeline:"📊 Timeline", stats:"📈 Stats", cadastros:"🗂 Cadastros", grade:"🎓 Grade de Conhecimento", "os-perfil":"📋 OS do Consultor" };
 
   const badge = ROLE_BADGES[currentUser.role];
 
@@ -8171,11 +8383,12 @@ function Dashboard({ currentUser, onLogout }) {
     { id:"alcadas",  icon:"🔀", label:"Alçadas",               desc:"Hierarquia de aprovação" },
   ];
   const ALL_MODULES_CONSULTOR = [
-    { id:"agenda",   icon:"📅", label:"Agenda",                desc:"Minha agenda" },
-    { id:"grade",    icon:"🎓", label:"Grade de Conhecimento", desc:"Meus conhecimentos" },
-    { id:"viagens",  icon:"🏨", label:"Viagem e Hospedagem",   desc:"Minhas solicitações" },
-    { id:"traslado", icon:"🚗", label:"Traslado",              desc:"RDA de traslado" },
-    { id:"manual",   icon:"📖", label:"Manual",                desc:"Guia de uso do sistema" },
+    { id:"agenda",    icon:"📅", label:"Agenda",                desc:"Minha agenda" },
+    { id:"minhas-os", icon:"📋", label:"Minhas OS",             desc:"Ordens de serviço" },
+    { id:"grade",     icon:"🎓", label:"Grade de Conhecimento", desc:"Meus conhecimentos" },
+    { id:"viagens",   icon:"🏨", label:"Viagem e Hospedagem",   desc:"Minhas solicitações" },
+    { id:"traslado",  icon:"🚗", label:"Traslado",              desc:"RDA de traslado" },
+    { id:"manual",    icon:"📖", label:"Manual",                desc:"Guia de uso do sistema" },
   ];
   const ALL_MODULES_BASICO = [
     { id:"home",     icon:"⬡",  label:"Dashboard",            desc:"Visão geral" },
@@ -8450,7 +8663,7 @@ function Dashboard({ currentUser, onLogout }) {
               )}
               {/* View tabs */}
               <div style={{ marginLeft:"auto",display:"flex",gap:"2px",background:T.btnInactive,borderRadius:"10px",padding:"2px",border:"1px solid "+T.border }}>
-                {VIEWS.map(v=>(
+                {[...VIEWS, ...(selectedConsultor && !isConsultor ? ["os-perfil"] : [])].map(v=>(
                   <button key={v} onClick={()=>setView(v)} className={"nav-btn"+(view===v?" active":"")}
                     style={{ padding:"5px 12px",borderRadius:"8px",border:"none",cursor:"pointer",fontWeight:600,fontSize:"11px",background:view===v?T.accent:"transparent",color:view===v?"#fff":T.text2,whiteSpace:"nowrap" }}>
                     {VIEW_LABELS[v]}
@@ -8496,6 +8709,18 @@ function Dashboard({ currentUser, onLogout }) {
               {view==="semanal" && <WeeklyGlobalView key={"weekly-"+scheduleVersion} weeklyData={weeklyData} offset={selectedWeekOffset} setOffset={setSelectedWeekOffset} clientColorMap={clientColorMap} canEdit={canEdit} onEdit={(entry,name)=>{setEditEntry({...entry,consultor:name});setShowModal(true);}} onNewEntry={canEdit?({consultor,month,day,year})=>{setEditEntry({consultor,month,day,year,prefill:true});setShowModal(true);}:null} onOsClick={isConsultor?(e)=>setOsEntry(e):null} theme={T}/>}
               {view==="timeline" && <TimelineView data={filteredData} months={allMonths.filter(m=>m!=="Todos")}/>}
               {view==="stats" && <StatsView stats={stats}/>}
+              {view==="os-perfil" && selectedConsultor && (
+                <PainelOSConsultor
+                  consultorName={selectedConsultor}
+                  scheduleData={scheduleData}
+                  clientList={clientList}
+                  emailConfig={emailConfig}
+                  currentUser={currentUser}
+                  onSaveEntry={handleSaveEntry}
+                  theme={T}
+                  modoGestor={true}
+                />
+              )}
             </div>
           </div>
         )}
@@ -8543,6 +8768,21 @@ function Dashboard({ currentUser, onLogout }) {
               canApprove={canApprove}
               consultores={consultores}
               usuarios={usuarios}
+              theme={T}
+            />
+          </div>
+        )}
+
+        {/* ── MODULE: MINHAS OS (consultor) ── */}
+        {activeModule==="minhas-os" && isConsultor && (
+          <div style={{ padding:"28px 32px",flex:1 }}>
+            <PainelOSConsultor
+              consultorName={currentUser.consultorName}
+              scheduleData={scheduleData}
+              clientList={clientList}
+              emailConfig={emailConfig}
+              currentUser={currentUser}
+              onSaveEntry={handleSaveEntry}
               theme={T}
             />
           </div>
