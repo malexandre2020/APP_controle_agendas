@@ -5568,6 +5568,7 @@ function ModuloAlcadas({ currentUser, canManage, canApprove, consultores, usuari
 function ModuloOrdemServico({ consultores, clientList, scheduleData, setScheduleData, emailConfig, currentUser, theme: T }) {
   const [loading,      setLoading]      = useState(true);
   const [allOS,        setAllOS]        = useState([]);   // todas as OS extraídas das agendas
+  const [refreshTick,  setRefreshTick]  = useState(0);   // incrementar para forçar recarregamento
   const [filtroCliente,setFiltroCliente]= useState("");
   const [filtroConsult,setFiltroConsult]= useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
@@ -5592,24 +5593,45 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, setSchedule
     contestada:   { label:"Contestada",   color:"#f5a623", bg:"#f5a62318", icon:"⚠️" },
   };
 
-  // Extrair todas as OS das agendas
+  // Carregar OS diretamente do Firestore — garante dados atualizados de todas as sessões
   useEffect(() => {
-    const lista = [];
-    for (const [consultor, entries] of Object.entries(scheduleData||{})) {
-      for (const e of (entries||[])) {
-        if (e.osNumero) {
-          lista.push({ ...e, consultor });
+    const carregarOS = async () => {
+      setLoading(true);
+      const lista = [];
+      try {
+        // Carregar cada consultor individualmente do Firestore
+        await Promise.all(consultores.map(async (consultor) => {
+          try {
+            const snap = await getDoc(doc(db, "app_data", "schedule_" + consultor));
+            const entries = snap.exists() ? (snap.data().value || []) : (scheduleData[consultor] || []);
+            for (const e of entries) {
+              if (e.osNumero) lista.push({ ...e, consultor });
+            }
+          } catch(e) {
+            // fallback para scheduleData em caso de erro
+            for (const e of (scheduleData[consultor] || [])) {
+              if (e.osNumero) lista.push({ ...e, consultor });
+            }
+          }
+        }));
+      } catch(e) {
+        // fallback total para scheduleData
+        for (const [consultor, entries] of Object.entries(scheduleData||{})) {
+          for (const e of (entries||[])) {
+            if (e.osNumero) lista.push({ ...e, consultor });
+          }
         }
       }
-    }
-    lista.sort((a,b) => {
-      const na = parseInt(a.osNumero?.replace(/\D/g,""))||0;
-      const nb = parseInt(b.osNumero?.replace(/\D/g,""))||0;
-      return nb - na; // mais recente primeiro
-    });
-    setAllOS(lista);
-    setLoading(false);
-  }, [scheduleData]);
+      lista.sort((a,b) => {
+        const na = parseInt(a.osNumero?.replace(/\D/g,""))||0;
+        const nb = parseInt(b.osNumero?.replace(/\D/g,""))||0;
+        return nb - na;
+      });
+      setAllOS(lista);
+      setLoading(false);
+    };
+    carregarOS();
+  }, [consultores, refreshTick]);
 
   // Salvar alteração de status no scheduleData via Firestore
   const salvarStatus = async (os, novoStatus, obs) => {
@@ -5743,13 +5765,17 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, setSchedule
       <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"24px",flexWrap:"wrap",gap:"12px" }}>
         <div>
           <h2 style={{ fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:"20px",fontWeight:900,color:"#f0f0fa",margin:"0 0 4px",letterSpacing:"-0.3px" }}>📋 Ordens de Serviço</h2>
-          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0 }}>
-            {allOS.length} OS registradas · {osFiltradas.length} exibidas
-            {totalHorasStr && <span style={{ marginLeft:"10px",color:"#22d3a0",fontWeight:700 }}>⏱ {totalHorasStr} no período</span>}
+          <p style={{ fontSize:"12px",color:"#3e3e55",margin:0,display:"flex",alignItems:"center",gap:"10px" }}>
+            {loading ? "Carregando..." : `${allOS.length} OS registradas · ${osFiltradas.length} exibidas`}
+            {totalHorasStr && <span style={{ color:"#22d3a0",fontWeight:700 }}>⏱ {totalHorasStr} no período</span>}
           </p>
         </div>
-        {/* Contadores por status */}
-        <div style={{ display:"flex",gap:"8px",flexWrap:"wrap" }}>
+        <div style={{ display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"center" }}>
+          <button onClick={()=>{ setLoading(true); setAllOS([]); setRefreshTick(t=>t+1); }}
+            style={{ padding:"7px 14px",borderRadius:"8px",border:"1px solid #2a2a3a",background:"#111118",color:loading?"#3e3e55":"#6e6e88",cursor:loading?"wait":"pointer",fontSize:"12px",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px" }}>
+            <span style={{ display:"inline-block",animation:loading?"spin .7s linear infinite":"none" }}>🔄</span>
+            {loading?"Atualizando...":"Atualizar"}
+          </button>
           {Object.entries(OS_STATUS).map(([k,v])=>{
             const n = allOS.filter(o=>o.osStatus===k).length;
             if (!n) return null;
