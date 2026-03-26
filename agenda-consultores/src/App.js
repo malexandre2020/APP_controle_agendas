@@ -877,6 +877,7 @@ function OrdemServicoModal({ entry, consultorName, emailConfig, clientList, onSa
 
   const buildOsData = () => ({
     ...entry,
+    consultor: entry.consultor || consultorName,
     horaInicio, horaFim, intervalo,
     atividades: atividades.trim(),
     osNumero,
@@ -5596,7 +5597,6 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, setSchedule
       setLoading(true);
       const lista = [];
       try {
-        // Carregar cada consultor individualmente do Firestore
         await Promise.all(consultores.map(async (consultor) => {
           try {
             const snap = await getDoc(doc(db, "app_data", "schedule_" + consultor));
@@ -5605,14 +5605,12 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, setSchedule
               if (e.osNumero) lista.push({ ...e, consultor });
             }
           } catch(e) {
-            // fallback para scheduleData em caso de erro
             for (const e of (scheduleData[consultor] || [])) {
               if (e.osNumero) lista.push({ ...e, consultor });
             }
           }
         }));
       } catch(e) {
-        // fallback total para scheduleData
         for (const [consultor, entries] of Object.entries(scheduleData||{})) {
           for (const e of (entries||[])) {
             if (e.osNumero) lista.push({ ...e, consultor });
@@ -5629,6 +5627,23 @@ function ModuloOrdemServico({ consultores, clientList, scheduleData, setSchedule
     };
     carregarOS();
   }, [consultores, refreshTick]);
+
+  // Sincronizar allOS quando scheduleData mudar (ex: após consultor salvar OS na mesma sessão)
+  useEffect(() => {
+    const lista = [];
+    for (const [consultor, entries] of Object.entries(scheduleData||{})) {
+      for (const e of (entries||[])) {
+        if (e.osNumero) lista.push({ ...e, consultor });
+      }
+    }
+    if (lista.length === 0) return; // evitar apagar dados já carregados do Firestore
+    lista.sort((a,b) => {
+      const na = parseInt(a.osNumero?.replace(/\D/g,""))||0;
+      const nb = parseInt(b.osNumero?.replace(/\D/g,""))||0;
+      return nb - na;
+    });
+    setAllOS(lista);
+  }, [scheduleData]);
 
   // Salvar alteração de status no scheduleData via Firestore
   const salvarStatus = async (os, novoStatus, obs) => {
@@ -6318,6 +6333,13 @@ function PainelOSConsultor({ consultorName, scheduleData, clientList, emailConfi
   React.useEffect(() => {
     carregarDoFirestore();
   }, [carregarDoFirestore]);
+
+  // Sincronizar quando scheduleData mudar externamente (ex: após handleSaveOS)
+  React.useEffect(() => {
+    if (scheduleData[consultorName]) {
+      setEntradasFirestore(scheduleData[consultorName]);
+    }
+  }, [scheduleData, consultorName]);
 
   // Usar dados do Firestore se disponíveis, senão scheduleData como fallback
   const entradas = entradasFirestore !== null ? entradasFirestore : (scheduleData[consultorName] || []);
