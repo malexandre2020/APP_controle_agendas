@@ -7990,6 +7990,7 @@ function Dashboard({ currentUser, onLogout }) {
   };
 
   const handleSaveEntry = (entry) => {
+    const {id, consultor, month, year, days, client, type, modalidade, horaInicio, horaFim, intervalo, atividades, notifyEmail} = entry;
     const agora = new Date().toISOString();
     const nomeUsuario = currentUser.nome || currentUser.email;
 
